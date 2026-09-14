@@ -1,0 +1,20 @@
+-- DESTRUTIVO: apenas banco vazio/descartavel. Em producao use backup e migration corretiva.
+BEGIN;
+DROP TABLE evento_ordem_servico;
+DROP TABLE aprovacao_orcamento;
+DROP TABLE link_acesso_publico;
+DROP TABLE item_orcamento;
+DROP TABLE orcamento_versao;
+DROP TABLE orcamento;
+DROP TABLE foto_veiculo;
+DROP TABLE diagnostico_item;
+DROP TABLE checklist_item;
+DROP TABLE checklist_entrada;
+DROP TABLE ordem_servico;
+DROP TABLE veiculo;
+DROP TABLE cliente;
+DROP TABLE refresh_token;
+DROP TABLE usuario;
+DROP FUNCTION impedir_mutacao_historico();
+DROP TABLE oficina;
+COMMIT;
