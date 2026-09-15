@@ -57,4 +57,4 @@ Aceita PNG/JPEG de até 10 MB e 20 megapixels. O backend decodifica e regrava a 
 
 ## Limites desta entrega
 
-Sem fases 2–4. Sem cancelamento/reabertura de OS, aprovação parcial, catálogo de peças ou cobrança. Checklist é registrado uma vez; diagnóstico permite acrescentar itens. Correções estruturais de histórico exigem regra de negócio antes de novos endpoints. Interface React aguarda aprovação do fluxo. Infraestrutura de staging precisa de destino e estratégia aprovados antes de configurar deploy.
+Sem fases 2–4. Sem cancelamento/reabertura de OS, aprovação parcial, catálogo de peças ou cobrança. Checklist é registrado uma vez; diagnóstico permite acrescentar itens. Correções estruturais de histórico exigem regra de negócio antes de novos endpoints. Interface React aprovada preservada e integrada aos contratos existentes; validação final em [fase1-finalizacao.md](fase1-finalizacao.md). Infraestrutura de staging precisa de destino e estratégia aprovados antes de configurar deploy.

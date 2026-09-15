@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   date,
   money,
@@ -23,6 +23,8 @@ import type {
 } from "./model";
 import { Badge, Drawer, Empty, Field, Icon } from "./ui";
 import { AddButton, Form } from "./forms";
+import { api, ApiError, diagnosisToApi, loadOrder } from "./api";
+import PrivatePhoto from "./PrivatePhoto";
 
 const tabs = [
   "Resumo",
@@ -84,8 +86,8 @@ function ChecklistForm({
   save,
   close,
 }: {
-  save: (c: NonNullable<Order["checklist"]>) => void;
-  close: () => void;
+  save: (c: NonNullable<Order["checklist"]>) => void | Promise<void>;
+  close: () => void | Promise<void>;
 }) {
   const [itens, setItens] = useState<CheckItem[]>([
     { id: uid(), descricao: "", condicao: "", observacao: "" },
@@ -100,7 +102,7 @@ function ChecklistForm({
       save={(f) => {
         if (itens.some((i) => !i.descricao.trim() || !i.condicao.trim()))
           throw Error("Informe a descrição e a condição de cada item.");
-        save({ itens, observacoes: val(f, "observacoes") });
+        return save({ itens, observacoes: val(f, "observacoes") });
       }}
     >
       {itens.map((i, n) => (
@@ -166,8 +168,8 @@ function VersionForm({
   close,
 }: {
   previous?: Version;
-  save: (v: Version) => void;
-  close: () => void;
+  save: (v: Version) => void | Promise<void>;
+  close: () => void | Promise<void>;
 }) {
   const emptyItem = (): BudgetItem => ({
     id: uid(),
@@ -194,7 +196,7 @@ function VersionForm({
       save={(f) => {
         if (itens.some((i) => !i.descricao.trim()))
           throw Error("Descreva todos os itens.");
-        save({
+        return save({
           id: uid(),
           numero: (previous?.numero || 0) + 1,
           criadoEm: now(),
@@ -298,8 +300,8 @@ function PhotoForm({
   close,
 }: {
   order: Order;
-  save: (p: Photo) => void;
-  close: () => void;
+  save: (p: FormData) => void | Promise<void>;
+  close: () => void | Promise<void>;
 }) {
   const [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
@@ -326,13 +328,11 @@ function PhotoForm({
           bitmap.close();
           if (pixels > 20_000_000)
             throw Error("A imagem deve ter até 20 megapixels.");
-          save({
-            id: uid(),
-            url: URL.createObjectURL(file),
-            descricao: val(f, "descricao"),
-            finalidade: val(f, "finalidade"),
-            vinculo: val(f, "vinculo"),
-          });
+          const upload = new FormData();
+          upload.set('arquivo', file); upload.set('finalidade', val(f, 'finalidade')); upload.set('descricao', val(f, 'descricao'));
+          const item = val(f, 'vinculo');
+          if (item) upload.set(order.checklist?.itens.some(i => i.id === item) ? 'checklistItemId' : 'diagnosticoItemId', item);
+          await save(upload);
         } catch (err) {
           setError(
             err instanceof Error
@@ -345,8 +345,7 @@ function PhotoForm({
       }}
     >
       <p className="form-note">
-        PNG ou JPEG, até 10 MB e 20 megapixels. A imagem ficará apenas nesta
-        sessão de demonstração.
+        PNG ou JPEG, até 10 MB e 20 megapixels. A foto será armazenada de forma privada na oficina.
       </p>
       <Field label="Foto *">
         <input
@@ -413,45 +412,68 @@ export default function OrderDetail({
   client: Client;
   users: User[];
   role: Role;
-  update: (o: Order) => void;
-  back: () => void;
-  notify: (s: string) => void;
+  update: (o: Order) => void | Promise<void>;
+  back: () => void | Promise<void>;
+  notify: (s: string) => void | Promise<void>;
 }) {
   const [tab, setTab] = useState("Resumo"),
     [panel, setPanel] = useState(""),
     [versionId, setVersionId] = useState(""),
     [photo, setPhoto] = useState<Photo>(),
-    [decision, setDecision] = useState<boolean | null>(null),
-    [previewTime, setPreviewTime] = useState(0);
+    [error, setError] = useState("");
+  const saving = useRef(false);
+  const [busy, setBusy] = useState(false);
   const latest = order.versoes.at(-1),
     version = order.versoes.find((v) => v.id === versionId) || latest;
   const editable = order.status !== "PRONTO",
     office = role !== "MECANICO",
     diagnosis = role !== "ATENDENTE";
-  function change(patch: Partial<Order>, event: string, publicEvent = false) {
-    update({
-      ...order,
-      ...patch,
-      revisao: order.revisao + 1,
-      timeline: [
-        ...order.timeline,
-        {
-          id: uid(),
-          descricao: event,
-          origem: publicEvent
-            ? "Cliente · Link público"
-            : `${users.find((u) => u.papel === role)?.nome || "Usuário"} · Usuário`,
-          criadoEm: now(),
-        },
-      ],
-    });
-    setPanel("");
-    notify(event);
+  async function perform(action: () => Promise<unknown>, event: string, revoke = false) {
+    if (saving.current) return;
+    saving.current = true; setBusy(true); setError('');
+    try {
+      await action();
+      const fresh = await loadOrder(order.id);
+      await update({ ...fresh, link: revoke ? undefined : order.link });
+      setPanel(''); notify(event);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Não foi possível salvar.');
+      if (e instanceof ApiError && e.status === 409) {
+        try { await update({ ...await loadOrder(order.id), link: order.link }); } catch { /* Keep the original conflict visible. */ }
+      }
+    } finally { saving.current = false; setBusy(false); }
+  }
+  async function change(patch: Partial<Order>, event: string) {
+    const path = `/ordens-servico/${order.id}`;
+    return perform(async () => {
+      if (patch.checklist) await api(`${path}/checklist`, 'POST', { observacoes: patch.checklist.observacoes, itens: patch.checklist.itens.map(({ descricao, condicao, observacao }) => ({ descricao, condicao, observacao })) });
+      else if (patch.diagnosticos) {
+        const d = patch.diagnosticos.at(-1)!;
+        await api(`${path}/diagnosticos`, 'POST', { descricao: d.descricao, classificacao: diagnosisToApi[d.classificacao] });
+      } else if (patch.versoes) {
+        const v = patch.versoes.at(-1)!;
+        await api(`${path}/orcamento/versoes`, 'POST', { observacoes: v.observacoes, itens: v.itens.map(({ tipo, descricao, quantidade, valorUnitario }) => ({ tipo, descricao, quantidade, valorUnitario })) });
+        setVersionId('');
+      } else if (patch.mecanicoId) await api(`${path}/responsavel`, 'PUT', { mecanicoId: patch.mecanicoId, revisao: order.revisao });
+      else if (patch.status) await api(`${path}/status`, 'POST', { status: patch.status, revisao: order.revisao });
+    }, event);
+  }
+  async function createLink() {
+    if (saving.current) return;
+    saving.current = true; setBusy(true); setError('');
+    try {
+      const link = await api<NonNullable<Order['link']>>(`/ordens-servico/${order.id}/links`, 'POST');
+      await update({ ...await loadOrder(order.id), link: { ...link, ativo: true } });
+      notify('Link criado. Copie o endereço abaixo para compartilhar com o cliente.');
+    } catch (e) { setError(e instanceof Error ? e.message : 'Falha ao gerar link.'); }
+    finally { saving.current = false; setBusy(false); }
   }
   const canVersion =
     office && ["ORCAMENTO", "AGUARDANDO_APROVACAO"].includes(order.status);
   return (
     <>
+      {error && <p role="alert" className="error">{error}</p>}
+      {busy && <p role="status">Salvando…</p>}
       <button className="back-link" onClick={back}>
         <Icon name="back" size={16} />
         Ordens de Serviço
@@ -795,7 +817,7 @@ export default function OrderDetail({
                       </p>
                       {order.link?.ativo && (
                         <small>
-                          Link da demonstração disponível até{" "}
+                          Link disponível até{" "}
                           {date(order.link.expiraEm, true)}.
                         </small>
                       )}
@@ -817,34 +839,11 @@ export default function OrderDetail({
                           </button>
                         )}
                       {!order.link?.ativo ? (
-                        <button
-                          onClick={() =>
-                            change(
-                              {
-                                link: {
-                                  ativo: true,
-                                  expiraEm: new Date(
-                                    Date.now() + 7 * 86400000,
-                                  ).toISOString(),
-                                },
-                              },
-                              "Link de demonstração emitido com validade de 7 dias.",
-                            )
-                          }
-                        >
-                          Gerar link de demonstração
-                        </button>
+                        <button disabled={busy} onClick={createLink}>Gerar link do cliente</button>
                       ) : (
                         <>
-                          <button
-                            onClick={() => {
-                              setDecision(null);
-                              setPreviewTime(Date.now());
-                              setPanel("publico");
-                            }}
-                          >
-                            Visualizar como cliente
-                          </button>
+                          <a href={order.link.url} target="_blank" rel="noreferrer">Visualizar como cliente</a>
+                          <Field label="Link do cliente"><input readOnly value={order.link.url || ''} onFocus={e => e.target.select()} /></Field>
                           <button
                             className="text-button danger"
                             onClick={() => setPanel("revogar")}
@@ -888,8 +887,8 @@ export default function OrderDetail({
                     key={p.id}
                     onClick={() => setPhoto(p)}
                   >
-                    <img
-                      src={p.url}
+                    <PrivatePhoto
+                      path={p.url}
                       alt={
                         p.descricao || `Foto de ${p.finalidade.toLowerCase()}`
                       }
@@ -950,7 +949,7 @@ export default function OrderDetail({
         )}
       </section>
       {panel === "checklist" && (
-        <Drawer
+        <Drawer error={error}
           title="Registrar checklist de entrada"
           close={() => setPanel("")}
         >
@@ -963,13 +962,13 @@ export default function OrderDetail({
         </Drawer>
       )}
       {panel === "diagnostico" && (
-        <Drawer title="Adicionar diagnóstico" close={() => setPanel("")}>
+        <Drawer error={error} title="Adicionar diagnóstico" close={() => setPanel("")}>
           <Form
             close={() => setPanel("")}
             submit="Registrar item"
             save={(f) => {
               if (!val(f, "descricao")) throw Error("Descreva o diagnóstico.");
-              change(
+              return change(
                 {
                   diagnosticos: [
                     ...order.diagnosticos,
@@ -1003,7 +1002,7 @@ export default function OrderDetail({
         </Drawer>
       )}
       {panel === "versao" && (
-        <Drawer
+        <Drawer error={error}
           title={`Orçamento · versão ${(latest?.numero || 0) + 1}`}
           wide
           close={() => setPanel("")}
@@ -1013,27 +1012,25 @@ export default function OrderDetail({
             close={() => setPanel("")}
             save={(v) => {
               setVersionId(v.id);
-              change(
+              return change(
                 { versoes: [...order.versoes, v], status: "ORCAMENTO" },
-                `Orçamento v${v.numero} criado. Total: ${money(v.total)}.`,
+                'Orçamento salvo. Consulte os valores da versão registrada.',
               );
             }}
           />
         </Drawer>
       )}
       {panel === "foto" && (
-        <Drawer title="Adicionar foto" close={() => setPanel("")}>
+        <Drawer error={error} title="Adicionar foto" close={() => setPanel("")}>
           <PhotoForm
             order={order}
             close={() => setPanel("")}
-            save={(p) =>
-              change({ fotos: [...order.fotos, p] }, "Foto adicionada à OS.")
-            }
+            save={(upload) => perform(() => api(`/ordens-servico/${order.id}/fotos`, 'POST', upload), 'Foto adicionada à OS.')}
           />
         </Drawer>
       )}
       {panel === "responsavel" && (
-        <Drawer title="Mecânico responsável" close={() => setPanel("")}>
+        <Drawer error={error} title="Mecânico responsável" close={() => setPanel("")}>
           <Form
             close={() => setPanel("")}
             save={(f) =>
@@ -1065,7 +1062,7 @@ export default function OrderDetail({
         </Drawer>
       )}
       {panel === "status" && (
-        <Drawer title="Atualizar status" close={() => setPanel("")}>
+        <Drawer error={error} title="Atualizar status" close={() => setPanel("")}>
           <p className="form-note">
             Situação atual: <strong>{statuses[order.status]}</strong>
           </p>
@@ -1087,7 +1084,7 @@ export default function OrderDetail({
                 throw Error(
                   "Crie uma nova versão do orçamento antes de solicitar aprovação.",
                 );
-              change({ status }, `Status alterado para ${statuses[status]}.`);
+              return change({ status }, `Status alterado para ${statuses[status]}.`);
             }}
           >
             <Field label="Próxima etapa *">
@@ -1109,7 +1106,7 @@ export default function OrderDetail({
         </Drawer>
       )}
       {panel === "revogar" && (
-        <Drawer title="Revogar link do cliente" close={() => setPanel("")}>
+        <Drawer error={error} title="Revogar link do cliente" close={() => setPanel("")}>
           <p>
             O link atual deixará de permitir a consulta e a decisão do cliente.
           </p>
@@ -1117,149 +1114,21 @@ export default function OrderDetail({
             <button onClick={() => setPanel("")}>Cancelar</button>
             <button
               className="danger-button"
-              onClick={() =>
-                change(
-                  { link: { ativo: false, expiraEm: order.link!.expiraEm } },
-                  "Link de acesso revogado.",
-                )
-              }
+              disabled={busy}
+              onClick={async () => {
+                await perform(() => api(`/ordens-servico/${order.id}/links/${order.link!.id}`, 'DELETE'), 'Link revogado.', true);
+              }}
             >
               Revogar link
             </button>
           </div>
         </Drawer>
       )}
-      {panel === "publico" && (
-        <Drawer
-          title="Prévia da visão do cliente"
-          wide
-          close={() => setPanel("")}
-        >
-          <p className="demo-label">
-            Demonstração local · nenhuma decisão real será enviada
-          </p>
-          <div className="public-heading">
-            <small>ACOMPANHE SEU VEÍCULO</small>
-            <h2>Ordem de Serviço #{order.numero}</h2>
-            <p>
-              {vehicle.marca} {vehicle.modelo} · {vehicle.placa}
-            </p>
-            <Badge status={order.status} />
-            <p>Previsão de entrega: {date(order.previsaoEntrega, true)}</p>
-          </div>
-          {!order.link?.ativo ||
-          new Date(order.link.expiraEm).getTime() < previewTime ? (
-            <Empty title="Link indisponível">
-              Este link expirou ou foi revogado. Solicite um novo link à
-              oficina.
-            </Empty>
-          ) : latest &&
-            !["RECEBIDO", "DIAGNOSTICO", "ORCAMENTO"].includes(order.status) ? (
-            <>
-              <div className="section-heading">
-                <h2>Orçamento · versão {latest.numero}</h2>
-              </div>
-              <BudgetTable version={latest} />
-              {latest.decisao ? (
-                <p className="notice">
-                  Orçamento {latest.decisao.aprovado ? "aprovado" : "recusado"}{" "}
-                  em {date(latest.decisao.criadoEm, true)}.
-                </p>
-              ) : (
-                order.status === "AGUARDANDO_APROVACAO" && (
-                  <>
-                    {decision === null ? (
-                      <div className="form-actions">
-                        <button onClick={() => setDecision(false)}>
-                          Recusar orçamento
-                        </button>
-                        <button
-                          className="primary"
-                          onClick={() => setDecision(true)}
-                        >
-                          Aprovar {money(latest.total)}
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="confirmation">
-                        <h3>
-                          {decision
-                            ? "Confirmar aprovação integral?"
-                            : "Confirmar recusa do orçamento?"}
-                        </h3>
-                        <p>
-                          Versão {latest.numero} · Total {money(latest.total)}.
-                          A decisão ficará registrada e não poderá ser alterada
-                          para esta versão.
-                        </p>
-                        <div className="form-actions">
-                          <button onClick={() => setDecision(null)}>
-                            Voltar
-                          </button>
-                          <button
-                            className={decision ? "primary" : "danger-button"}
-                            onClick={() => {
-                              const aprovado = decision;
-                              change(
-                                {
-                                  status: aprovado
-                                    ? "EM_MANUTENCAO"
-                                    : "ORCAMENTO",
-                                  versoes: order.versoes.map((v) =>
-                                    v.id === latest.id
-                                      ? {
-                                          ...v,
-                                          decisao: {
-                                            aprovado,
-                                            criadoEm: now(),
-                                            canal: "LINK_PUBLICO",
-                                          },
-                                        }
-                                      : v,
-                                  ),
-                                },
-                                `Cliente ${aprovado ? "aprovou" : "recusou"} o orçamento v${latest.numero}.`,
-                                true,
-                              );
-                              setDecision(null);
-                              setPanel(aprovado ? "publico" : "recusado");
-                            }}
-                          >
-                            Confirmar {decision ? "aprovação" : "recusa"}
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )
-              )}
-            </>
-          ) : (
-            <Empty title="Orçamento em preparação">
-              A oficina está preparando o orçamento. Consulte novamente quando
-              ele for disponibilizado.
-            </Empty>
-          )}
-        </Drawer>
-      )}
-      {panel === "recusado" && (
-        <Drawer title="Decisão registrada" close={() => setPanel("")}>
-          <div className="public-heading">
-            <h2>Orçamento recusado</h2>
-            <p>
-              A recusa foi registrada nesta demonstração. A oficina poderá
-              preparar uma nova versão.
-            </p>
-            <p>{date(latest?.decisao?.criadoEm, true)}</p>
-            <button onClick={() => setPanel("")}>Concluir prévia</button>
-          </div>
-        </Drawer>
-      )}
       {photo && (
-        <Drawer title="Foto do veículo" wide close={() => setPhoto(undefined)}>
-          <img
+        <Drawer error={error} title="Foto do veículo" wide close={() => setPhoto(undefined)}>
+          <PrivatePhoto
             className="photo-full"
-            src={photo.url}
+            path={photo.url}
             alt={photo.descricao || "Registro do veículo"}
           />
           <h3>{photo.descricao || "Sem descrição"}</h3>

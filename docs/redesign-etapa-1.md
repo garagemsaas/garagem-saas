@@ -1,5 +1,8 @@
 # Redesign do frontend — etapa 1
 
+> Registro histórico. A integração REST e a validação final posteriores estão em [fase1-finalizacao.md](fase1-finalizacao.md). As referências a mocks e integração pendente abaixo descrevem aquela etapa anterior.
+
+
 Implementado em 15/09/2026, após aprovação da direção visual.
 
 ## Entrega

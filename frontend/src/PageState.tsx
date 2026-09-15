@@ -20,7 +20,7 @@ export class AppBoundary extends Component<{ children: ReactNode }, { failed: bo
   }
   render() {
     return this.state.failed ? <main className="premium-main"><PageState state="error" title="Não foi possível abrir esta tela" retry={() => this.setState({ failed: false })}>
-      Tente abrir a interface novamente. Reiniciar a demonstração descarta as alterações temporárias.
+      Tente abrir a interface novamente. Recarregar exige um novo login; os registros salvos permanecem na oficina.
     </PageState></main> : this.props.children;
   }
 }

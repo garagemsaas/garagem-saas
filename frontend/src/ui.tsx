@@ -70,11 +70,13 @@ export function Drawer({
   children,
   close,
   wide = false,
+  error,
 }: {
   title: string;
   children: ReactNode;
   close: () => void;
   wide?: boolean;
+  error?: string;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
@@ -108,7 +110,7 @@ export function Drawer({
           <Icon name="close" />
         </button>
       </header>
-      <div className="drawer-body">{children}</div>
+      <div className="drawer-body">{error && <p role="alert" className="error">{error}</p>}{children}</div>
     </dialog>
   );
 }
