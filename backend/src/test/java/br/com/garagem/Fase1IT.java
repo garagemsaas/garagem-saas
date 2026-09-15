@@ -712,6 +712,8 @@ class Fase1IT {
                 .param("finalidade", "ENTRADA")
                 .header("Authorization", "Bearer " + b))
         .andExpect(status().isNotFound());
+    // Fase 2 passou a distinguir conteúdo não suportado (415) de dado inválido (400). O arquivo
+    // continua recusado pelo conteúdo decodificado, não pela extensão: só mudou o status.
     mvc.perform(
             multipart("/api/v1/ordens-servico/" + os + "/fotos")
                 .file(
@@ -719,7 +721,7 @@ class Fase1IT {
                         "arquivo", "x.png", "image/png", "<script>bad</script>".getBytes()))
                 .param("finalidade", "ENTRADA")
                 .header("Authorization", "Bearer " + a))
-        .andExpect(status().isBadRequest());
+        .andExpect(status().isUnsupportedMediaType());
   }
 
   @Test

@@ -18,6 +18,21 @@ public final class OsDtos {
       @NotBlank @Size(max = 4000) String relato,
       Instant previsaoEntrega) {}
 
+  /**
+   * Filtros da listagem de OS. Todos são opcionais e combinam com E lógico; qualquer id informado
+   * ainda precisa pertencer à oficina do token para casar.
+   */
+  public record OsFiltro(
+      String busca,
+      Long numero,
+      StatusOs status,
+      UUID clienteId,
+      UUID veiculoId,
+      UUID mecanicoId,
+      String placa,
+      Instant de,
+      Instant ate) {}
+
   public record StatusEntrada(@NotNull StatusOs status, @PositiveOrZero long revisao) {}
 
   public record ResponsavelEntrada(@NotNull UUID mecanicoId, @PositiveOrZero long revisao) {}

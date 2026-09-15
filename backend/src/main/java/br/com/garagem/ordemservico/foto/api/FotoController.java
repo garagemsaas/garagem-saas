@@ -19,7 +19,12 @@ public class FotoController {
 
   @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   @ResponseStatus(HttpStatus.CREATED)
-  @Operation(summary = "Anexar foto PNG/JPEG privada; remove metadados e valida item da mesma OS")
+  @Operation(
+      summary = "Anexar foto PNG/JPEG privada",
+      description =
+          "Multipart. O tipo é decidido pelo conteúdo decodificado, não pela extensão nem pelo"
+              + " Content-Type enviados; a imagem é reescrita, o que descarta metadados como GPS."
+              + " Limite de 10 MB e 20 megapixels. Formato diferente de PNG/JPEG responde 415.")
   public Saida upload(
       @PathVariable UUID osId,
       @RequestPart MultipartFile arquivo,
@@ -37,11 +42,20 @@ public class FotoController {
   }
 
   @GetMapping("/{fotoId}/conteudo")
-  @Operation(summary = "Ler foto mediante autenticação e isolamento da oficina")
+  @Operation(
+      summary = "Ler foto mediante autenticação e isolamento da oficina",
+      description =
+          "O bucket é privado e nunca é exposto: os bytes passam pela API, que confere oficina e"
+              + " vínculo com a OS antes de ler o objeto.")
   public ResponseEntity<byte[]> conteudo(@PathVariable UUID osId, @PathVariable UUID fotoId) {
     var c = service.conteudo(osId, fotoId);
+    // O nome é derivado do id, não de nada que o usuário tenha enviado no upload.
+    String arquivo = "foto-" + fotoId + (c.contentType().endsWith("png") ? ".png" : ".jpg");
     return ResponseEntity.ok()
         .cacheControl(CacheControl.noStore())
+        .header("X-Content-Type-Options", "nosniff")
+        .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + arquivo + "\"")
+        .contentLength(c.bytes().length)
         .contentType(MediaType.parseMediaType(c.contentType()))
         .body(c.bytes());
   }

@@ -4,6 +4,7 @@ import type {
   Checklist,
   ChecklistInput,
   Cliente,
+  Dashboard,
   Diagnostico,
   DiagnosticoInput,
   LoginInput,
@@ -131,6 +132,9 @@ export const api = {
   },
   getTimeline(id: string): Promise<Evento[]> {
     return request<Evento[]>(`/api/v1/ordens-servico/${id}/timeline`);
+  },
+  getDashboard(): Promise<Dashboard> {
+    return request<Dashboard>("/api/v1/dashboard");
   },
   listUsers(page = 0, size = 100): Promise<Pagina<Usuario>> {
     return request<Pagina<Usuario>>(`/api/v1/usuarios?pagina=${page}&tamanho=${size}`);

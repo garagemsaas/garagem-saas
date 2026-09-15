@@ -1,0 +1,33 @@
+package br.com.garagem.ordemservico.repository;
+
+import br.com.garagem.ordemservico.domain.OrdemServico;
+import br.com.garagem.ordemservico.domain.StatusOs;
+import java.time.Instant;
+import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
+/** Listagem filtrada da OS, montada em tempo de execução a partir dos filtros informados. */
+public interface OrdemServicoRepositoryCustom {
+
+  /**
+   * Busca as OS da oficina. Todo filtro é opcional: os que chegarem nulos não entram na consulta.
+   *
+   * @param busca texto único, já normalizado como padrão {@code like}, que casa com placa, nome do
+   *     cliente ou número da OS
+   * @param de recorte inferior sobre a data de abertura, inclusivo
+   * @param ate recorte superior sobre a data de abertura, inclusivo
+   */
+  Page<OrdemServico> filtrar(
+      UUID oficinaId,
+      String busca,
+      Long numero,
+      StatusOs status,
+      UUID clienteId,
+      UUID veiculoId,
+      UUID mecanicoId,
+      String placa,
+      Instant de,
+      Instant ate,
+      Pageable pageable);
+}

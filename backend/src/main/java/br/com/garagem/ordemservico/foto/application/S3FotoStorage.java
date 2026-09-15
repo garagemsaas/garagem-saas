@@ -51,6 +51,16 @@ public class S3FotoStorage implements FotoStorage {
     client.deleteObject(DeleteObjectRequest.builder().bucket(bucket).key(key).build());
   }
 
+  @Override
+  public boolean disponivel() {
+    try {
+      client.headBucket(HeadBucketRequest.builder().bucket(bucket).build());
+      return true;
+    } catch (RuntimeException e) {
+      return false;
+    }
+  }
+
   @PreDestroy
   public void close() {
     client.close();

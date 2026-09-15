@@ -27,6 +27,7 @@ export interface Pagina<T> {
   pagina: number;
   tamanho: number;
   total: number;
+  totalPaginas: number;
 }
 
 export interface Cliente {
@@ -82,6 +83,33 @@ export interface ApiProblem {
   status?: number;
   detail?: string;
   title?: string;
+  /** Código estável do erro; prefira este valor a `detail` para decidir o que fazer. */
+  code?: string;
+  timestamp?: string;
+  requestId?: string;
+  errors?: CampoInvalido[];
+}
+
+export interface CampoInvalido {
+  field: string;
+  message: string;
+}
+
+export interface OrcamentosPendentes {
+  quantidade: number;
+  total: number;
+}
+
+export interface Dashboard {
+  geradoEm: string;
+  porStatus: Record<StatusOs, number>;
+  emAndamento: number;
+  prontas: number;
+  concluidasSeteDias: number;
+  entradasHoje: number;
+  atrasadas: number;
+  semResponsavel: number;
+  orcamentosAguardandoDecisao: OrcamentosPendentes;
 }
 
 export interface ChecklistItemInput {

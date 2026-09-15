@@ -45,10 +45,27 @@ management:
   endpoint:
     health:
       show-details: never
+      probes:
+        enabled: true
+  health:
+    db:
+      enabled: true
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: alpha
+    tags-sorter: alpha
+    display-request-duration: true
 app:
   jwt:
     secret: ${JWT_SECRET}
     issuer: garagem-api
+    access-ttl: ${JWT_ACCESS_TTL:PT15M}
+    refresh-ttl: ${JWT_REFRESH_TTL:P7D}
+  public-link:
+    ttl: ${PUBLIC_LINK_TTL:P7D}
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:}
   public-base-url: ${PUBLIC_BASE_URL:http://localhost:5173}
   storage:
     endpoint: ${S3_ENDPOINT:http://localhost:9000}

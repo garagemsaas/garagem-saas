@@ -7,6 +7,7 @@ import br.com.garagem.ordemservico.diagnostico.repository.DiagnosticoItemReposit
 import br.com.garagem.ordemservico.foto.domain.FotoVeiculo;
 import br.com.garagem.ordemservico.foto.repository.FotoVeiculoRepository;
 import br.com.garagem.shared.error.ApiException;
+import br.com.garagem.shared.error.ErrorCodes;
 import br.com.garagem.tenancy.TenantContext;
 import java.io.*;
 import java.util.*;
@@ -89,14 +90,15 @@ public class FotoService {
       byte[] original = file.getBytes();
       try (var input = ImageIO.createImageInputStream(new ByteArrayInputStream(original))) {
         var readers = ImageIO.getImageReaders(input);
-        if (!readers.hasNext()) throw ApiException.invalid("Foto inválida.");
+        // O tipo vem do conteúdo decodificado, nunca da extensão ou do Content-Type enviados.
+        if (!readers.hasNext()) throw naoSuportado();
         var reader = readers.next();
         try {
           reader.setInput(input);
           String format = reader.getFormatName().toLowerCase(Locale.ROOT);
-          if (!Set.of("png", "jpeg", "jpg").contains(format)
-              || (long) reader.getWidth(0) * reader.getHeight(0) > 20_000_000)
-            throw ApiException.invalid("Use PNG/JPEG com até 20 megapixels.");
+          if (!Set.of("png", "jpeg", "jpg").contains(format)) throw naoSuportado();
+          if ((long) reader.getWidth(0) * reader.getHeight(0) > 20_000_000)
+            throw ApiException.invalid("A foto deve ter até 20 megapixels.");
           var image = reader.read(0);
           var output = new ByteArrayOutputStream();
           String target = format.equals("png") ? "png" : "jpg";
@@ -108,7 +110,7 @@ public class FotoService {
         }
       }
     } catch (IOException e) {
-      throw ApiException.invalid("Não foi possível ler a foto.");
+      throw naoSuportado();
     }
     if (bytes.length > 10 * 1024 * 1024)
       throw ApiException.invalid("A foto processada excede 10 MB.");
@@ -126,7 +128,9 @@ public class FotoService {
       storage.put(f.objeto, bytes, contentType);
     } catch (RuntimeException e) {
       throw new ApiException(
-          HttpStatus.SERVICE_UNAVAILABLE, "Armazenamento de fotos indisponível.");
+          HttpStatus.SERVICE_UNAVAILABLE,
+          ErrorCodes.STORAGE_UNAVAILABLE,
+          "Armazenamento de fotos indisponível.");
     }
     TransactionSynchronizationManager.registerSynchronization(
         new TransactionSynchronization() {
@@ -170,8 +174,18 @@ public class FotoService {
     try {
       return new Conteudo(storage.get(f.objeto), f.contentType);
     } catch (RuntimeException e) {
-      throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "Foto temporariamente indisponível.");
+      throw new ApiException(
+          HttpStatus.SERVICE_UNAVAILABLE,
+          ErrorCodes.STORAGE_UNAVAILABLE,
+          "Foto temporariamente indisponível.");
     }
+  }
+
+  private static ApiException naoSuportado() {
+    return new ApiException(
+        HttpStatus.UNSUPPORTED_MEDIA_TYPE,
+        ErrorCodes.UNSUPPORTED_MEDIA_TYPE,
+        "Envie uma imagem PNG ou JPEG válida.");
   }
 
   private Saida saida(FotoVeiculo f) {

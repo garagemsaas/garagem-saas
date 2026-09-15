@@ -23,6 +23,7 @@ import br.com.garagem.ordemservico.repository.OrdemServicoRepository;
 import br.com.garagem.ordemservico.timeline.domain.EventoOrdemServico;
 import br.com.garagem.ordemservico.timeline.repository.EventoOrdemServicoRepository;
 import br.com.garagem.shared.error.ApiException;
+import br.com.garagem.shared.persistence.Filtros;
 import br.com.garagem.shared.persistence.Pagina;
 import br.com.garagem.tenancy.TenantContext;
 import br.com.garagem.usuario.domain.Papel;
@@ -55,6 +56,7 @@ public class OsService {
   private final EventoOrdemServicoRepository eventos;
   private final JdbcTemplate jdbc;
   private final String publicBase;
+  private final java.time.Duration linkTtl;
 
   public OsService(
       OrdemServicoRepository ordens,
@@ -70,7 +72,8 @@ public class OsService {
       AprovacaoOrcamentoRepository aprovacoes,
       EventoOrdemServicoRepository eventos,
       JdbcTemplate jdbc,
-      @Value("${app.public-base-url}") String publicBase) {
+      @Value("${app.public-base-url}") String publicBase,
+      @Value("${app.public-link.ttl}") java.time.Duration linkTtl) {
     this.ordens = ordens;
     this.veiculos = veiculos;
     this.usuarios = usuarios;
@@ -85,23 +88,34 @@ public class OsService {
     this.eventos = eventos;
     this.jdbc = jdbc;
     this.publicBase = publicBase.replaceAll("/$", "");
+    this.linkTtl = linkTtl;
   }
 
+  /** Campos que a listagem aceita em {@code ordenacao}; qualquer outro é recusado com 400. */
+  public static final Set<String> ORDENACAO =
+      Set.of("numero", "status", "criadoEm", "previsaoEntrega", "concluidaEm");
+
   @Transactional(readOnly = true)
-  public Pagina<OsSaida> listar(String busca, int pagina, int tamanho) {
-    String pattern =
-        "%"
-            + busca
-                .trim()
-                .toLowerCase(Locale.ROOT)
-                .replace("!", "!!")
-                .replace("%", "!%")
-                .replace("_", "!_")
-            + "%";
+  public Pagina<OsSaida> listar(OsFiltro filtro, int pagina, int tamanho, String ordenacao) {
     return Pagina.de(
         ordens
-            .search(TenantContext.current(), pattern, Pagina.request(pagina, tamanho))
+            .filtrar(
+                TenantContext.current(),
+                Filtros.like(filtro.busca()),
+                filtro.numero(),
+                filtro.status(),
+                filtro.clienteId(),
+                filtro.veiculoId(),
+                filtro.mecanicoId(),
+                Filtros.like(placaNormalizada(filtro.placa())),
+                filtro.de(),
+                filtro.ate(),
+                Pagina.request(pagina, tamanho, ordenacao, ORDENACAO))
             .map(OsSaida::de));
+  }
+
+  private static String placaNormalizada(String placa) {
+    return placa == null ? null : placa.replace("-", "").replace(" ", "");
   }
 
   @Transactional(readOnly = true)
@@ -300,9 +314,13 @@ public class OsService {
     LinkAcessoPublico l = new LinkAcessoPublico();
     l.ordemServicoId = id;
     l.tokenHash = Tokens.hash(token);
-    l.expiraEm = Instant.now().plusSeconds(7 * 86400);
+    l.expiraEm = Instant.now().plus(linkTtl);
     links.save(l);
-    evento(id, "LINK_CRIADO", "Link de acesso emitido com validade de 7 dias.", autor());
+    evento(
+        id,
+        "LINK_CRIADO",
+        "Link de acesso emitido com validade de " + linkTtl.toDays() + " dias.",
+        autor());
     return new LinkSaida(l.id, publicBase + "/acompanhar#" + token, token, l.expiraEm);
   }
 

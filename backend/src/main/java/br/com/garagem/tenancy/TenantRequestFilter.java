@@ -1,6 +1,8 @@
 package br.com.garagem.tenancy;
 
 import br.com.garagem.auth.application.Tokens;
+import br.com.garagem.shared.error.ErrorCodes;
+import br.com.garagem.shared.error.ProblemJson;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import java.io.IOException;
@@ -77,11 +79,15 @@ public class TenantRequestFilter extends OncePerRequestFilter {
     }
   }
 
+  /**
+   * Link público ausente, expirado ou revogado responde 404, igual a token malformado: quem tem o
+   * link não consegue distinguir os casos nem descobrir se uma OS existe.
+   */
   private void reject(HttpServletResponse response, int code) throws IOException {
-    response.setStatus(code);
-    response.setContentType("application/problem+json");
-    response
-        .getWriter()
-        .write("{\"status\":" + code + ",\"detail\":\"Acesso inválido ou expirado.\"}");
+    ProblemJson.write(
+        response,
+        code,
+        code == 401 ? ErrorCodes.UNAUTHORIZED : ErrorCodes.NOT_FOUND,
+        "Acesso inválido ou expirado.");
   }
 }
