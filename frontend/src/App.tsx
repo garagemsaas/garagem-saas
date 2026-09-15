@@ -9,6 +9,8 @@ import type { Page } from "./navigation";
 import { getDashboard } from "./dashboard-model";
 import { date, money, now, number, roles, seed, uid } from "./model";
 import type { Client, Order, Role, Vehicle } from "./model";
+import { api, clearSession, setSession as persistApiSession } from "./api";
+import type { Checklist, Diagnostico, Evento, OrdemServico, OrcamentoVersao, Usuario } from "./api";
 import "./App.css";
 import "./design-system.css";
 
@@ -41,7 +43,8 @@ export default function App() {
     [toast, setToast] = useState("");
   const [loginRole, setLoginRole] = useState<Role>("OWNER"),
     [showPassword, setShowPassword] = useState(false),
-    [loginError, setLoginError] = useState("");
+    [loginError, setLoginError] = useState(""),
+    [loginLoading, setLoginLoading] = useState(false);
   useEffect(() => {
     if (!toast) return;
     const timer = setTimeout(() => setToast(""), 4500);
@@ -55,9 +58,59 @@ export default function App() {
     setPanel("");
   }
   const notify = (s: string) => setToast(s);
+  async function hydrateOrder(id: string): Promise<void> {
+    if (!api.isConfigured) return;
+    const [remoteOrder, checklist, diagnostics, versions, timeline] = await Promise.all([
+      api.getOrder(id),
+      api.getChecklist(id).catch(() => null),
+      api.getDiagnostics(id).catch(() => []),
+      api.getBudgetVersions(id).catch(() => []),
+      api.getTimeline(id).catch(() => []),
+    ]);
+    const mapClassification = (value: Diagnostico["classificacao"]): "OK" | "ACOMPANHAR" | "TROCAR" =>
+      value === "BOM" ? "OK" : value === "ATENCAO" ? "ACOMPANHAR" : "TROCAR";
+    const mapped: Order = {
+      id: remoteOrder.id,
+      numero: remoteOrder.numero,
+      veiculoId: remoteOrder.veiculoId,
+      clienteId: remoteOrder.clienteId,
+      mecanicoId: remoteOrder.mecanicoId ?? "",
+      status: remoteOrder.status,
+      kmEntrada: remoteOrder.kmEntrada,
+      relato: remoteOrder.relato,
+      criadoEm: remoteOrder.criadoEm,
+      previsaoEntrega: remoteOrder.previsaoEntrega ?? remoteOrder.criadoEm,
+      revisao: remoteOrder.revisao,
+      checklist: checklist ? {
+        observacoes: checklist.observacoes ?? "",
+        itens: checklist.itens.map((item: Checklist["itens"][number]) => ({
+          id: item.id,
+          descricao: item.descricao,
+          condicao: item.condicao,
+          observacao: item.observacao ?? "",
+        })),
+      } : undefined,
+      diagnosticos: diagnostics.map((item: Diagnostico) => ({ ...item, classificacao: mapClassification(item.classificacao) })),
+      versoes: versions.map((version: OrcamentoVersao) => ({
+        ...version,
+        observacoes: version.observacoes ?? "",
+        itens: version.itens.map((item) => ({ ...item })),
+        decisao: version.decisao ?? undefined,
+      })),
+      fotos: [],
+      timeline: timeline.map((event: Evento) => ({
+        id: event.id,
+        descricao: event.descricao,
+        origem: event.origem,
+        criadoEm: event.criadoEm,
+      })),
+    };
+    setData((current) => ({ ...current, ordens: current.ordens.map((item) => item.id === id ? mapped : item) }));
+  }
   function openOrder(id: string) {
     navigate("orders");
     setSelected(id);
+    void hydrateOrder(id).catch((error) => notify(error instanceof Error ? error.message : "Não foi possível carregar os detalhes da OS."));
   }
   function finish(message: string) {
     setPanel("");
@@ -67,10 +120,43 @@ export default function App() {
     data.ordens.forEach((o) =>
       o.fotos.forEach((p) => URL.revokeObjectURL(p.url)),
     );
+    if (api.isConfigured) void api.logout().catch(() => undefined);
+    clearSession();
     setSession(null);
     setData(seed());
     navigate("orders");
     setToast("");
+  }
+  async function loadRemoteData(): Promise<void> {
+    const [clientsPage, vehiclesPage, ordersPage, usersPage] = await Promise.all([
+      api.listClients(),
+      api.listVehicles(),
+      api.listOrders(),
+      api.listUsers(),
+    ]);
+    const remoteOrders: Order[] = ordersPage.itens.map((order: OrdemServico) => ({
+      id: order.id,
+      numero: order.numero,
+      veiculoId: order.veiculoId,
+      clienteId: order.clienteId,
+      mecanicoId: order.mecanicoId ?? "",
+      status: order.status,
+      kmEntrada: order.kmEntrada,
+      relato: order.relato,
+      criadoEm: order.criadoEm,
+      previsaoEntrega: order.previsaoEntrega ?? order.criadoEm,
+      revisao: order.revisao,
+      diagnosticos: [],
+      versoes: [],
+      fotos: [],
+      timeline: [],
+    }));
+    setData({
+      clientes: clientsPage.itens.map((client) => ({ ...client, email: client.email ?? "" })),
+      veiculos: vehiclesPage.itens,
+      ordens: remoteOrders,
+      usuarios: usersPage.itens.map((user: Usuario) => user),
+    });
   }
   const user = session
     ? data.usuarios.find((u) => u.papel === session.role)!
@@ -105,10 +191,34 @@ export default function App() {
           : data.usuarios.length;
   const order = data.ordens.find((o) => o.id === selected);
   function updateOrder(o: Order) {
+    const previous = data.ordens.find((item) => item.id === o.id);
     setData((d) => ({
       ...d,
       ordens: d.ordens.map((item) => (item.id === o.id ? o : item)),
     }));
+    if (!api.isConfigured || !previous) return;
+    const revision = Math.max(0, o.revisao - 1);
+    const writes: Promise<unknown>[] = [];
+    if (previous.status !== o.status) writes.push(api.updateOrderStatus(o.id, o.status, revision));
+    if (!previous.checklist && o.checklist) writes.push(api.createChecklist(o.id, {
+      observacoes: o.checklist.observacoes,
+      itens: o.checklist.itens.map((item) => ({ descricao: item.descricao, condicao: item.condicao, observacao: item.observacao })),
+    }));
+    if (o.diagnosticos.length > previous.diagnosticos.length) {
+      const item = o.diagnosticos.at(-1);
+      if (item) writes.push(api.addDiagnostic(o.id, {
+        descricao: item.descricao,
+        classificacao: item.classificacao === "OK" ? "BOM" : item.classificacao === "ACOMPANHAR" ? "ATENCAO" : "CRITICO",
+      }));
+    }
+    if (o.versoes.length > previous.versoes.length) {
+      const version = o.versoes.at(-1);
+      if (version) writes.push(api.createBudgetVersion(o.id, {
+        observacoes: version.observacoes,
+        itens: version.itens.map((item) => ({ tipo: item.tipo, descricao: item.descricao, quantidade: item.quantidade, valorUnitario: item.valorUnitario })),
+      }));
+    }
+    if (writes.length) void Promise.all(writes).then(() => hydrateOrder(o.id)).catch((error) => notify(error instanceof Error ? error.message : "Não foi possível salvar a alteração da OS."));
   }
   function saveClient(c: Client) {
     setData((d) => ({
@@ -163,16 +273,33 @@ export default function App() {
             <h2>Entre na sua oficina</h2>
             <p>Seu espaço de trabalho começa aqui.</p>
             <form
-              onSubmit={(e) => {
+              onSubmit={async (e) => {
                 e.preventDefault();
                 const f = new FormData(e.currentTarget);
                 const oficina = String(f.get("oficina")).trim();
+                const email = String(f.get("email")).trim();
+                const senha = String(f.get("senha"));
                 if (!oficina) {
                   setLoginError("Informe a oficina.");
                   return;
                 }
-                setSession({ role: loginRole, oficina });
-                navigate("overview");
+                setLoginError("");
+                setLoginLoading(true);
+                try {
+                  if (api.isConfigured) {
+                    const remoteSession = await api.login({ oficina, email, senha });
+                    persistApiSession(remoteSession);
+                    setSession({ role: remoteSession.papel, oficina: remoteSession.oficinaId });
+                    await loadRemoteData();
+                  } else {
+                    setSession({ role: loginRole, oficina });
+                  }
+                  navigate("overview");
+                } catch (error) {
+                  setLoginError(error instanceof Error ? error.message : "Não foi possível entrar.");
+                } finally {
+                  setLoginLoading(false);
+                }
               }}
             >
               <Field
@@ -224,8 +351,8 @@ export default function App() {
                   {loginError}
                 </p>
               )}
-              <button type="submit" className="primary login-submit">
-                Entrar na demonstração <Icon name="arrow" size={18} />
+              <button type="submit" className="primary login-submit" disabled={loginLoading}>
+                {loginLoading ? "Entrando..." : api.isConfigured ? "Entrar na oficina" : "Entrar na demonstração"} <Icon name="arrow" size={18} />
               </button>
               <div className="demo-controls">
                 <Field label="Papel para avaliação do protótipo">
@@ -241,9 +368,9 @@ export default function App() {
                   </select>
                 </Field>
                 <p>
-                  Dados fictícios, sem autenticação real. Use os campos
-                  preenchidos. As alterações são temporárias e serão descartadas
-                  ao sair ou recarregar.
+                  {api.isConfigured
+                    ? "Acesso protegido pela API da oficina."
+                    : "Dados fictícios, sem autenticação real. Use os campos preenchidos. As alterações são temporárias e serão descartadas ao sair ou recarregar."}
                 </p>
               </div>
             </form>
