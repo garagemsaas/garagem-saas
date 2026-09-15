@@ -1,6 +1,6 @@
-# Aceite e verificações — 14/09/2026
+# Aceite e verificações — atualizado em 15/09/2026
 
-A Fase 1 ainda não está concluída como produto: o backend está implementado e validado localmente; interface, validação completa em containers e staging estão pendentes. Nenhuma funcionalidade das fases seguintes foi iniciada.
+A Fase 1 ainda não está concluída como produto: o backend está implementado e validado localmente, inclusive com o Docker Compose completo. A interface possui um protótipo React + TypeScript + Vite com dados fictícios em memória; aprovação final, integração com a API real e staging estão pendentes. Nenhuma funcionalidade das fases seguintes foi iniciada.
 
 ## Verificações realizadas
 
@@ -16,7 +16,13 @@ A Fase 1 ainda não está concluída como produto: o backend está implementado 
 | Sintaxe do Maven Wrapper para shell | Passou |
 | Maven Wrapper executando Maven/Java corretos | Passou com cache local previamente preenchido |
 | Integridade do Maven baixado | SHA-512 conferido com Maven Central; SHA-256 fixado no wrapper |
-| Docker build e execução de containers | Pendente: virtualização indisponível nesta máquina |
+| Build da API em container | Passou |
+| PostgreSQL 17.11 em container | Passou; healthy |
+| MinIO em container | Passou |
+| minio-init | Concluído com exit code 0 |
+| API em container | Passou |
+| `/actuator/health` | HTTP 200 |
+| Docker Compose completo | Executado e validado localmente com sucesso |
 | PostgreSQL/MinIO via Testcontainers | Configurado no CI; execução nesse modo ainda pendente |
 
 Comando executado na raiz com `JAVA_HOME` apontando ao JDK local, DEBUG=false e `TEST_DATABASE_*` apontando ao PostgreSQL descartável em localhost:55432:
@@ -40,15 +46,19 @@ Relatórios locais: `backend/target/surefire-reports` e `backend/target/failsafe
 9. Duas aprovações simultâneas geram uma única decisão persistida.
 10. OpenAPI, validação de entrada e bloqueio de salto inválido de status.
 
-## Limites da execução local
+## Execução local e validação Docker
 
-O Docker Desktop reportou “Virtual Machine Platform not enabled / No virtualization available”. Nenhuma configuração de virtualização do Windows foi alterada. O modo alternativo da suíte utilizou PostgreSQL real, mas substituiu o armazenamento S3 por uma implementação em memória. O CI usa MinIO real e precisa executar para confirmar esse caminho e o build da imagem.
+O Docker Desktop está funcionando. A validação local com Docker Compose confirmou o build da API, PostgreSQL 17.11 saudável, MinIO em execução, minio-init concluído com exit code 0 e API em execução, com `/actuator/health` retornando HTTP 200.
+
+O `backend/Dockerfile` foi corrigido para instalar `unzip`, necessário para o Maven Wrapper validar e extrair corretamente a distribuição Maven durante o build.
+
+Na validação anterior da suíte, o modo alternativo utilizou PostgreSQL real, mas substituiu o armazenamento S3 por uma implementação em memória. Essa evidência permanece válida. A execução da suíte com PostgreSQL e MinIO via Testcontainers no CI continua pendente; a validação local do Compose não substitui essa verificação.
 
 O bootstrap automático do wrapper oficial falhou ao renomear o diretório temporário no Windows. Para verificar o wrapper, a distribuição oficial já baixada e conferida foi extraída diretamente no cache de `.tools/wrapper-home`. O script oficial foi mantido. Em ambientes normais ele baixa Maven automaticamente; nesta máquina, o Maven portátil em `.tools/apache-maven-3.9.11` também funciona.
 
 ## Pendências de aceite
 
-- Aprovar o [fluxo da interface](proposta-interface.md) antes de implementar React + TypeScript + Vite, conforme o fluxo humano de aprovação solicitado.
+- Aprovar o [protótipo da interface](proposta-interface.md) antes da implementação definitiva e da integração com a API real, conforme o fluxo humano de aprovação solicitado.
 - Executar o CI com PostgreSQL e MinIO via Testcontainers e o build Docker.
 - Definir destino e política de staging antes de implementar/publicar deploy.
 - Criar o fluxo de revisão no GitHub; esta entrega permaneceu local, sem push, PR ou merge.
