@@ -99,7 +99,7 @@ export interface Order {
     origem: string;
     criadoEm: string;
   }[];
-  link?: { ativo: boolean; expiraEm: string };
+  link?: { ativo: boolean; expiraEm: string; token?: string; url?: string };
 }
 export const uid = () => crypto.randomUUID();
 export const val = (f: FormData, key: string) =>

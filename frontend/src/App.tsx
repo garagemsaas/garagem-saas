@@ -220,7 +220,18 @@ export default function App() {
     }
     if (writes.length) void Promise.all(writes).then(() => hydrateOrder(o.id)).catch((error) => notify(error instanceof Error ? error.message : "Não foi possível salvar a alteração da OS."));
   }
-  function saveClient(c: Client) {
+  async function saveClient(c: Client) {
+    if (api.isConfigured) {
+      try {
+        const saved = c.id.startsWith("c") && data.clientes.some((item) => item.id === c.id)
+          ? await api.updateClient(c.id, c)
+          : await api.createClient(c);
+        c = { ...saved, email: saved.email ?? "" };
+      } catch (error) {
+        notify(error instanceof Error ? error.message : "Não foi possível salvar o cliente.");
+        return;
+      }
+    }
     setData((d) => ({
       ...d,
       clientes: d.clientes.some((item) => item.id === c.id)
@@ -230,7 +241,17 @@ export default function App() {
     setClient(c);
     finish("Cliente salvo na demonstração.");
   }
-  function saveVehicle(v: Vehicle) {
+  async function saveVehicle(v: Vehicle) {
+    if (api.isConfigured) {
+      try {
+        v = v.id.startsWith("v") && data.veiculos.some((item) => item.id === v.id)
+          ? await api.updateVehicle(v.id, v)
+          : await api.createVehicle(v);
+      } catch (error) {
+        notify(error instanceof Error ? error.message : "Não foi possível salvar o veículo.");
+        return;
+      }
+    }
     setData((d) => ({
       ...d,
       veiculos: d.veiculos.some((item) => item.id === v.id)
@@ -735,7 +756,19 @@ export default function App() {
             clients={data.clientes}
             users={data.usuarios}
             close={() => setPanel("")}
-            save={(input) => {
+            save={async (input) => {
+              if (api.isConfigured) {
+                try {
+                  const remote = await api.createOrder(input);
+                  await loadRemoteData();
+                  setSelected(remote.id);
+                  finish(`OS #${remote.numero} aberta na oficina.`);
+                  return;
+                } catch (error) {
+                  notify(error instanceof Error ? error.message : "Não foi possível abrir a OS.");
+                  return;
+                }
+              }
               const v = data.veiculos.find((v) => v.id === input.veiculoId)!;
               const created = now();
               const o: Order = {
