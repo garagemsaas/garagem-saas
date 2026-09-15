@@ -9,6 +9,8 @@ import type { Page } from "./navigation";
 import { getDashboard } from "./dashboard-model";
 import { date, money, now, number, roles, seed, uid } from "./model";
 import type { Client, Order, Role, Vehicle } from "./model";
+import { api, clearSession, setSession as persistApiSession } from "./api";
+import type { OrdemServico, Usuario } from "./api";
 import "./App.css";
 import "./design-system.css";
 
@@ -41,7 +43,8 @@ export default function App() {
     [toast, setToast] = useState("");
   const [loginRole, setLoginRole] = useState<Role>("OWNER"),
     [showPassword, setShowPassword] = useState(false),
-    [loginError, setLoginError] = useState("");
+    [loginError, setLoginError] = useState(""),
+    [loginLoading, setLoginLoading] = useState(false);
   useEffect(() => {
     if (!toast) return;
     const timer = setTimeout(() => setToast(""), 4500);
@@ -67,10 +70,43 @@ export default function App() {
     data.ordens.forEach((o) =>
       o.fotos.forEach((p) => URL.revokeObjectURL(p.url)),
     );
+    if (api.isConfigured) void api.logout().catch(() => undefined);
+    clearSession();
     setSession(null);
     setData(seed());
     navigate("orders");
     setToast("");
+  }
+  async function loadRemoteData(): Promise<void> {
+    const [clientsPage, vehiclesPage, ordersPage, usersPage] = await Promise.all([
+      api.listClients(),
+      api.listVehicles(),
+      api.listOrders(),
+      api.listUsers(),
+    ]);
+    const remoteOrders: Order[] = ordersPage.itens.map((order: OrdemServico) => ({
+      id: order.id,
+      numero: order.numero,
+      veiculoId: order.veiculoId,
+      clienteId: order.clienteId,
+      mecanicoId: order.mecanicoId ?? "",
+      status: order.status,
+      kmEntrada: order.kmEntrada,
+      relato: order.relato,
+      criadoEm: order.criadoEm,
+      previsaoEntrega: order.previsaoEntrega ?? order.criadoEm,
+      revisao: order.revisao,
+      diagnosticos: [],
+      versoes: [],
+      fotos: [],
+      timeline: [],
+    }));
+    setData({
+      clientes: clientsPage.itens.map((client) => ({ ...client, email: client.email ?? "" })),
+      veiculos: vehiclesPage.itens,
+      ordens: remoteOrders,
+      usuarios: usersPage.itens.map((user: Usuario) => user),
+    });
   }
   const user = session
     ? data.usuarios.find((u) => u.papel === session.role)!
@@ -163,16 +199,33 @@ export default function App() {
             <h2>Entre na sua oficina</h2>
             <p>Seu espaço de trabalho começa aqui.</p>
             <form
-              onSubmit={(e) => {
+              onSubmit={async (e) => {
                 e.preventDefault();
                 const f = new FormData(e.currentTarget);
                 const oficina = String(f.get("oficina")).trim();
+                const email = String(f.get("email")).trim();
+                const senha = String(f.get("senha"));
                 if (!oficina) {
                   setLoginError("Informe a oficina.");
                   return;
                 }
-                setSession({ role: loginRole, oficina });
-                navigate("overview");
+                setLoginError("");
+                setLoginLoading(true);
+                try {
+                  if (api.isConfigured) {
+                    const remoteSession = await api.login({ oficina, email, senha });
+                    persistApiSession(remoteSession);
+                    setSession({ role: remoteSession.papel, oficina: remoteSession.oficinaId });
+                    await loadRemoteData();
+                  } else {
+                    setSession({ role: loginRole, oficina });
+                  }
+                  navigate("overview");
+                } catch (error) {
+                  setLoginError(error instanceof Error ? error.message : "Não foi possível entrar.");
+                } finally {
+                  setLoginLoading(false);
+                }
               }}
             >
               <Field
@@ -224,8 +277,8 @@ export default function App() {
                   {loginError}
                 </p>
               )}
-              <button type="submit" className="primary login-submit">
-                Entrar na demonstração <Icon name="arrow" size={18} />
+              <button type="submit" className="primary login-submit" disabled={loginLoading}>
+                {loginLoading ? "Entrando..." : api.isConfigured ? "Entrar na oficina" : "Entrar na demonstração"} <Icon name="arrow" size={18} />
               </button>
               <div className="demo-controls">
                 <Field label="Papel para avaliação do protótipo">
@@ -241,9 +294,9 @@ export default function App() {
                   </select>
                 </Field>
                 <p>
-                  Dados fictícios, sem autenticação real. Use os campos
-                  preenchidos. As alterações são temporárias e serão descartadas
-                  ao sair ou recarregar.
+                  {api.isConfigured
+                    ? "Acesso protegido pela API da oficina."
+                    : "Dados fictícios, sem autenticação real. Use os campos preenchidos. As alterações são temporárias e serão descartadas ao sair ou recarregar."}
                 </p>
               </div>
             </form>

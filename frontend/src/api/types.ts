@@ -64,6 +64,14 @@ export interface OrdemServico {
   revisao: number;
 }
 
+export interface Usuario {
+  id: string;
+  nome: string;
+  email: string;
+  papel: Papel;
+  ativo: boolean;
+}
+
 export interface LoginInput {
   oficina: string;
   email: string;

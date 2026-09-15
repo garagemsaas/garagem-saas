@@ -7,6 +7,7 @@ import type {
   Pagina,
   Sessao,
   StatusOs,
+  Usuario,
   Veiculo,
 } from "./types";
 
@@ -93,6 +94,9 @@ export const api = {
   },
   listOrders(page = 0, size = 20): Promise<Pagina<OrdemServico>> {
     return request<Pagina<OrdemServico>>(`/api/v1/ordens-servico?pagina=${page}&tamanho=${size}`);
+  },
+  listUsers(page = 0, size = 100): Promise<Pagina<Usuario>> {
+    return request<Pagina<Usuario>>(`/api/v1/usuarios?pagina=${page}&tamanho=${size}`);
   },
   updateOrderStatus(id: string, status: StatusOs, revisao: number): Promise<OrdemServico> {
     return request<OrdemServico>(`/api/v1/ordens-servico/${id}/status`, { method: "POST", body: JSON.stringify({ status, revisao }) });
