@@ -1,3 +1,2 @@
-export { api, ApiError } from "./client";
-export { clearSession, getSession, setSession } from "./session";
+export { api, ApiError, currentSession, setApiSession } from '../api';
 export type * from "./types";

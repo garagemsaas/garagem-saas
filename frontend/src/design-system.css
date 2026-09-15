@@ -338,3 +338,35 @@ td { font-size: 13px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; }
 }
+
+/* Shared form and narrow-screen behavior. */
+.login-main footer { color: #626b65; }
+.back-link, .tabs button:not(.active), .timeline time { color: #626b65; }
+.metric dd.metric-detail { font-size: 11px; font-weight: 400; letter-spacing: 0; color: var(--muted); margin: 8px 0 0; }
+.form-fields { border: 0; padding: 0; margin: 0; min-width: 0; }
+.form-fields:disabled { opacity: .75; }
+.field-error { color: #9f2929; font-weight: 500; }
+[aria-invalid="true"] { border-color: #9f2929; }
+.confirmation { margin-block: 20px; padding: 18px; border: 1px solid var(--line); border-radius: 12px; background: #f6f7f2; }
+.confirmation h3 { margin-top: 0; }
+.table-scroll:focus-visible { outline: 2px solid #286144; outline-offset: 3px; }
+.public-order { max-width: 960px; margin: 24px auto; padding: 24px; }
+.public-order .brand-sub { color: #626b65; }
+.public-order .brand { color: var(--ink); margin-bottom: 28px; }
+.public-order .brand-mark { color: white; background: var(--accent); border: 0; }
+.public-order, .drawer-body, .detail-panel { min-width: 0; overflow-wrap: anywhere; }
+.public-order .table-scroll { max-width: 100%; overflow-x: auto; }
+@media (max-width: 700px) {
+  .public-order { margin: 12px; padding: 16px; }
+  .public-order h1 { font-size: 24px; }
+  .form-actions { flex-wrap: wrap; }
+  .form-actions > button { min-height: 44px; }
+  .identity-strip { overflow-wrap: anywhere; }
+  .section-heading { flex-wrap: wrap; gap: 12px; }
+  .button-stack, .button-stack .field { width: 100%; min-width: 0; }
+  .budget-table, .budget-table tbody, .budget-table tr { display: block; min-width: 0; width: 100%; }
+  .budget-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .budget-table tr { padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .budget-table td { display: flex; justify-content: space-between; gap: 16px; padding: 8px 0; border: 0; white-space: normal; text-align: right; }
+  .budget-table td::before { content: attr(data-label); color: var(--muted); font-weight: 400; text-align: left; flex-shrink: 0; }
+}

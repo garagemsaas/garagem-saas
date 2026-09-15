@@ -1,3 +1,4 @@
+import { TableRegion } from './TableRegion';
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Badge, Brand, Drawer, Empty, Field, Icon, Pager, Search } from "./ui";
 import { ClientForm, OrderForm, UserForm, VehicleForm } from "./forms";
@@ -10,7 +11,7 @@ import { getDashboard } from "./dashboard-model";
 import { date, money, number, roles } from "./model";
 import type { Client, Order, Vehicle } from "./model";
 import { api, currentSession, emptyData, loadData, loadOrder, setApiSession } from "./api";
-import type { Checklist, Diagnostico, Evento, OrcamentoVersao, Session } from "./api";
+import type { Session } from "./api";
 import "./App.css";
 import "./design-system.css";
 
@@ -29,11 +30,18 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [dataError, setDataError] = useState('');
   const [detailLoading, setDetailLoading] = useState(false);
+  const [dataLoading, setDataLoading] = useState(false);
+  const [detailAttempt, setDetailAttempt] = useState(0);
+  const loadSequence = useRef(0);
   const epoch = useRef(0);
   async function reloadData() {
     const current = epoch.current;
-    const result = await loadData();
-    if (current === epoch.current) setData(result);
+    const sequence = ++loadSequence.current;
+    setDataLoading(true);
+    try {
+      const result = await loadData();
+      if (current === epoch.current && sequence === loadSequence.current) setData(result);
+    } finally { if (sequence === loadSequence.current) setDataLoading(false); }
   }
   const [today, setToday] = useState(() => new Date());
   useEffect(() => {
@@ -75,59 +83,9 @@ export default function App() {
     setPanel("");
   }
   const notify = (s: string) => setToast(s);
-  async function hydrateOrder(id: string): Promise<void> {
-    if (!api.isConfigured) return;
-    const [remoteOrder, checklist, diagnostics, versions, timeline] = await Promise.all([
-      api.getOrder(id),
-      api.getChecklist(id).catch(() => null),
-      api.getDiagnostics(id).catch(() => []),
-      api.getBudgetVersions(id).catch(() => []),
-      api.getTimeline(id).catch(() => []),
-    ]);
-    const mapClassification = (value: Diagnostico["classificacao"]): "OK" | "ACOMPANHAR" | "TROCAR" =>
-      value === "BOM" ? "OK" : value === "ATENCAO" ? "ACOMPANHAR" : "TROCAR";
-    const mapped: Order = {
-      id: remoteOrder.id,
-      numero: remoteOrder.numero,
-      veiculoId: remoteOrder.veiculoId,
-      clienteId: remoteOrder.clienteId,
-      mecanicoId: remoteOrder.mecanicoId ?? "",
-      status: remoteOrder.status,
-      kmEntrada: remoteOrder.kmEntrada,
-      relato: remoteOrder.relato,
-      criadoEm: remoteOrder.criadoEm,
-      previsaoEntrega: remoteOrder.previsaoEntrega ?? remoteOrder.criadoEm,
-      revisao: remoteOrder.revisao,
-      checklist: checklist ? {
-        observacoes: checklist.observacoes ?? "",
-        itens: checklist.itens.map((item: Checklist["itens"][number]) => ({
-          id: item.id,
-          descricao: item.descricao,
-          condicao: item.condicao,
-          observacao: item.observacao ?? "",
-        })),
-      } : undefined,
-      diagnosticos: diagnostics.map((item: Diagnostico) => ({ ...item, classificacao: mapClassification(item.classificacao) })),
-      versoes: versions.map((version: OrcamentoVersao) => ({
-        ...version,
-        observacoes: version.observacoes ?? "",
-        itens: version.itens.map((item) => ({ ...item })),
-        decisao: version.decisao ?? undefined,
-      })),
-      fotos: [],
-      timeline: timeline.map((event: Evento) => ({
-        id: event.id,
-        descricao: event.descricao,
-        origem: event.origem,
-        criadoEm: event.criadoEm,
-      })),
-    };
-    setData((current) => ({ ...current, ordens: current.ordens.map((item) => item.id === id ? mapped : item) }));
-  }
   function openOrder(id: string) {
     navigate("orders");
     setSelected(id);
-    void hydrateOrder(id).catch((error) => notify(error instanceof Error ? error.message : "Não foi possível carregar os detalhes da OS."));
   }
   function finish(message: string) {
     setPanel("");
@@ -174,42 +132,20 @@ export default function App() {
           : data.usuarios.length;
   const order = data.ordens.find((o) => o.id === selected);
   function updateOrder(o: Order) {
-    const previous = data.ordens.find((item) => item.id === o.id);
     setData((d) => ({
       ...d,
       ordens: d.ordens.map((item) => (item.id === o.id ? o : item)),
     }));
-    if (!api.isConfigured || !previous) return;
-    const revision = Math.max(0, o.revisao - 1);
-    const writes: Promise<unknown>[] = [];
-    if (previous.status !== o.status) writes.push(api.updateOrderStatus(o.id, o.status, revision));
-    if (!previous.checklist && o.checklist) writes.push(api.createChecklist(o.id, {
-      observacoes: o.checklist.observacoes,
-      itens: o.checklist.itens.map((item) => ({ descricao: item.descricao, condicao: item.condicao, observacao: item.observacao })),
-    }));
-    if (o.diagnosticos.length > previous.diagnosticos.length) {
-      const item = o.diagnosticos.at(-1);
-      if (item) writes.push(api.addDiagnostic(o.id, {
-        descricao: item.descricao,
-        classificacao: item.classificacao === "OK" ? "BOM" : item.classificacao === "ACOMPANHAR" ? "ATENCAO" : "CRITICO",
-      }));
-    }
-    if (o.versoes.length > previous.versoes.length) {
-      const version = o.versoes.at(-1);
-      if (version) writes.push(api.createBudgetVersion(o.id, {
-        observacoes: version.observacoes,
-        itens: version.itens.map((item) => ({ tipo: item.tipo, descricao: item.descricao, quantidade: item.quantidade, valorUnitario: item.valorUnitario })),
-      }));
-    }
-    if (writes.length) void Promise.all(writes).then(() => hydrateOrder(o.id)).catch((error) => notify(error instanceof Error ? error.message : "Não foi possível salvar a alteração da OS."));
   }
   async function saveClient(c: Client) {
     const saved = await api<Client>(client ? `/clientes/${client.id}` : '/clientes', client ? 'PUT' : 'POST', c);
-    await reloadData(); setClient(saved); finish('Cliente salvo.');
+    setData(d => ({ ...d, clientes: d.clientes.some(item => item.id === saved.id) ? d.clientes.map(item => item.id === saved.id ? saved : item) : [...d.clientes, saved] }));
+    setClient(saved); finish('Cliente salvo.');
   }
   async function saveVehicle(v: Vehicle) {
     const saved = await api<Vehicle>(vehicle ? `/veiculos/${vehicle.id}` : '/veiculos', vehicle ? 'PUT' : 'POST', v);
-    await reloadData(); setVehicle(saved); finish('Veículo salvo.');
+    setData(d => ({ ...d, veiculos: d.veiculos.some(item => item.id === saved.id) ? d.veiculos.map(item => item.id === saved.id ? saved : item) : [...d.veiculos, saved] }));
+    setVehicle(saved); finish('Veículo salvo.');
   }
   useEffect(() => {
     if (!session || !selected) return;
@@ -218,7 +154,7 @@ export default function App() {
       .catch(e => { if (active) setDataError(e.message); })
       .finally(() => { if (active) setDetailLoading(false); });
     return () => { active = false; };
-  }, [selected, session]);
+  }, [selected, session, detailAttempt]);
   if (!session)
     return (
       <div className="login-page">
@@ -248,7 +184,7 @@ export default function App() {
         </section>
         <main className="login-main">
           <div className="login-form">
-            <span className="demo-label">GARAGEM · FASE 1</span>
+            <span className="demo-label">GARAGEM · ACESSO DA OFICINA</span>
             <h2>Entre na sua oficina</h2>
             <p>Seu espaço de trabalho começa aqui.</p>
             <form
@@ -265,11 +201,11 @@ export default function App() {
                 if (busy) return;
                 setBusy(true); setLoginError('');
                 try {
-                  const value = await api<Session>('/auth/login', 'POST', { oficina, email: String(f.get('email')), senha: String(f.get('senha')) });
+                  const value = await api<Session>('/auth/login', 'POST', { oficina, email, senha });
                   setApiSession(value);
-                  await reloadData();
                   setSession({ ...value, role: value.papel, oficina });
                   navigate('overview');
+                  try { await reloadData(); } catch (error) { setDataError(error instanceof Error ? error.message : 'Não foi possível carregar a oficina.'); }
                 } catch (error) {
                   setApiSession(null); setData(emptyData());
                   setLoginError(error instanceof Error ? error.message : 'Não foi possível entrar.');
@@ -300,6 +236,7 @@ export default function App() {
               <Field label="Senha">
                 <span className="password-input">
                   <input
+                    aria-label="Senha"
                     name="senha"
                     type={showPassword ? "text" : "password"}
                     required
@@ -340,9 +277,8 @@ export default function App() {
       openClient={(c) => { navigate("clients"); setClient(c); setPanel("view-client"); }}
       openVehicle={(v) => { navigate("vehicles"); setVehicle(v); setPanel("view-vehicle"); }}
       openRecovery={() => setPanel("recovery")}>
-          {dataError && <p className="error" role="alert">{dataError} <button onClick={() => { setSelected(''); setDataError(''); }}>Voltar à lista</button></p>}
-          <button className="text-button" onClick={async () => { try { await reloadData(); if (selected) updateOrder({ ...await loadOrder(selected), link: order?.link }); setDataError(''); } catch (e) { setDataError(e instanceof Error ? e.message : 'Falha ao atualizar.'); } }}>Atualizar dados</button>
-          {detailLoading ? <PageState state="loading" title="Carregando ordem de serviço" /> : dataError && selected ? null : page === "overview" ? <Suspense fallback={<PageState state="loading" title="Preparando sua visão geral" />}><Dashboard orders={data.ordens} clients={data.clientes} vehicles={data.veiculos}
+          <button className="text-button" disabled={dataLoading || detailLoading} onClick={async () => { setDataError(''); try { await reloadData(); if (selected) { setDetailLoading(true); setDetailAttempt(n => n + 1); } } catch (e) { setDataError(e instanceof Error ? e.message : 'Falha ao atualizar.'); } }}>{dataLoading ? 'Atualizando…' : 'Atualizar dados'}</button>
+          {dataLoading ? <PageState state="loading" title="Carregando dados da oficina" /> : detailLoading ? <PageState state="loading" title="Carregando ordem de serviço" /> : dataError ? <PageState state="error" title="Não foi possível carregar os dados" retry={() => { setDataError(''); if (selected) { setDetailLoading(true); setDetailAttempt(n => n + 1); } else void reloadData().catch(e => setDataError(e.message)); }}>{dataError}</PageState> : page === "overview" ? <Suspense fallback={<PageState state="loading" title="Preparando sua visão geral" />}><Dashboard orders={data.ordens} clients={data.clientes} vehicles={data.veiculos}
             today={today} canWrite={canWrite} openOrder={openOrder}
             newOrder={() => { navigate("orders"); setPanel("new-orders"); }}
             viewOrders={() => navigate("orders")} viewRecovery={() => setPanel("recovery")} /></Suspense> :
@@ -430,19 +366,19 @@ export default function App() {
                       : "Os registros da oficina aparecerão aqui."}
                   </Empty>
                 ) : (
-                  <div className="table-scroll">
+                  <TableRegion label={labels[page]}>
                     {page === "orders" && (
                       <table className="orders-table">
                         <thead>
                           <tr>
-                            <th>OS</th>
-                            <th>Veículo / placa</th>
-                            <th>Cliente</th>
-                            <th>Status</th>
-                            <th>Responsável</th>
-                            <th>Entrada</th>
-                            <th>Previsão</th>
-                            <th>
+                            <th scope="col">OS</th>
+                            <th scope="col">Veículo / placa</th>
+                            <th scope="col">Cliente</th>
+                            <th scope="col">Status</th>
+                            <th scope="col">Responsável</th>
+                            <th scope="col">Entrada</th>
+                            <th scope="col">Previsão</th>
+                            <th scope="col">
                               <span className="sr-only">Abrir</span>
                             </th>
                           </tr>
@@ -518,10 +454,10 @@ export default function App() {
                       <table>
                         <thead>
                           <tr>
-                            <th>Nome</th>
-                            <th>Telefone</th>
-                            <th>E-mail</th>
-                            <th>Cadastro</th>
+                            <th scope="col">Nome</th>
+                            <th scope="col">Telefone</th>
+                            <th scope="col">E-mail</th>
+                            <th scope="col">Cadastro</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -561,12 +497,12 @@ export default function App() {
                       <table>
                         <thead>
                           <tr>
-                            <th>Placa</th>
-                            <th>Veículo</th>
-                            <th>Ano / cor</th>
-                            <th>Quilometragem</th>
-                            <th>Cliente</th>
-                            <th>Cadastro</th>
+                            <th scope="col">Placa</th>
+                            <th scope="col">Veículo</th>
+                            <th scope="col">Ano / cor</th>
+                            <th scope="col">Quilometragem</th>
+                            <th scope="col">Cliente</th>
+                            <th scope="col">Cadastro</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -620,10 +556,10 @@ export default function App() {
                       <table>
                         <thead>
                           <tr>
-                            <th>Nome</th>
-                            <th>E-mail</th>
-                            <th>Papel</th>
-                            <th>Situação</th>
+                            <th scope="col">Nome</th>
+                            <th scope="col">E-mail</th>
+                            <th scope="col">Papel</th>
+                            <th scope="col">Situação</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -648,7 +584,7 @@ export default function App() {
                         </tbody>
                       </table>
                     )}
-                  </div>
+                  </TableRegion>
                 )}
                 <Pager
                   total={total}
@@ -692,7 +628,8 @@ export default function App() {
             close={() => setPanel("")}
             save={async (input) => {
               const o = await api<Order>('/ordens-servico', 'POST', { ...input, mecanicoId: input.mecanicoId || null, previsaoEntrega: input.previsaoEntrega || null });
-              await reloadData(); setSelected(o.id); finish(`OS #${o.numero} aberta.`);
+              setData(d => ({ ...d, ordens: [...d.ordens, { ...o, diagnosticos: [], versoes: [], fotos: [], timeline: [] }] }));
+              setSelected(o.id); finish(`OS #${o.numero} aberta.`);
             }}
           />
         </Drawer>
@@ -729,8 +666,8 @@ export default function App() {
             users={data.usuarios}
             close={() => setPanel("")}
             save={async (u) => {
-              await api('/usuarios', 'POST', { nome: u.nome, email: u.email, senha: u.senha, papel: u.papel });
-              await reloadData(); finish('Usuário cadastrado.');
+              const saved = await api<typeof u>('/usuarios', 'POST', { nome: u.nome, email: u.email, senha: u.senha, papel: u.papel });
+              setData(d => ({ ...d, usuarios: [...d.usuarios, saved] })); finish('Usuário cadastrado.');
             }}
           />
         </Drawer>

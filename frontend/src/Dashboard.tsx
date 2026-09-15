@@ -21,7 +21,7 @@ function Metric({ icon, label, value, detail }: {
 }) {
   return <div className="metric">
     <dt><Icon name={icon} size={18} />{label}</dt>
-    <dd>{value}</dd><span>{detail}</span>
+    <dd>{value}</dd><dd className="metric-detail">{detail}</dd>
   </div>;
 }
 

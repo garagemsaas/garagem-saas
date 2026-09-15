@@ -86,3 +86,46 @@ test('multipart preserva FormData e deixa o navegador definir boundary', async (
   };
   assert.deepEqual(await api('/ordens-servico/os/fotos', 'POST', form), { id: 'foto-test' });
 });
+
+test('erros preservam código, campos e identificador para suporte', async () => {
+  globalThis.fetch = async () => new Response(JSON.stringify({ code: 'VALIDATION_ERROR', detail: 'Confira os dados.', errors: [{ field: 'email', message: 'E-mail inválido.' }] }), { status: 400, headers: { 'X-Request-Id': 'request-test' } });
+  await assert.rejects(api('/clientes', 'POST', {}), error => error.code === 'VALIDATION_ERROR' && error.requestId === 'request-test' && error.errors[0].field === 'email');
+});
+
+test('falha de rede mostra mensagem compreensível', async () => {
+  globalThis.fetch = async () => { throw new TypeError('Failed to fetch'); };
+  await assert.rejects(api('/clientes'), error => error.status === 0 && error.message.includes('conexão'));
+});
+
+test('erro sem JSON usa mensagem específica e logout aceita 204', async () => {
+  globalThis.fetch = async () => new Response('Unavailable', { status: 503 });
+  await assert.rejects(api('/clientes'), error => error.message.includes('temporariamente indisponível'));
+  globalThis.fetch = async () => new Response(null, { status: 204 });
+  assert.equal(await api('/auth/logout', 'POST', {}), undefined);
+});
+
+test('paginação preserva filtros existentes', async () => {
+  globalThis.fetch = async path => {
+    const params = new URL(path, 'http://localhost').searchParams;
+    assert.equal(params.get('busca'), 'Ana'); assert.equal(params.get('pagina'), '0');
+    return response({ itens: [], total: 0 });
+  };
+  assert.deepEqual(await allPages('/clientes?busca=Ana'), []);
+});
+
+test('refresh antigo não substitui a nova sessão', async () => {
+  setApiSession(fakeSession);
+  let finishRefresh;
+  let started;
+  const ready = new Promise(resolve => { started = resolve; });
+  globalThis.fetch = async path => {
+    if (path.endsWith('/auth/refresh')) { started(); return new Promise(resolve => { finishRefresh = resolve; }); }
+    return response({}, 401);
+  };
+  const pending = api('/clientes');
+  await ready;
+  setApiSession({ ...fakeSession, oficinaId: 'nova-oficina' });
+  finishRefresh(response({ ...fakeSession, accessToken: 'old-renewed' }));
+  await assert.rejects(pending, error => error.status === 401);
+  assert.equal(currentSession().oficinaId, 'nova-oficina');
+});

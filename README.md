@@ -64,9 +64,9 @@ Conclusão
 
 ---
 
-## 🚧 Fase 2 — Em andamento
+## 🚧 Fase 2 — Implementação entregue; aceite integrado pendente
 
-A Fase 2 geral ainda não está encerrada.
+A implementação das frentes de API/segurança/infraestrutura e do frontend de Kauã está concluída. A homologação ponta a ponta com PostgreSQL e MinIO reais ainda precisa ser executada em um ambiente com Docker disponível.
 
 A frente de **API, contratos, validação funcional, segurança e infraestrutura**, sob responsabilidade de Cauã, foi concluída, testada e integrada à `main`.
 
@@ -83,6 +83,37 @@ feat: finalize phase 2 api security and infrastructure
 ```
 
 A `main` já contém essa implementação.
+
+---
+
+# ✅ Fase 2 — Frente de frontend de Kauã
+
+A implementação do frontend atribuída a Kauã foi concluída no PR #8, originado da branch `feature/fase2-api-contracts-security`.
+
+Foram entregues:
+
+- cliente HTTP único, sessão com renovação de token e proteção das telas autenticadas;
+- login, clientes, veículos, ordens de serviço, checklist, diagnóstico, orçamento, fotos e histórico;
+- página pública do cliente com confirmação de aprovação ou recusa;
+- estados de carregamento, erro e vazio, erros por campo e confirmações para ações importantes;
+- componentes reutilizáveis de formulário, status, tabelas e timeline;
+- responsividade para desktop, tablet e celular, acessibilidade e ícones exclusivamente Lucide;
+- remoção dos dados demonstrativos do código de produção;
+- documentação, workflow de CI e testes de frontend.
+
+Validação local aprovada:
+
+```text
+npm run lint        ✅
+npm run typecheck   ✅
+npm test            ✅ 18 testes
+npm run build       ✅
+npm run test:ui     ✅ 12 testes em desktop, tablet e celular
+```
+
+Os testes de navegador usam respostas REST controladas apenas dentro da suíte. O aceite integrado contra API, PostgreSQL e MinIO reais permanece pendente porque o Docker Engine não ficou disponível durante a validação local.
+
+Detalhes em [docs/fase2-kaua-frontend.md](docs/fase2-kaua-frontend.md) e [frontend/README.md](frontend/README.md).
 
 ---
 
@@ -636,6 +667,8 @@ Antes de continuar o desenvolvimento, leia principalmente:
 | Documento | Conteúdo |
 |---|---|
 | [docs/fase2-caua.md](docs/fase2-caua.md) | Estado detalhado da frente da Fase 2 e o que já foi concluído. |
+| [docs/fase2-kaua-frontend.md](docs/fase2-kaua-frontend.md) | Checklist, validações e limites da entrega de frontend de Kauã. |
+| [frontend/README.md](frontend/README.md) | Execução, testes e organização do frontend. |
 | [docs/api-v1.md](docs/api-v1.md) | Contratos REST, endpoints, DTOs, filtros, paginação, ordenação e dashboard. |
 | [docs/api-errors.md](docs/api-errors.md) | Contrato de erros e códigos estáveis. |
 | [docs/permissoes.md](docs/permissoes.md) | Matriz de permissões por papel. |
@@ -1038,7 +1071,7 @@ git switch -c feature/nome-da-tarefa
 
 # Para quem continuar a Fase 2
 
-A frente de API, contratos, segurança e infraestrutura já está concluída.
+A frente de API, contratos, segurança, infraestrutura e frontend está implementada. Antes de declarar a Fase 2 homologada, execute o aceite integrado com backend, PostgreSQL e MinIO reais.
 
 **Não refazer essa implementação sem primeiro verificar o que já existe.**
 
@@ -1060,6 +1093,7 @@ O arquivo mais importante para entender o que foi entregue e o que ainda falta �
 
 ```text
 docs/fase2-caua.md
+docs/fase2-kaua-frontend.md
 ```
 
 ---
@@ -1180,15 +1214,18 @@ Staging configurado/documentado
 Deploy efetivo de staging
 ⏳ pendente
 
-Fase 2 geral
-🚧 em andamento
+Fase 2 — implementação
+✅ API, segurança, infraestrutura e frontend concluídos
+
+Fase 2 — homologação integrada
+⏳ pendente de execução com PostgreSQL/MinIO reais
 ```
 
 ---
 
 # Resumo para o próximo desenvolvedor
 
-A `main` atual já contém a Fase 1 e a frente de API/segurança/infraestrutura da Fase 2.
+A `main` atual já contém a Fase 1 e as implementações de API/segurança/infraestrutura e frontend da Fase 2. A validação integrada ainda precisa ser executada.
 
 Não parta de branches antigas.
 
