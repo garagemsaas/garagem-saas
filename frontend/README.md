@@ -2,6 +2,16 @@
 
 Interface local para avaliação de produto e UX, em React + TypeScript + Vite. Dados fictícios em memória, sem conexão à API, autenticação real ou persistência.
 
+## Integração progressiva com a API
+
+A camada `src/api` já contém os tipos equivalentes aos DTOs publicados pelo backend, cliente HTTP, renovação de sessão e tratamento de erros em português. Para apontar o frontend para uma API local, copie `.env.example` para `.env.local` e defina:
+
+```env
+VITE_API_BASE_URL=http://localhost:8080
+```
+
+O protótipo continua iniciando em modo demonstração quando essa variável fica vazia. A conexão das telas ao estado remoto será feita por fluxo, depois que os contratos forem confirmados com o backend.
+
 ## Executar
 
 No PowerShell, a partir da raiz:
