@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Badge, Brand, Drawer, Empty, Field, Icon, Pager, Search } from "./ui";
 import { ClientForm, OrderForm, UserForm, VehicleForm } from "./forms";
 import OrderDetail from "./OrderDetail";
@@ -7,10 +7,10 @@ import Workspace from "./Workspace";
 import { labels } from "./navigation";
 import type { Page } from "./navigation";
 import { getDashboard } from "./dashboard-model";
-import { date, money, now, number, roles, seed, uid } from "./model";
-import type { Client, Order, Role, Vehicle } from "./model";
-import { api, clearSession, setSession as persistApiSession } from "./api";
-import type { Checklist, Diagnostico, Evento, OrdemServico, OrcamentoVersao, Usuario } from "./api";
+import { date, money, number, roles } from "./model";
+import type { Client, Order, Vehicle } from "./model";
+import { api, currentSession, emptyData, loadData, loadOrder, setApiSession } from "./api";
+import type { Checklist, Diagnostico, Evento, OrcamentoVersao, Session } from "./api";
 import "./App.css";
 import "./design-system.css";
 
@@ -24,32 +24,49 @@ const subtitles: Record<Page, string> = {
   team: "Pessoas e papéis de acesso à oficina.",
 };
 export default function App() {
-  const [data, setData] = useState(seed),
-    [session, setSession] = useState<{ role: Role; oficina: string } | null>(
-      null,
-    );
+  const [data, setData] = useState(emptyData);
+  const [session, setSession] = useState<(Session & { role: Session['papel']; oficina: string }) | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [dataError, setDataError] = useState('');
+  const [detailLoading, setDetailLoading] = useState(false);
+  const epoch = useRef(0);
+  async function reloadData() {
+    const current = epoch.current;
+    const result = await loadData();
+    if (current === epoch.current) setData(result);
+  }
   const [today, setToday] = useState(() => new Date());
   useEffect(() => {
     const timer = window.setInterval(() => setToday(new Date()), 60_000);
     return () => window.clearInterval(timer);
   }, []);
   const [page, setPage] = useState<Page>("overview"),
-    [selected, setSelected] = useState(""),
+    [selected, setSelectedId] = useState(""),
     [query, setQuery] = useState(""),
     [pagination, setPagination] = useState(0);
   const [panel, setPanel] = useState(""),
     [client, setClient] = useState<Client>(),
     [vehicle, setVehicle] = useState<Vehicle>(),
     [toast, setToast] = useState("");
-  const [loginRole, setLoginRole] = useState<Role>("OWNER"),
-    [showPassword, setShowPassword] = useState(false),
-    [loginError, setLoginError] = useState(""),
-    [loginLoading, setLoginLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false),
+    [loginError, setLoginError] = useState("");
   useEffect(() => {
     if (!toast) return;
     const timer = setTimeout(() => setToast(""), 4500);
     return () => clearTimeout(timer);
   }, [toast]);
+  useEffect(() => {
+    const expired = () => { epoch.current++; setSession(null); setData(emptyData()); setSelectedId(''); setDetailLoading(false); setDataError(''); setPanel(''); setLoginError('Sessão expirada. Entre novamente.'); };
+    const renewed = () => { const value = currentSession(); if (value) setSession(previous => previous ? { ...value, role: value.papel, oficina: previous.oficina } : null); };
+    window.addEventListener('session-expired', expired);
+    window.addEventListener('session-updated', renewed);
+    return () => { window.removeEventListener('session-expired', expired); window.removeEventListener('session-updated', renewed); };
+  }, []);
+  function setSelected(value: string) {
+    setSelectedId(value);
+    if (value !== selected) setDetailLoading(Boolean(value));
+    setDataError('');
+  }
   function navigate(next: Page) {
     setPage(next);
     setSelected("");
@@ -116,51 +133,17 @@ export default function App() {
     setPanel("");
     notify(message);
   }
-  function logout() {
-    data.ordens.forEach((o) =>
-      o.fotos.forEach((p) => URL.revokeObjectURL(p.url)),
-    );
-    if (api.isConfigured) void api.logout().catch(() => undefined);
-    clearSession();
-    setSession(null);
-    setData(seed());
-    navigate("orders");
-    setToast("");
+  async function logout() {
+    const previous = currentSession();
+    epoch.current++;
+    setApiSession(null); setSession(null); setData(emptyData());
+    setClient(undefined); setVehicle(undefined); navigate('orders'); setToast('');
+    if (previous) {
+      try { await api('/auth/logout', 'POST', { oficinaId: previous.oficinaId, refreshToken: previous.refreshToken }); }
+      catch { setLoginError('Sessão local encerrada. Não foi possível revogar o acesso no servidor; tente entrar e sair novamente.'); }
+    }
   }
-  async function loadRemoteData(): Promise<void> {
-    const [clientsPage, vehiclesPage, ordersPage, usersPage] = await Promise.all([
-      api.listClients(),
-      api.listVehicles(),
-      api.listOrders(),
-      api.listUsers(),
-    ]);
-    const remoteOrders: Order[] = ordersPage.itens.map((order: OrdemServico) => ({
-      id: order.id,
-      numero: order.numero,
-      veiculoId: order.veiculoId,
-      clienteId: order.clienteId,
-      mecanicoId: order.mecanicoId ?? "",
-      status: order.status,
-      kmEntrada: order.kmEntrada,
-      relato: order.relato,
-      criadoEm: order.criadoEm,
-      previsaoEntrega: order.previsaoEntrega ?? order.criadoEm,
-      revisao: order.revisao,
-      diagnosticos: [],
-      versoes: [],
-      fotos: [],
-      timeline: [],
-    }));
-    setData({
-      clientes: clientsPage.itens.map((client) => ({ ...client, email: client.email ?? "" })),
-      veiculos: vehiclesPage.itens,
-      ordens: remoteOrders,
-      usuarios: usersPage.itens.map((user: Usuario) => user),
-    });
-  }
-  const user = session
-    ? data.usuarios.find((u) => u.papel === session.role)!
-    : null;
+  const user = session;
   const canWrite = session?.role !== "MECANICO";
   const clean = query.trim().toLocaleLowerCase("pt-BR");
   const orders = data.ordens.filter(
@@ -221,46 +204,21 @@ export default function App() {
     if (writes.length) void Promise.all(writes).then(() => hydrateOrder(o.id)).catch((error) => notify(error instanceof Error ? error.message : "Não foi possível salvar a alteração da OS."));
   }
   async function saveClient(c: Client) {
-    if (api.isConfigured) {
-      try {
-        const saved = c.id.startsWith("c") && data.clientes.some((item) => item.id === c.id)
-          ? await api.updateClient(c.id, c)
-          : await api.createClient(c);
-        c = { ...saved, email: saved.email ?? "" };
-      } catch (error) {
-        notify(error instanceof Error ? error.message : "Não foi possível salvar o cliente.");
-        return;
-      }
-    }
-    setData((d) => ({
-      ...d,
-      clientes: d.clientes.some((item) => item.id === c.id)
-        ? d.clientes.map((item) => (item.id === c.id ? c : item))
-        : [c, ...d.clientes],
-    }));
-    setClient(c);
-    finish("Cliente salvo na demonstração.");
+    const saved = await api<Client>(client ? `/clientes/${client.id}` : '/clientes', client ? 'PUT' : 'POST', c);
+    await reloadData(); setClient(saved); finish('Cliente salvo.');
   }
   async function saveVehicle(v: Vehicle) {
-    if (api.isConfigured) {
-      try {
-        v = v.id.startsWith("v") && data.veiculos.some((item) => item.id === v.id)
-          ? await api.updateVehicle(v.id, v)
-          : await api.createVehicle(v);
-      } catch (error) {
-        notify(error instanceof Error ? error.message : "Não foi possível salvar o veículo.");
-        return;
-      }
-    }
-    setData((d) => ({
-      ...d,
-      veiculos: d.veiculos.some((item) => item.id === v.id)
-        ? d.veiculos.map((item) => (item.id === v.id ? v : item))
-        : [v, ...d.veiculos],
-    }));
-    setVehicle(v);
-    finish("Veículo salvo na demonstração.");
+    const saved = await api<Vehicle>(vehicle ? `/veiculos/${vehicle.id}` : '/veiculos', vehicle ? 'PUT' : 'POST', v);
+    await reloadData(); setVehicle(saved); finish('Veículo salvo.');
   }
+  useEffect(() => {
+    if (!session || !selected) return;
+    let active = true;
+    loadOrder(selected).then(o => { if (active) setData(d => ({ ...d, ordens: d.ordens.map(item => item.id === o.id ? { ...o, link: item.link } : item) })); })
+      .catch(e => { if (active) setDataError(e.message); })
+      .finally(() => { if (active) setDetailLoading(false); });
+    return () => { active = false; };
+  }, [selected, session]);
   if (!session)
     return (
       <div className="login-page">
@@ -290,7 +248,7 @@ export default function App() {
         </section>
         <main className="login-main">
           <div className="login-form">
-            <span className="demo-label">PROTÓTIPO · FASE 1</span>
+            <span className="demo-label">GARAGEM · FASE 1</span>
             <h2>Entre na sua oficina</h2>
             <p>Seu espaço de trabalho começa aqui.</p>
             <form
@@ -304,35 +262,29 @@ export default function App() {
                   setLoginError("Informe a oficina.");
                   return;
                 }
-                setLoginError("");
-                setLoginLoading(true);
+                if (busy) return;
+                setBusy(true); setLoginError('');
                 try {
-                  if (api.isConfigured) {
-                    const remoteSession = await api.login({ oficina, email, senha });
-                    persistApiSession(remoteSession);
-                    setSession({ role: remoteSession.papel, oficina: remoteSession.oficinaId });
-                    await loadRemoteData();
-                  } else {
-                    setSession({ role: loginRole, oficina });
-                  }
-                  navigate("overview");
+                  const value = await api<Session>('/auth/login', 'POST', { oficina, email: String(f.get('email')), senha: String(f.get('senha')) });
+                  setApiSession(value);
+                  await reloadData();
+                  setSession({ ...value, role: value.papel, oficina });
+                  navigate('overview');
                 } catch (error) {
-                  setLoginError(error instanceof Error ? error.message : "Não foi possível entrar.");
-                } finally {
-                  setLoginLoading(false);
-                }
+                  setApiSession(null); setData(emptyData());
+                  setLoginError(error instanceof Error ? error.message : 'Não foi possível entrar.');
+                } finally { setBusy(false); }
+
               }}
             >
               <Field
                 label="Oficina"
-                hint="Oficina fictícia usada nesta demonstração."
+                hint="Identificador da sua oficina."
               >
                 <input
                   name="oficina"
                   required
                   maxLength={80}
-                  defaultValue="oficina-modelo"
-                  readOnly
                   autoComplete="organization"
                 />
               </Field>
@@ -342,7 +294,6 @@ export default function App() {
                   type="email"
                   required
                   maxLength={254}
-                  defaultValue="andre@example.com"
                   autoComplete="username"
                 />
               </Field>
@@ -353,7 +304,6 @@ export default function App() {
                     type={showPassword ? "text" : "password"}
                     required
                     maxLength={72}
-                    defaultValue="demonstracao123"
                     autoComplete="current-password"
                   />
                   <button
@@ -372,43 +322,27 @@ export default function App() {
                   {loginError}
                 </p>
               )}
-              <button type="submit" className="primary login-submit" disabled={loginLoading}>
-                {loginLoading ? "Entrando..." : api.isConfigured ? "Entrar na oficina" : "Entrar na demonstração"} <Icon name="arrow" size={18} />
+              <button type="submit" className="primary login-submit" disabled={busy}>
+                {busy ? "Entrando…" : "Entrar"} <Icon name="arrow" size={18} />
               </button>
-              <div className="demo-controls">
-                <Field label="Papel para avaliação do protótipo">
-                  <select
-                    value={loginRole}
-                    onChange={(e) => setLoginRole(e.target.value as Role)}
-                  >
-                    {Object.entries(roles).map(([r, label]) => (
-                      <option value={r} key={r}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <p>
-                  {api.isConfigured
-                    ? "Acesso protegido pela API da oficina."
-                    : "Dados fictícios, sem autenticação real. Use os campos preenchidos. As alterações são temporárias e serão descartadas ao sair ou recarregar."}
-                </p>
-              </div>
+
             </form>
           </div>
-          <footer>Interface em avaliação · Português do Brasil</footer>
+          <footer>Garagem SaaS · Português do Brasil</footer>
         </main>
       </div>
     );
   return (
     <Workspace page={page} navigate={navigate} role={session.role}
-      name={user?.nome ?? "Usuário"} workshop="Oficina Modelo"
+      name={user?.nome ?? "Usuário"} workshop={session.oficina}
       logout={logout} orders={data.ordens} clients={data.clientes} vehicles={data.veiculos} today={today}
       openOrder={openOrder}
       openClient={(c) => { navigate("clients"); setClient(c); setPanel("view-client"); }}
       openVehicle={(v) => { navigate("vehicles"); setVehicle(v); setPanel("view-vehicle"); }}
       openRecovery={() => setPanel("recovery")}>
-          {page === "overview" ? <Suspense fallback={<PageState state="loading" title="Preparando sua visão geral" />}><Dashboard orders={data.ordens} clients={data.clientes} vehicles={data.veiculos}
+          {dataError && <p className="error" role="alert">{dataError} <button onClick={() => { setSelected(''); setDataError(''); }}>Voltar à lista</button></p>}
+          <button className="text-button" onClick={async () => { try { await reloadData(); if (selected) updateOrder({ ...await loadOrder(selected), link: order?.link }); setDataError(''); } catch (e) { setDataError(e instanceof Error ? e.message : 'Falha ao atualizar.'); } }}>Atualizar dados</button>
+          {detailLoading ? <PageState state="loading" title="Carregando ordem de serviço" /> : dataError && selected ? null : page === "overview" ? <Suspense fallback={<PageState state="loading" title="Preparando sua visão geral" />}><Dashboard orders={data.ordens} clients={data.clientes} vehicles={data.veiculos}
             today={today} canWrite={canWrite} openOrder={openOrder}
             newOrder={() => { navigate("orders"); setPanel("new-orders"); }}
             viewOrders={() => navigate("orders")} viewRecovery={() => setPanel("recovery")} /></Suspense> :
@@ -434,7 +368,7 @@ export default function App() {
                   <h1>{labels[page]}</h1>
                   <p>{subtitles[page]}</p>
                 </div>
-                {canWrite && (
+                {canWrite && (page !== 'team' || session.role === 'OWNER') && (
                   <button
                     className="primary"
                     onClick={() => {
@@ -757,49 +691,8 @@ export default function App() {
             users={data.usuarios}
             close={() => setPanel("")}
             save={async (input) => {
-              if (api.isConfigured) {
-                try {
-                  const remote = await api.createOrder(input);
-                  await loadRemoteData();
-                  setSelected(remote.id);
-                  finish(`OS #${remote.numero} aberta na oficina.`);
-                  return;
-                } catch (error) {
-                  notify(error instanceof Error ? error.message : "Não foi possível abrir a OS.");
-                  return;
-                }
-              }
-              const v = data.veiculos.find((v) => v.id === input.veiculoId)!;
-              const created = now();
-              const o: Order = {
-                ...input,
-                id: uid(),
-                numero: Math.max(0, ...data.ordens.map((o) => o.numero)) + 1,
-                clienteId: v.clienteId,
-                status: "RECEBIDO",
-                criadoEm: created,
-                revisao: 0,
-                diagnosticos: [],
-                versoes: [],
-                fotos: [],
-                timeline: [
-                  {
-                    id: uid(),
-                    descricao: "OS recebida na oficina.",
-                    origem: `${user?.nome} · Usuário`,
-                    criadoEm: created,
-                  },
-                ],
-              };
-              setData((d) => ({
-                ...d,
-                ordens: [o, ...d.ordens],
-                veiculos: d.veiculos.map((item) =>
-                  item.id === v.id ? { ...item, km: input.kmEntrada } : item,
-                ),
-              }));
-              setSelected(o.id);
-              finish(`OS #${o.numero} aberta na demonstração.`);
+              const o = await api<Order>('/ordens-servico', 'POST', { ...input, mecanicoId: input.mecanicoId || null, previsaoEntrega: input.previsaoEntrega || null });
+              await reloadData(); setSelected(o.id); finish(`OS #${o.numero} aberta.`);
             }}
           />
         </Drawer>
@@ -835,9 +728,9 @@ export default function App() {
           <UserForm
             users={data.usuarios}
             close={() => setPanel("")}
-            save={(u) => {
-              setData((d) => ({ ...d, usuarios: [...d.usuarios, u] }));
-              finish("Usuário cadastrado na demonstração.");
+            save={async (u) => {
+              await api('/usuarios', 'POST', { nome: u.nome, email: u.email, senha: u.senha, papel: u.papel });
+              await reloadData(); finish('Usuário cadastrado.');
             }}
           />
         </Drawer>

@@ -1,6 +1,8 @@
 # Aceite e verificações — atualizado em 15/09/2026
 
-A Fase 1 ainda não está concluída como produto: o backend está implementado e validado localmente, inclusive com o Docker Compose completo. A interface possui um protótipo React + TypeScript + Vite com dados fictícios em memória; aprovação final, integração com a API real e staging estão pendentes. Nenhuma funcionalidade das fases seguintes foi iniciada.
+**FASE 1 TECNICAMENTE CONCLUÍDA: SIM**, conforme a validação final local descrita ao fim deste documento e em [fase1-finalizacao.md](fase1-finalizacao.md). Frontend integrado à API, PostgreSQL e MinIO; decisões comerciais/pilotos seguem pendentes de Kauã e Cauã.
+
+As seções anteriores ao status final abaixo registram a validação histórica, realizada antes da integração. Onde houver divergência de quantidade de testes ou pendências, o **STATUS FINAL DA FASE 1** é o registro vigente.
 
 ## Verificações realizadas
 
@@ -64,3 +66,35 @@ O bootstrap automático do wrapper oficial falhou ao renomear o diretório tempo
 - Criar o fluxo de revisão no GitHub; esta entrega permaneceu local, sem push, PR ou merge.
 
 As migrations têm scripts de reversão revisáveis, mas rollback em banco com dados é destrutivo. Os testes de reversão foram feitos exclusivamente em schema vazio e temporário.
+
+
+## STATUS FINAL DA FASE 1
+
+Validação de 15/09/2026 na branch `chore/finalize-fase-1`. **FASE 1 TECNICAMENTE CONCLUÍDA: SIM.**
+
+### CONCLUÍDO
+
+- Integração real do frontend aprovado: login/refresh/logout, equipe, clientes, veículos, OS, responsável/status, checklist, diagnóstico, fotos privadas, orçamento/versões, links e decisão pública.
+- Inventário dos **32 endpoints** confirmado no OpenAPI em execução, exemplos JSON, permissões, filtros/paginação e conflitos em [api-contracts.md](api-contracts.md).
+- Maven verify/Spotless: **5 testes unitários e 12 de integração**, sem falhas, erros ou ignorados; PostgreSQL e MinIO reais via Testcontainers; Flyway V1/V2 e Hibernate validate aprovados.
+- Duas oficinas com dados próprios: leitura/escrita cruzadas bloqueadas; repository/JPQL e FK composta testados. Concorrência de status: 200/409; aprovações iguais simultâneas: 200/200 com uma decisão.
+- Fluxo por HTTP real e pelo navegador sem mocks até PRONTO. Persistência SQL da OS do navegador: concluída, uma foto e 13 eventos; novo login recuperou dados e foto.
+- Foto PNG real no MinIO, vínculo e metadados PostgreSQL, visualização autenticada no frontend; oficina B recebe 404, sem JWT 401, URL MinIO anônima 403.
+- Página pública: aprovação, recusa, versão substituída 409, atualização e revogação de link (404 posterior) exercitadas.
+- 400/401/403/404/409 exercitados pela suíte/fluxos; 500 e erro SQL genéricos verificados em teste unitário do handler, sem expor detalhes sensíveis.
+- Frontend: npm ci, lint sem avisos, typecheck, **13 testes**, build e dois roteiros Chromium aprovados sem erros JavaScript. Capturas de foto/timeline inspecionadas.
+- Compose build/up concluídos: PostgreSQL healthy, MinIO ativo, init Exited (0), API ativa; health HTTP 200.
+- Plano único pago e decisões ainda abertas formalmente registrados; README e documentação final atualizados.
+
+### PENDÊNCIA COMERCIAL/HUMANA
+
+- Kauã e Cauã: confirmar pacote e preço do único plano pago, sem freemium.
+- Definir oficinas piloto 1 e 2 (3 opcional), responsáveis, início, prazo e critérios de sucesso; campos em [finalização](fase1-finalizacao.md#decisões-pendentes-de-kauã-e-cauã).
+- Revisar as alterações locais e decidir sobre commit/PR/publicação; nenhuma dessas ações foi executada.
+- Escolher destino e condições operacionais de produção antes do lançamento. O aceite local não representa deploy ou aprovação comercial.
+
+### BLOQUEIO TÉCNICO
+
+**Nenhum bloqueio identificado para o fluxo de aceite local solicitado.** Limites do contrato e de escala permanecem explicitamente documentados em [finalização](fase1-finalizacao.md#gaps-e-limites-formalmente-documentados). Não foram incluídos módulos da Fase 2.
+
+CI remoto, teste de carga, restauração de backup e deploy não foram realizados; não são apresentados como evidência concluída. A suíte Testcontainers foi executada localmente. Relatórios e reprodução estão em [finalização](fase1-finalizacao.md#relatórios-e-reprodução).

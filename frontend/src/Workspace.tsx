@@ -60,7 +60,7 @@ export default function Workspace(props: WorkspaceProps) {
   const navButton = (id: Page, icon: IconName = id) => <button key={id} aria-current={page === id ? "page" : undefined} className={page === id ? "active" : ""} onClick={() => move(id)}><Icon name={icon} /><span>{labels[id]}</span></button>;
   const navigation = <>
     <div className="workspace-brand"><Brand /></div>
-    <div className="tenant-label"><Icon name="security" size={18} /><div><strong>{workshop}</strong><span>Ambiente de demonstração</span></div></div>
+    <div className="tenant-label"><Icon name="security" size={18} /><div><strong>{workshop}</strong><span>Oficina autenticada</span></div></div>
     <span className="navigation-caption">OPERAÇÃO</span>
     <nav aria-label="Navegação principal">
       {navButton("overview")}{navButton("orders")}{navButton("clients")}{navButton("vehicles")}
@@ -87,13 +87,13 @@ export default function Workspace(props: WorkspaceProps) {
         <button className="global-search-trigger" onClick={() => { setQuery(""); setPanel("search"); }}><Icon name="search" size={18} /><span>Buscar na oficina</span></button>
         <div className="header-actions"><button className="icon-button" aria-label="Notificações" onClick={() => setPanel("notifications")}><Icon name="bell" /></button><span className="header-divider" /><button className="profile-trigger" aria-label="Abrir perfil" onClick={() => setPanel("profile")}><span className="avatar">{initials}</span></button></div>
       </header>
-      <div className="context-strip"><span><Icon name="info" size={14} />Demonstração · dados fictícios</span><time dateTime={today.toISOString()}>{today.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}</time></div>
+      <div className="context-strip"><span><Icon name="info" size={14} />Dados da oficina</span><time dateTime={today.toISOString()}>{today.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}</time></div>
       <main ref={mainRef} tabIndex={-1} id="main-content" className="premium-main">{children}</main>
-      <footer className="premium-footer"><span>garagem <span>/</span> Gestão que cuida do seu negócio.</span><span>Alterações temporárias nesta sessão</span></footer>
+      <footer className="premium-footer"><span>garagem <span>/</span> Gestão que cuida do seu negócio.</span><span>Operação da oficina</span></footer>
     </div>
     {panel === "search" && <Drawer title="Buscar na oficina" close={() => setPanel(null)}>
       <Search value={query} onChange={setQuery} placeholder="OS, placa, veículo ou cliente" />
-      <p className="search-count" role="status">{clean ? `${total} resultado(s) nesta demonstração` : "Busque nos clientes, veículos e ordens de serviço."}</p>
+      <p className="search-count" role="status">{clean ? `${total} resultado(s) na oficina` : "Busque nos clientes, veículos e ordens de serviço."}</p>
       {clean && total === 0 && <Empty title="Nenhum resultado">Tente outro nome, placa ou número de OS.</Empty>}
       <ul className="global-results">
         {matchedOrders.map((o) => <li key={o.id}><button onClick={() => { setPanel(null); openOrder(o.id); }}><Icon name="orders" /><span><strong>OS #{o.numero}</strong><small>{clients.find((c) => c.id === o.clienteId)?.nome}</small></span><Icon name="arrow" size={16} /></button></li>)}
@@ -102,14 +102,14 @@ export default function Workspace(props: WorkspaceProps) {
       </ul>
     </Drawer>}
     {panel === "notifications" && <Drawer title="Notificações" close={() => setPanel(null)}>
-      <p>Os avisos em tempo real ainda não estão disponíveis. Estas são as pendências identificadas nas OS da demonstração.</p>
+      <p>Os avisos em tempo real ainda não estão disponíveis. Estas são as pendências identificadas nas OS carregadas.</p>
       {dashboard.priorities.length === 0 ? <Empty title="Nenhuma pendência">Tudo em ordem nas OS atuais.</Empty> : <ul className="global-results">{dashboard.priorities.map(({ order, reason }) => <li key={order.id}><button onClick={() => { setPanel(null); openOrder(order.id); }}><Icon name="clock" /><span><strong>OS #{order.numero}</strong><small>{reason}</small></span><Icon name="arrow" size={16} /></button></li>)}</ul>}
     </Drawer>}
     {(panel === "profile" || panel === "settings") && <Drawer title={panel === "profile" ? "Seu perfil" : "Configurações"} close={() => setPanel(null)}>
       <div className="profile-summary"><span className="avatar">{initials}</span><h3>{name}</h3><p>{roles[role]} · {workshop}</p></div>
-      <p>Esta é uma sessão de demonstração. A autenticação real e as preferências da oficina ainda não estão conectadas.</p>
-      {role === "OWNER" && <button onClick={() => move("team")}><Icon name="team" />Gerenciar equipe da demonstração</button>}
-      <button className="session-logout" onClick={logout}><Icon name="logout" size={18} />Sair da demonstração</button>
+      <p>Sua sessão está vinculada à oficina informada. Preferências da oficina ainda não estão disponíveis.</p>
+      {role === "OWNER" && <button onClick={() => move("team")}><Icon name="team" />Gerenciar equipe</button>}
+      <button className="session-logout" onClick={logout}><Icon name="logout" size={18} />Sair da oficina</button>
     </Drawer>}
     {module && <Drawer title={module.name} close={() => setPanel(null)}><Empty title="Em preparação">{module.description}</Empty><button onClick={() => move(module.id === "parts" ? "orders" : "overview")}>Ir para {module.id === "parts" ? "ordens de serviço" : "visão geral"}<Icon name="forward" size={18} /></button></Drawer>}
   </div>;

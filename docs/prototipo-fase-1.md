@@ -1,5 +1,8 @@
 # Protótipo da Fase 1 — registro de avaliação
 
+> Registro histórico. A integração REST e a validação final posteriores estão em [fase1-finalizacao.md](fase1-finalizacao.md). As referências a mocks e integração pendente abaixo descrevem aquela etapa anterior.
+
+
 Data: 15/09/2026. Escopo: interface local para aprovação, sem alteração de backend.
 
 ## Análise realizada

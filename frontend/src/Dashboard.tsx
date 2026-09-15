@@ -38,7 +38,7 @@ export default function Dashboard({ orders, vehicles, clients, today, canWrite, 
       </div>
       {canWrite && <button className="primary" onClick={newOrder}><Icon name="plus" size={18} />Abrir OS</button>}
     </div>
-    <dl className="metrics" aria-label="Indicadores da demonstração">
+    <dl className="metrics" aria-label="Indicadores da oficina">
       <Metric icon="work" label="OS em andamento" value={String(dashboard.ongoing.length).padStart(2, "0")} detail="Do recebimento ao teste" />
       <Metric icon="clock" label="Aguardando aprovação" value={String(dashboard.waiting.length).padStart(2, "0")} detail="Aguardam decisão do cliente" />
       <Metric icon="good" label="Veículos prontos" value={String(dashboard.ready.length).padStart(2, "0")} detail="Serviços concluídos" />
@@ -54,7 +54,7 @@ export default function Dashboard({ orders, vehicles, clients, today, canWrite, 
       <div className="recovery-amount"><span>Potencial de recuperação</span>
         <strong>Em apuração</strong>
         <p>Oportunidades ainda não classificadas.<br />O total será exibido quando houver uma origem verificável.</p>
-        <div className="pending-origin"><Icon name="orders" size={18} /><span><b>{money(dashboard.pendingTotal)}</b> em {dashboard.pendingBudgets.length} orçamento(s) aguardando resposta na demonstração. <span>Esse valor não representa receita recuperada.</span></span></div>
+        <div className="pending-origin"><Icon name="orders" size={18} /><span><b>{money(dashboard.pendingTotal)}</b> em {dashboard.pendingBudgets.length} orçamento(s) aguardando resposta. <span>Esse valor não representa receita recuperada.</span></span></div>
       </div>
     </section>
 

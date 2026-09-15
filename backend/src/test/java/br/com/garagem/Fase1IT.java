@@ -32,7 +32,7 @@ import org.springframework.test.web.servlet.*;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.PostgreSQLContainer;
 
-@SpringBootTest
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
 @Import(Fase1IT.StorageConfig.class)
 class Fase1IT {
@@ -138,6 +138,7 @@ class Fase1IT {
   @Autowired TransactionTemplate tx;
   @Autowired EntityManager em;
   @Autowired ClienteRepository clientes;
+  @org.springframework.boot.test.web.server.LocalServerPort int port;
   UUID oficinaA, oficinaB, userA, userB;
   String a, b, mecanico;
   String slugA, email;
@@ -403,6 +404,7 @@ class Fase1IT {
                 .extracting(c -> c.id.toString())
                 .containsExactly(own);
             assertThat(clientes.findByIdAndOficinaId(UUID.fromString(other), oficinaA)).isEmpty();
+            assertThat(clientes.findByIdAndOficinaId(UUID.fromString(other), oficinaB)).isEmpty();
           });
     } finally {
       TenantContext.clear();
@@ -587,6 +589,10 @@ class Fase1IT {
         List.of("", "/checklist", "/diagnosticos", "/fotos", "/orcamento/versoes", "/timeline"))
       read(b, "/api/v1/ordens-servico/" + os + suffix, 404);
     send(b, "/api/v1/ordens-servico/" + os + "/links", Map.of(), 404);
+    mvc.perform(
+            delete("/api/v1/ordens-servico/" + os + "/links/" + publicLink.path("id").asText())
+                .header("Authorization", "Bearer " + b))
+        .andExpect(status().isNotFound());
     send(
         b,
         "/api/v1/ordens-servico/" + os + "/status",
@@ -765,5 +771,340 @@ class Fase1IT {
         "/api/v1/ordens-servico/" + os + "/status",
         Map.of("status", "PRONTO", "revisao", 0),
         409);
+  }
+
+  @Test
+  void fluxoHttpRealComFotoPrivadaAteConclusao() throws Exception {
+    var http = java.net.http.HttpClient.newHttpClient();
+    var login =
+        httpJson(
+            http,
+            null,
+            "POST",
+            "/api/v1/auth/login",
+            Map.of("oficina", slugA, "email", email, "senha", "SenhaSegura123!"),
+            200);
+    String token = login.path("accessToken").asText();
+    var c =
+        httpJson(
+            http,
+            token,
+            "POST",
+            "/api/v1/clientes",
+            Map.of("nome", "Cliente HTTP", "telefone", "11000000000"),
+            201);
+    var v =
+        httpJson(
+            http,
+            token,
+            "POST",
+            "/api/v1/veiculos",
+            Map.of(
+                "clienteId",
+                c.path("id").asText(),
+                "placa",
+                "HTTP123",
+                "marca",
+                "Fiat",
+                "modelo",
+                "Uno",
+                "ano",
+                2020,
+                "km",
+                100,
+                "cor",
+                "Prata"),
+            400);
+    v =
+        httpJson(
+            http,
+            token,
+            "POST",
+            "/api/v1/veiculos",
+            Map.of(
+                "clienteId",
+                c.path("id").asText(),
+                "placa",
+                "HTP1A23",
+                "marca",
+                "Fiat",
+                "modelo",
+                "Uno",
+                "ano",
+                2020,
+                "km",
+                100,
+                "cor",
+                "Prata"),
+            201);
+    var o =
+        httpJson(
+            http,
+            token,
+            "POST",
+            "/api/v1/ordens-servico",
+            Map.of(
+                "veiculoId",
+                v.path("id").asText(),
+                "kmEntrada",
+                101,
+                "relato",
+                "Inspecionar freios"),
+            201);
+    String base = "/api/v1/ordens-servico/" + o.path("id").asText();
+    httpJson(
+        http,
+        token,
+        "POST",
+        base + "/checklist",
+        Map.of("itens", List.of(Map.of("descricao", "Pneus", "condicao", "Bom"))),
+        201);
+    httpJson(
+        http, token, "POST", base + "/status", Map.of("status", "DIAGNOSTICO", "revisao", 0), 200);
+    var d =
+        httpJson(
+            http,
+            token,
+            "POST",
+            base + "/diagnosticos",
+            Map.of("descricao", "Pastilhas gastas", "classificacao", "VERMELHO"),
+            201);
+    var image = new ByteArrayOutputStream();
+    ImageIO.write(new BufferedImage(3, 3, BufferedImage.TYPE_INT_RGB), "png", image);
+    String boundary = "garagem-test-boundary";
+    var payload = new ByteArrayOutputStream();
+    payload.write(
+        ("--"
+                + boundary
+                + "\r\nContent-Disposition: form-data; name=\"finalidade\"\r\n\r\nDIAGNOSTICO\r\n--"
+                + boundary
+                + "\r\nContent-Disposition: form-data; name=\"diagnosticoItemId\"\r\n\r\n"
+                + d.path("id").asText()
+                + "\r\n--"
+                + boundary
+                + "\r\nContent-Disposition: form-data; name=\"arquivo\"; filename=\"teste.png\"\r\nContent-Type: image/png\r\n\r\n")
+            .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    payload.write(image.toByteArray());
+    payload.write(
+        ("\r\n--" + boundary + "--\r\n").getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    var upload =
+        http.send(
+            java.net.http.HttpRequest.newBuilder(
+                    java.net.URI.create("http://127.0.0.1:" + port + base + "/fotos"))
+                .header("Authorization", "Bearer " + token)
+                .header("Content-Type", "multipart/form-data; boundary=" + boundary)
+                .POST(java.net.http.HttpRequest.BodyPublishers.ofByteArray(payload.toByteArray()))
+                .build(),
+            java.net.http.HttpResponse.BodyHandlers.ofString());
+    assertThat(upload.statusCode()).isEqualTo(201);
+    var photo = json.readTree(upload.body());
+    String content = base + "/fotos/" + photo.path("id").asText() + "/conteudo";
+    var download =
+        http.send(
+            java.net.http.HttpRequest.newBuilder(
+                    java.net.URI.create("http://127.0.0.1:" + port + content))
+                .header("Authorization", "Bearer " + token)
+                .build(),
+            java.net.http.HttpResponse.BodyHandlers.ofByteArray());
+    assertThat(download.statusCode()).isEqualTo(200);
+    assertThat(download.headers().firstValue("Cache-Control")).contains("no-store");
+    assertThat(ImageIO.read(new java.io.ByteArrayInputStream(download.body())).getWidth())
+        .isEqualTo(3);
+    httpJson(http, null, "GET", content, null, 401);
+    httpJson(http, b, "GET", content, null, 404);
+    var metadata =
+        jdbc.queryForMap(
+            "select objeto,oficina_id,ordem_servico_id,diagnostico_item_id,tamanho from foto_veiculo where id=?",
+            UUID.fromString(photo.path("id").asText()));
+    assertThat(metadata.get("oficina_id")).isEqualTo(oficinaA);
+    assertThat(metadata.get("ordem_servico_id")).isEqualTo(UUID.fromString(o.path("id").asText()));
+    assertThat(metadata.get("diagnostico_item_id"))
+        .isEqualTo(UUID.fromString(d.path("id").asText()));
+    assertThat(((Number) metadata.get("tamanho")).longValue()).isEqualTo(download.body().length);
+    if (minio != null) {
+      var direct =
+          http.send(
+              java.net.http.HttpRequest.newBuilder(
+                      java.net.URI.create(
+                          "http://"
+                              + minio.getHost()
+                              + ":"
+                              + minio.getMappedPort(9000)
+                              + "/garagem-fotos/"
+                              + metadata.get("objeto")))
+                  .build(),
+              java.net.http.HttpResponse.BodyHandlers.ofString());
+      assertThat(direct.statusCode()).isEqualTo(403);
+    }
+    o = httpJson(http, token, "GET", base, null, 200);
+    httpJson(
+        http,
+        token,
+        "POST",
+        base + "/status",
+        Map.of("status", "ORCAMENTO", "revisao", o.path("revisao").asLong()),
+        200);
+    var version =
+        httpJson(
+            http,
+            token,
+            "POST",
+            base + "/orcamento/versoes",
+            Map.of(
+                "itens",
+                List.of(
+                    Map.of(
+                        "tipo",
+                        "SERVICO",
+                        "descricao",
+                        "Troca de pastilhas",
+                        "quantidade",
+                        1,
+                        "valorUnitario",
+                        150))),
+            201);
+    o = httpJson(http, token, "GET", base, null, 200);
+    httpJson(
+        http,
+        token,
+        "POST",
+        base + "/status",
+        Map.of("status", "AGUARDANDO_APROVACAO", "revisao", o.path("revisao").asLong()),
+        200);
+    var l = httpJson(http, token, "POST", base + "/links", Map.of(), 201);
+    httpJson(
+        http,
+        null,
+        "POST",
+        "/api/v1/publico/" + l.path("token").asText() + "/decisao",
+        Map.of("versaoId", version.path("id").asText(), "aprovado", true),
+        200);
+    for (String next : List.of("TESTE", "PRONTO")) {
+      o = httpJson(http, token, "GET", base, null, 200);
+      httpJson(
+          http,
+          token,
+          "POST",
+          base + "/status",
+          Map.of("status", next, "revisao", o.path("revisao").asLong()),
+          200);
+    }
+    assertThat(httpJson(http, token, "GET", base + "/timeline", null, 200).toString())
+        .contains(
+            "FOTO_ADICIONADA",
+            "CHECKLIST_REGISTRADO",
+            "DIAGNOSTICO_REGISTRADO",
+            "ORCAMENTO_APROVADO",
+            "PRONTO");
+    assertThat(
+            jdbc.queryForMap(
+                "select status,concluida_em from ordem_servico where id=? and oficina_id=?",
+                UUID.fromString(o.path("id").asText()),
+                oficinaA))
+        .containsEntry("status", "PRONTO")
+        .doesNotContainValue(null);
+    httpJson(
+        http,
+        token,
+        "POST",
+        base + "/diagnosticos",
+        Map.of("descricao", "Tardio", "classificacao", "VERDE"),
+        409);
+    httpJson(http, null, "GET", "/actuator/health", null, 200);
+  }
+
+  JsonNode httpJson(
+      java.net.http.HttpClient http,
+      String token,
+      String method,
+      String path,
+      Object value,
+      int expected)
+      throws Exception {
+    var request =
+        java.net.http.HttpRequest.newBuilder(java.net.URI.create("http://127.0.0.1:" + port + path))
+            .timeout(java.time.Duration.ofSeconds(20));
+    if (token != null) request.header("Authorization", "Bearer " + token);
+    if (value != null) request.header("Content-Type", "application/json");
+    request.method(
+        method,
+        value == null
+            ? java.net.http.HttpRequest.BodyPublishers.noBody()
+            : java.net.http.HttpRequest.BodyPublishers.ofString(json.writeValueAsString(value)));
+    var response = http.send(request.build(), java.net.http.HttpResponse.BodyHandlers.ofString());
+    assertThat(response.statusCode()).isEqualTo(expected);
+    return json.readTree(response.body());
+  }
+
+  @Test
+  void oficinasComDadosPropriosBloqueiamEscritaCruzadaERevisaoConcorrente() throws Exception {
+    String own = os(a), other = os(b);
+    assertThat(read(a, "/api/v1/ordens-servico?oficinaId=" + oficinaB, 200).toString())
+        .contains(own)
+        .doesNotContain(other);
+    assertThatThrownBy(
+            () ->
+                jdbc.update(
+                    "insert into diagnostico_item(id,oficina_id,ordem_servico_id,autor_id,descricao,classificacao) values(?,?,?,?, 'Cruzado', 'VERDE')",
+                    UUID.randomUUID(),
+                    oficinaA,
+                    UUID.fromString(other),
+                    userA))
+        .isInstanceOf(DataIntegrityViolationException.class);
+    for (var pair : List.of(new String[] {a, own, other}, new String[] {b, other, own})) {
+      String token = pair[0], target = "/api/v1/ordens-servico/" + pair[2];
+      var remote = read(token.equals(a) ? b : a, target, 200);
+      for (String suffix :
+          List.of("", "/checklist", "/diagnosticos", "/orcamento/versoes", "/fotos", "/timeline"))
+        read(token, target + suffix, 404);
+      assertThat(read(token, "/api/v1/ordens-servico", 200).toString())
+          .contains(pair[1])
+          .doesNotContain(pair[2]);
+      read(token, "/api/v1/clientes/" + remote.path("clienteId").asText(), 404);
+      read(token, "/api/v1/veiculos/" + remote.path("veiculoId").asText(), 404);
+      mvc.perform(
+              put(target + "/responsavel")
+                  .header("Authorization", "Bearer " + token)
+                  .contentType("application/json")
+                  .content(json.writeValueAsString(Map.of("mecanicoId", userA, "revisao", 0))))
+          .andExpect(status().isNotFound());
+      var vehicle =
+          read(
+              token.equals(a) ? b : a,
+              "/api/v1/veiculos/" + remote.path("veiculoId").asText(),
+              200);
+      mvc.perform(
+              put("/api/v1/veiculos/" + vehicle.path("id").asText())
+                  .header("Authorization", "Bearer " + token)
+                  .contentType("application/json")
+                  .content(json.writeValueAsString(vehicle)))
+          .andExpect(status().isNotFound());
+    }
+    var start = new CountDownLatch(1);
+    try (var executor = Executors.newFixedThreadPool(2)) {
+      Callable<Integer> change =
+          () -> {
+            start.await();
+            return mvc.perform(
+                    post("/api/v1/ordens-servico/" + own + "/status")
+                        .header("Authorization", "Bearer " + a)
+                        .contentType("application/json")
+                        .content("{\"status\":\"DIAGNOSTICO\",\"revisao\":0}"))
+                .andReturn()
+                .getResponse()
+                .getStatus();
+          };
+      var one = executor.submit(change);
+      var two = executor.submit(change);
+      start.countDown();
+      assertThat(List.of(one.get(20, TimeUnit.SECONDS), two.get(20, TimeUnit.SECONDS)))
+          .containsExactlyInAnyOrder(200, 409);
+    }
+    assertThat(read(a, "/api/v1/ordens-servico/" + own + "/timeline", 200).findValuesAsText("tipo"))
+        .containsOnlyOnce("STATUS_ALTERADO");
+    var page = read(a, "/api/v1/clientes?pagina=-2&tamanho=1000", 200);
+    assertThat(page.path("pagina").asInt()).isZero();
+    assertThat(page.path("tamanho").asInt()).isEqualTo(100);
+    assertThat(read(a, "/api/v1/veiculos?tamanho=0", 200).path("tamanho").asInt()).isEqualTo(1);
   }
 }

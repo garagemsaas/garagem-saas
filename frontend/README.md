@@ -1,6 +1,6 @@
-# Garagem SaaS — protótipo da Fase 1
+# Frontend Garagem SaaS — Fase 1
 
-Interface local para avaliação de produto e UX, em React + TypeScript + Vite. Dados fictícios em memória, sem conexão à API, autenticação real ou persistência.
+React + TypeScript + Vite. Interface integrada à API REST real; layout aprovado preservado. A fonte operacional é o backend, com PostgreSQL e MinIO privado.
 
 ## Integração progressiva com a API
 
@@ -14,44 +14,34 @@ O protótipo continua iniciando em modo demonstração quando essa variável fic
 
 ## Executar
 
-No PowerShell, a partir da raiz:
-
-```powershell
-cd frontend
-npm.cmd ci
-npm.cmd run dev -- --host 127.0.0.1
+```sh
+npm ci
+npm run dev -- --host 127.0.0.1 --port 5173
 ```
 
-Abra a URL informada pelo Vite, normalmente **http://127.0.0.1:5173**. Se as dependências já estiverem instaladas, basta executar o comando dev. Nesta máquina, npm.cmd evita o bloqueio do npm.ps1 pela política do PowerShell.
+API em http://127.0.0.1:8080, encaminhada pelo proxy `/api` de Vite (dev/preview). Login exige oficina provisionada. Papel/usuário vêm da sessão; tokens somente em memória e novo login após reload. Registros continuam no banco.
 
-```powershell
-npm.cmd run build
-npm.cmd run lint
+## Verificar
+
+```sh
+npm run lint
+npm run typecheck
+npm test
+npm run build
 ```
 
-## Roteiro de avaliação
+Node 22.18+ ou 24+ para executar os testes TypeScript no Node. Roteiros `tests/e2e-real.mjs` e `tests/public-real.mjs` exigem API, PostgreSQL, MinIO, Playwright/Chromium e duas oficinas de teste novas. Executar separadamente conforme [fixture e reprodução](../docs/fase1-finalizacao.md#relatórios-e-reprodução). Não usam mocks de rede; criam registros reais no ambiente de teste.
 
-1. Entre com os campos fictícios preenchidos. O seletor de papel é exclusivo da demonstração.
-2. Busque **FKS2J48**, **Mariana** ou **1048**. Abra a OS #1048, com checklist, diagnóstico e duas versões do orçamento.
-3. Em Orçamento, alterne versões, gere o link de demonstração e abra **Visualizar como cliente**. A confirmação simula aprovação integral ou recusa.
-4. Abra uma nova OS para experimentar checklist, diagnóstico, fotos e status. Avance de Recebido para Diagnóstico e depois Orçamento antes de criar uma versão.
-5. Adicione um PNG/JPEG fictício em Fotos para avaliar a galeria e a ampliação.
-6. Cadastre e visualize clientes e veículos. Placa válida e vínculo com cliente são obrigatórios.
-7. Saia e entre como Atendente ou Mecânico para comparar as ações. Equipe aparece apenas para Proprietário.
+## Integração
 
-As alterações são descartadas ao sair ou recarregar. Não há URL pública compartilhável: a visão do cliente é uma prévia em painel. Fotos ficam apenas na memória da sessão.
+- `api.ts`: Bearer, refresh compartilhado, descarte de respostas de sessão antiga, paginação e mapeamento de diagnósticos.
+- `App.tsx` / `forms.tsx`: autenticação, cadastros, equipe, listas e abertura de OS.
+- `OrderDetail.tsx`: ações reais, revisões, conflitos e histórico do backend.
+- `PrivatePhoto.tsx`: bytes autenticados em Blob URL temporária, revogada ao desmontar.
+- `PublicOrder.tsx`: `/acompanhar#token`, resumo público e decisão integral com confirmação.
 
-## Organização
+Listas percorrem páginas de 100 e exibem dez por página; busca global é local sobre os registros carregados. Não há filtro de status/data/responsável na API. “Atualizar dados” busca o estado atual; não há tempo real. Links não podem ser recuperados após a emissão: copie imediatamente; a interface mantém o último link apenas no detalhe carregado.
 
-| Arquivo | Responsabilidade |
-|---|---|
-| src/App.tsx | Login de demonstração, navegação, listas, cadastros e estado em memória |
-| src/OrderDetail.tsx | Abas da OS, formulários operacionais, versões e prévia do cliente |
-| src/forms.tsx | Formulários de cliente, veículo, usuário e abertura de OS |
-| src/ui.tsx | Campos, painel modal, indicadores, busca, paginação e ícones |
-| src/model.ts | Tipos do protótipo, dados fictícios e transições |
-| src/App.css e src/index.css | Identidade visual e adaptação de layout |
+O gerador `seed()` permanece como fixture histórica, sem uso no App integrado. Referências visuais preexistentes a módulos futuros não implementam Fase 2.
 
-Os tipos agrupam sub-recursos para prototipação; não substituem os DTOs nem um cliente de API. Assets antigos do scaffold Vite foram preservados e estão sem uso.
-
-Veja a [proposta de interface](../docs/proposta-interface.md) e o [registro de validação](../docs/prototipo-fase-1.md).
+[Contratos REST](../docs/api-contracts.md) · [Finalização](../docs/fase1-finalizacao.md) · [README geral](../README.md)

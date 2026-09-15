@@ -12,22 +12,25 @@ export function Form({
   note,
 }: {
   children: ReactNode;
-  save: (f: FormData) => void;
-  close: () => void;
+  save: (f: FormData) => void | Promise<void>;
+  close: () => void | Promise<void>;
   submit?: string;
   note?: string;
 }) {
   const [error, setError] = useState("");
-  function onSubmit(e: FormEvent<HTMLFormElement>) {
+  const [busy, setBusy] = useState(false);
+  async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (busy) return;
+    setBusy(true);
     setError("");
     try {
-      save(new FormData(e.currentTarget));
+      await save(new FormData(e.currentTarget));
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Confira os dados informados.",
       );
-    }
+    } finally { setBusy(false); }
   }
   return (
     <form onSubmit={onSubmit}>
@@ -42,7 +45,7 @@ export function Form({
         <button type="button" onClick={close}>
           Cancelar
         </button>
-        <button className="primary" type="submit">
+        <button className="primary" type="submit" disabled={busy}>
           {submit}
         </button>
       </div>
@@ -55,8 +58,8 @@ export function ClientForm({
   close,
 }: {
   current?: Client;
-  save: (v: Client) => void;
-  close: () => void;
+  save: (v: Client) => void | Promise<void>;
+  close: () => void | Promise<void>;
 }) {
   return (
     <Form
@@ -65,12 +68,12 @@ export function ClientForm({
         const nome = val(f, "nome"),
           telefone = val(f, "telefone");
         if (!nome || !telefone) throw Error("Preencha nome e telefone.");
-        save({
+        return save({
           id: current?.id || uid(),
           nome,
           telefone,
           email: val(f, "email"),
-          revisao: (current?.revisao ?? -1) + 1,
+          revisao: current?.revisao ?? 0,
         });
       }}
     >
@@ -116,8 +119,8 @@ export function VehicleForm({
   current?: Vehicle;
   clients: Client[];
   vehicles: Vehicle[];
-  save: (v: Vehicle) => void;
-  close: () => void;
+  save: (v: Vehicle) => void | Promise<void>;
+  close: () => void | Promise<void>;
 }) {
   return (
     <Form
@@ -128,7 +131,7 @@ export function VehicleForm({
           throw Error("Esta placa já está cadastrada na oficina.");
         if (!val(f, "marca") || !val(f, "modelo") || !val(f, "cor"))
           throw Error("Preencha marca, modelo e cor.");
-        save({
+        return save({
           id: current?.id || uid(),
           clienteId: val(f, "clienteId"),
           placa,
@@ -137,7 +140,7 @@ export function VehicleForm({
           ano: Number(f.get("ano")),
           km: Number(f.get("km")),
           cor: val(f, "cor"),
-          revisao: (current?.revisao ?? -1) + 1,
+          revisao: current?.revisao ?? 0,
         });
       }}
     >
@@ -223,13 +226,13 @@ export function UserForm({
   close,
 }: {
   users: User[];
-  save: (u: User) => void;
-  close: () => void;
+  save: (u: User & { senha: string }) => void | Promise<void>;
+  close: () => void | Promise<void>;
 }) {
   return (
     <Form
       close={close}
-      note="O novo usuário terá acesso à oficina atual. Use apenas dados fictícios nesta demonstração."
+      note="O novo usuário terá acesso à oficina atual conforme o papel escolhido."
       save={(f) => {
         if (!val(f, "nome")) throw Error("Preencha o nome.");
         if (new TextEncoder().encode(String(f.get("senha"))).length > 72)
@@ -237,12 +240,13 @@ export function UserForm({
         const email = val(f, "email").toLowerCase();
         if (users.some((u) => u.email.toLowerCase() === email))
           throw Error("Este e-mail já está cadastrado.");
-        save({
+        return save({
           id: uid(),
           nome: val(f, "nome"),
           email,
           papel: val(f, "papel") as Role,
           ativo: true,
+          senha: String(f.get("senha")),
         });
       }}
     >
@@ -292,8 +296,8 @@ export function OrderForm({
       Order,
       "veiculoId" | "mecanicoId" | "kmEntrada" | "relato" | "previsaoEntrega"
     >,
-  ) => void;
-  close: () => void;
+  ) => void | Promise<void>;
+  close: () => void | Promise<void>;
 }) {
   const [vehicleId, setVehicleId] = useState("");
   const vehicle = vehicles.find((v) => v.id === vehicleId);
@@ -304,7 +308,7 @@ export function OrderForm({
       note="Comece pelo veículo. O cliente vinculado será incluído automaticamente."
       save={(f) => {
         if (!val(f, "relato")) throw Error("Descreva o relato do cliente.");
-        save({
+        return save({
           veiculoId: vehicleId,
           mecanicoId: val(f, "mecanicoId"),
           kmEntrada: Number(f.get("kmEntrada")),
@@ -389,7 +393,7 @@ export function AddButton({
   onClick,
 }: {
   children: ReactNode;
-  onClick: () => void;
+  onClick: () => void | Promise<void>;
 }) {
   return (
     <button type="button" className="text-button" onClick={onClick}>

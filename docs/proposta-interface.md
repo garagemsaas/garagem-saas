@@ -1,5 +1,8 @@
 # Proposta de interface — Fase 1 em avaliação
 
+> Registro histórico. A integração REST e a validação final posteriores estão em [fase1-finalizacao.md](fase1-finalizacao.md). As referências a mocks e integração pendente abaixo descrevem aquela etapa anterior.
+
+
 Atualizada em 15/09/2026 após leitura dos documentos e inspeção de Controllers, DTOs, repositórios e serviços. O frontend contém um **protótipo navegável com dados fictícios em memória**, autorizado para avaliação de UX. A implementação definitiva e a integração com a API continuam pendentes de aprovação.
 
 ## Direção de produto
