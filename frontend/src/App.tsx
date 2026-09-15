@@ -10,7 +10,7 @@ import { getDashboard } from "./dashboard-model";
 import { date, money, number, roles } from "./model";
 import type { Client, Order, Vehicle } from "./model";
 import { api, currentSession, emptyData, loadData, loadOrder, setApiSession } from "./api";
-import type { Session } from "./api";
+import type { Checklist, Diagnostico, Evento, OrcamentoVersao, Session } from "./api";
 import "./App.css";
 import "./design-system.css";
 
@@ -75,9 +75,59 @@ export default function App() {
     setPanel("");
   }
   const notify = (s: string) => setToast(s);
+  async function hydrateOrder(id: string): Promise<void> {
+    if (!api.isConfigured) return;
+    const [remoteOrder, checklist, diagnostics, versions, timeline] = await Promise.all([
+      api.getOrder(id),
+      api.getChecklist(id).catch(() => null),
+      api.getDiagnostics(id).catch(() => []),
+      api.getBudgetVersions(id).catch(() => []),
+      api.getTimeline(id).catch(() => []),
+    ]);
+    const mapClassification = (value: Diagnostico["classificacao"]): "OK" | "ACOMPANHAR" | "TROCAR" =>
+      value === "BOM" ? "OK" : value === "ATENCAO" ? "ACOMPANHAR" : "TROCAR";
+    const mapped: Order = {
+      id: remoteOrder.id,
+      numero: remoteOrder.numero,
+      veiculoId: remoteOrder.veiculoId,
+      clienteId: remoteOrder.clienteId,
+      mecanicoId: remoteOrder.mecanicoId ?? "",
+      status: remoteOrder.status,
+      kmEntrada: remoteOrder.kmEntrada,
+      relato: remoteOrder.relato,
+      criadoEm: remoteOrder.criadoEm,
+      previsaoEntrega: remoteOrder.previsaoEntrega ?? remoteOrder.criadoEm,
+      revisao: remoteOrder.revisao,
+      checklist: checklist ? {
+        observacoes: checklist.observacoes ?? "",
+        itens: checklist.itens.map((item: Checklist["itens"][number]) => ({
+          id: item.id,
+          descricao: item.descricao,
+          condicao: item.condicao,
+          observacao: item.observacao ?? "",
+        })),
+      } : undefined,
+      diagnosticos: diagnostics.map((item: Diagnostico) => ({ ...item, classificacao: mapClassification(item.classificacao) })),
+      versoes: versions.map((version: OrcamentoVersao) => ({
+        ...version,
+        observacoes: version.observacoes ?? "",
+        itens: version.itens.map((item) => ({ ...item })),
+        decisao: version.decisao ?? undefined,
+      })),
+      fotos: [],
+      timeline: timeline.map((event: Evento) => ({
+        id: event.id,
+        descricao: event.descricao,
+        origem: event.origem,
+        criadoEm: event.criadoEm,
+      })),
+    };
+    setData((current) => ({ ...current, ordens: current.ordens.map((item) => item.id === id ? mapped : item) }));
+  }
   function openOrder(id: string) {
     navigate("orders");
     setSelected(id);
+    void hydrateOrder(id).catch((error) => notify(error instanceof Error ? error.message : "Não foi possível carregar os detalhes da OS."));
   }
   function finish(message: string) {
     setPanel("");
@@ -124,10 +174,34 @@ export default function App() {
           : data.usuarios.length;
   const order = data.ordens.find((o) => o.id === selected);
   function updateOrder(o: Order) {
+    const previous = data.ordens.find((item) => item.id === o.id);
     setData((d) => ({
       ...d,
       ordens: d.ordens.map((item) => (item.id === o.id ? o : item)),
     }));
+    if (!api.isConfigured || !previous) return;
+    const revision = Math.max(0, o.revisao - 1);
+    const writes: Promise<unknown>[] = [];
+    if (previous.status !== o.status) writes.push(api.updateOrderStatus(o.id, o.status, revision));
+    if (!previous.checklist && o.checklist) writes.push(api.createChecklist(o.id, {
+      observacoes: o.checklist.observacoes,
+      itens: o.checklist.itens.map((item) => ({ descricao: item.descricao, condicao: item.condicao, observacao: item.observacao })),
+    }));
+    if (o.diagnosticos.length > previous.diagnosticos.length) {
+      const item = o.diagnosticos.at(-1);
+      if (item) writes.push(api.addDiagnostic(o.id, {
+        descricao: item.descricao,
+        classificacao: item.classificacao === "OK" ? "BOM" : item.classificacao === "ACOMPANHAR" ? "ATENCAO" : "CRITICO",
+      }));
+    }
+    if (o.versoes.length > previous.versoes.length) {
+      const version = o.versoes.at(-1);
+      if (version) writes.push(api.createBudgetVersion(o.id, {
+        observacoes: version.observacoes,
+        itens: version.itens.map((item) => ({ tipo: item.tipo, descricao: item.descricao, quantidade: item.quantidade, valorUnitario: item.valorUnitario })),
+      }));
+    }
+    if (writes.length) void Promise.all(writes).then(() => hydrateOrder(o.id)).catch((error) => notify(error instanceof Error ? error.message : "Não foi possível salvar a alteração da OS."));
   }
   async function saveClient(c: Client) {
     const saved = await api<Client>(client ? `/clientes/${client.id}` : '/clientes', client ? 'PUT' : 'POST', c);
@@ -182,6 +256,8 @@ export default function App() {
                 e.preventDefault();
                 const f = new FormData(e.currentTarget);
                 const oficina = String(f.get("oficina")).trim();
+                const email = String(f.get("email")).trim();
+                const senha = String(f.get("senha"));
                 if (!oficina) {
                   setLoginError("Informe a oficina.");
                   return;

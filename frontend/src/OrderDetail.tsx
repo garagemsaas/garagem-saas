@@ -839,7 +839,9 @@ export default function OrderDetail({
                           </button>
                         )}
                       {!order.link?.ativo ? (
-                        <button disabled={busy} onClick={createLink}>Gerar link do cliente</button>
+<button disabled={busy} onClick={createLink}>
+  Gerar link do cliente
+</button>
                       ) : (
                         <>
                           <a href={order.link.url} target="_blank" rel="noreferrer">Visualizar como cliente</a>
@@ -1124,6 +1126,8 @@ export default function OrderDetail({
           </div>
         </Drawer>
       )}
+{panel === "publico" && (...)}
+{panel === "recusado" && (...)}
       {photo && (
         <Drawer error={error} title="Foto do veículo" wide close={() => setPhoto(undefined)}>
           <PrivatePhoto
