@@ -10,7 +10,7 @@ import { getDashboard } from "./dashboard-model";
 import { date, money, now, number, roles, seed, uid } from "./model";
 import type { Client, Order, Role, Vehicle } from "./model";
 import { api, clearSession, setSession as persistApiSession } from "./api";
-import type { OrdemServico, Usuario } from "./api";
+import type { Checklist, Diagnostico, Evento, OrdemServico, OrcamentoVersao, Usuario } from "./api";
 import "./App.css";
 import "./design-system.css";
 
@@ -58,9 +58,59 @@ export default function App() {
     setPanel("");
   }
   const notify = (s: string) => setToast(s);
+  async function hydrateOrder(id: string): Promise<void> {
+    if (!api.isConfigured) return;
+    const [remoteOrder, checklist, diagnostics, versions, timeline] = await Promise.all([
+      api.getOrder(id),
+      api.getChecklist(id).catch(() => null),
+      api.getDiagnostics(id).catch(() => []),
+      api.getBudgetVersions(id).catch(() => []),
+      api.getTimeline(id).catch(() => []),
+    ]);
+    const mapClassification = (value: Diagnostico["classificacao"]): "OK" | "ACOMPANHAR" | "TROCAR" =>
+      value === "BOM" ? "OK" : value === "ATENCAO" ? "ACOMPANHAR" : "TROCAR";
+    const mapped: Order = {
+      id: remoteOrder.id,
+      numero: remoteOrder.numero,
+      veiculoId: remoteOrder.veiculoId,
+      clienteId: remoteOrder.clienteId,
+      mecanicoId: remoteOrder.mecanicoId ?? "",
+      status: remoteOrder.status,
+      kmEntrada: remoteOrder.kmEntrada,
+      relato: remoteOrder.relato,
+      criadoEm: remoteOrder.criadoEm,
+      previsaoEntrega: remoteOrder.previsaoEntrega ?? remoteOrder.criadoEm,
+      revisao: remoteOrder.revisao,
+      checklist: checklist ? {
+        observacoes: checklist.observacoes ?? "",
+        itens: checklist.itens.map((item: Checklist["itens"][number]) => ({
+          id: item.id,
+          descricao: item.descricao,
+          condicao: item.condicao,
+          observacao: item.observacao ?? "",
+        })),
+      } : undefined,
+      diagnosticos: diagnostics.map((item: Diagnostico) => ({ ...item, classificacao: mapClassification(item.classificacao) })),
+      versoes: versions.map((version: OrcamentoVersao) => ({
+        ...version,
+        observacoes: version.observacoes ?? "",
+        itens: version.itens.map((item) => ({ ...item })),
+        decisao: version.decisao ?? undefined,
+      })),
+      fotos: [],
+      timeline: timeline.map((event: Evento) => ({
+        id: event.id,
+        descricao: event.descricao,
+        origem: event.origem,
+        criadoEm: event.criadoEm,
+      })),
+    };
+    setData((current) => ({ ...current, ordens: current.ordens.map((item) => item.id === id ? mapped : item) }));
+  }
   function openOrder(id: string) {
     navigate("orders");
     setSelected(id);
+    void hydrateOrder(id).catch((error) => notify(error instanceof Error ? error.message : "Não foi possível carregar os detalhes da OS."));
   }
   function finish(message: string) {
     setPanel("");

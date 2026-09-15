@@ -1,9 +1,13 @@
 import { clearSession, getAccessToken, getSession, setSession } from "./session";
 import type {
   ApiProblem,
+  Checklist,
   Cliente,
+  Diagnostico,
   LoginInput,
+  Evento,
   OrdemServico,
+  OrcamentoVersao,
   Pagina,
   Sessao,
   StatusOs,
@@ -94,6 +98,21 @@ export const api = {
   },
   listOrders(page = 0, size = 20): Promise<Pagina<OrdemServico>> {
     return request<Pagina<OrdemServico>>(`/api/v1/ordens-servico?pagina=${page}&tamanho=${size}`);
+  },
+  getOrder(id: string): Promise<OrdemServico> {
+    return request<OrdemServico>(`/api/v1/ordens-servico/${id}`);
+  },
+  getChecklist(id: string): Promise<Checklist> {
+    return request<Checklist>(`/api/v1/ordens-servico/${id}/checklist`);
+  },
+  getDiagnostics(id: string): Promise<Diagnostico[]> {
+    return request<Diagnostico[]>(`/api/v1/ordens-servico/${id}/diagnosticos`);
+  },
+  getBudgetVersions(id: string): Promise<OrcamentoVersao[]> {
+    return request<OrcamentoVersao[]>(`/api/v1/ordens-servico/${id}/orcamento/versoes`);
+  },
+  getTimeline(id: string): Promise<Evento[]> {
+    return request<Evento[]>(`/api/v1/ordens-servico/${id}/timeline`);
   },
   listUsers(page = 0, size = 100): Promise<Pagina<Usuario>> {
     return request<Pagina<Usuario>>(`/api/v1/usuarios?pagina=${page}&tamanho=${size}`);

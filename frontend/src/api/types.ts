@@ -95,9 +95,29 @@ export interface ChecklistInput {
   itens: ChecklistItemInput[];
 }
 
+export interface ChecklistItem {
+  id: string;
+  descricao: string;
+  condicao: string;
+  observacao: string | null;
+}
+
+export interface Checklist {
+  id: string;
+  observacoes: string | null;
+  itens: ChecklistItem[];
+}
+
 export interface DiagnosticoInput {
   descricao: string;
   classificacao: Classificacao;
+}
+
+export interface Diagnostico {
+  id: string;
+  descricao: string;
+  classificacao: Classificacao;
+  criadoEm: string;
 }
 
 export interface OrcamentoItemInput {
@@ -110,4 +130,32 @@ export interface OrcamentoItemInput {
 export interface OrcamentoVersaoInput {
   observacoes?: string;
   itens: OrcamentoItemInput[];
+}
+
+export interface OrcamentoItem {
+  id: string;
+  tipo: "PECA" | "SERVICO";
+  descricao: string;
+  quantidade: number;
+  valorUnitario: number;
+  subtotal: number;
+}
+
+export interface OrcamentoVersao {
+  id: string;
+  numero: number;
+  observacoes: string | null;
+  total: number;
+  criadoEm: string;
+  itens: OrcamentoItem[];
+  decisao: { aprovado: boolean; criadoEm: string; canal: string } | null;
+}
+
+export interface Evento {
+  id: string;
+  tipo: string;
+  descricao: string;
+  origem: string;
+  autorId: string | null;
+  criadoEm: string;
 }
