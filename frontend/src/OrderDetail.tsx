@@ -710,6 +710,7 @@ export default function OrderDetail({
                     <span
                       className={`classification ${d.classificacao.toLowerCase()}`}
                     >
+                      <Icon name={d.classificacao === "OK" ? "good" : d.classificacao === "TROCAR" ? "critical" : "warning"} size={15} />
                       {d.classificacao === "OK"
                         ? "OK"
                         : d.classificacao === "TROCAR"

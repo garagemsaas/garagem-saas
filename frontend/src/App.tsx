@@ -1,19 +1,21 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Badge, Brand, Drawer, Empty, Field, Icon, Pager, Search } from "./ui";
 import { ClientForm, OrderForm, UserForm, VehicleForm } from "./forms";
 import OrderDetail from "./OrderDetail";
-import { date, now, number, roles, seed, uid } from "./model";
+import { PageState } from "./PageState";
+import Workspace from "./Workspace";
+import { labels } from "./navigation";
+import type { Page } from "./navigation";
+import { getDashboard } from "./dashboard-model";
+import { date, money, now, number, roles, seed, uid } from "./model";
 import type { Client, Order, Role, Vehicle } from "./model";
 import "./App.css";
+import "./design-system.css";
 
-type Page = "orders" | "clients" | "vehicles" | "team";
-const labels: Record<Page, string> = {
-  orders: "Ordens de Serviço",
-  clients: "Clientes",
-  vehicles: "Veículos",
-  team: "Equipe",
-};
+const Dashboard = lazy(() => import("./Dashboard"));
+
 const subtitles: Record<Page, string> = {
+  overview: "Sua oficina em perspectiva.",
   orders: "Do recebimento à entrega, acompanhe cada serviço.",
   clients: "Os contatos de quem confia o veículo à sua oficina.",
   vehicles: "Veículos cadastrados e seus proprietários.",
@@ -24,7 +26,12 @@ export default function App() {
     [session, setSession] = useState<{ role: Role; oficina: string } | null>(
       null,
     );
-  const [page, setPage] = useState<Page>("orders"),
+  const [today, setToday] = useState(() => new Date());
+  useEffect(() => {
+    const timer = window.setInterval(() => setToday(new Date()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const [page, setPage] = useState<Page>("overview"),
     [selected, setSelected] = useState(""),
     [query, setQuery] = useState(""),
     [pagination, setPagination] = useState(0);
@@ -48,6 +55,10 @@ export default function App() {
     setPanel("");
   }
   const notify = (s: string) => setToast(s);
+  function openOrder(id: string) {
+    navigate("orders");
+    setSelected(id);
+  }
   function finish(message: string) {
     setPanel("");
     notify(message);
@@ -161,18 +172,19 @@ export default function App() {
                   return;
                 }
                 setSession({ role: loginRole, oficina });
-                navigate("orders");
+                navigate("overview");
               }}
             >
               <Field
                 label="Oficina"
-                hint="Identificador da oficina. Ex.: oficina-modelo"
+                hint="Oficina fictícia usada nesta demonstração."
               >
                 <input
                   name="oficina"
                   required
                   maxLength={80}
                   defaultValue="oficina-modelo"
+                  readOnly
                   autoComplete="organization"
                 />
               </Field>
@@ -241,75 +253,18 @@ export default function App() {
       </div>
     );
   return (
-    <div className="app-shell">
-      <a className="skip-link" href="#main-content">
-        Pular para o conteúdo
-      </a>
-      <aside className="sidebar">
-        <Brand />
-        <span className="nav-label">OPERAÇÃO</span>
-        <nav aria-label="Navegação principal">
-          {(Object.keys(labels) as Page[])
-            .filter((p) => p !== "team" || session.role === "OWNER")
-            .map((p) => (
-              <button
-                key={p}
-                className={page === p ? "active" : ""}
-                aria-current={page === p ? "page" : undefined}
-                onClick={() => navigate(p)}
-              >
-                <Icon name={p} />
-                {labels[p]}
-              </button>
-            ))}
-        </nav>
-        <div className="sidebar-bottom">
-          <span className="sidebar-rule" />
-          <strong>Fase 1</strong>
-          <small>Operação da oficina</small>
-          <span className="prototype-tag">Protótipo para avaliação</span>
-        </div>
-      </aside>
-      <div className="workspace">
-        <header className="topbar">
-          <div className="workshop">
-            <span className="workshop-symbol">
-              <Icon name="vehicles" size={20} />
-            </span>
-            <div>
-              <strong>
-                {session.oficina === "oficina-modelo"
-                  ? "Oficina Modelo"
-                  : session.oficina}
-              </strong>
-              <small>Oficina atual</small>
-            </div>
-          </div>
-          <div className="account">
-            <span className="avatar">
-              {user?.nome
-                .split(" ")
-                .map((s) => s[0])
-                .slice(0, 2)
-                .join("")}
-            </span>
-            <div>
-              <strong>{user?.nome}</strong>
-              <small>{roles[session.role]}</small>
-            </div>
-            <button className="logout" onClick={logout}>
-              <Icon name="logout" size={18} />
-              <span>Sair</span>
-            </button>
-          </div>
-        </header>
-        <div className="demo-ribbon">
-          <span className="demo-dot" />
-          Demonstração com dados fictícios
-          <span>Alterações válidas apenas nesta sessão</span>
-        </div>
-        <main id="main-content" className="main-content">
-          {order && page === "orders" ? (
+    <Workspace page={page} navigate={navigate} role={session.role}
+      name={user?.nome ?? "Usuário"} workshop="Oficina Modelo"
+      logout={logout} orders={data.ordens} clients={data.clientes} vehicles={data.veiculos} today={today}
+      openOrder={openOrder}
+      openClient={(c) => { navigate("clients"); setClient(c); setPanel("view-client"); }}
+      openVehicle={(v) => { navigate("vehicles"); setVehicle(v); setPanel("view-vehicle"); }}
+      openRecovery={() => setPanel("recovery")}>
+          {page === "overview" ? <Suspense fallback={<PageState state="loading" title="Preparando sua visão geral" />}><Dashboard orders={data.ordens} clients={data.clientes} vehicles={data.veiculos}
+            today={today} canWrite={canWrite} openOrder={openOrder}
+            newOrder={() => { navigate("orders"); setPanel("new-orders"); }}
+            viewOrders={() => navigate("orders")} viewRecovery={() => setPanel("recovery")} /></Suspense> :
+          order && page === "orders" ? (
             <OrderDetail
               key={order.id}
               order={order}
@@ -422,7 +377,7 @@ export default function App() {
                                 )!;
                               return (
                                 <tr key={o.id}>
-                                  <td>
+                                  <td data-label="OS">
                                     <button
                                       className="table-link os-link"
                                       onClick={() => setSelected(o.id)}
@@ -431,7 +386,7 @@ export default function App() {
                                       #{o.numero}
                                     </button>
                                   </td>
-                                  <td>
+                                  <td data-label="Veículo / placa">
                                     <strong>
                                       {v.marca} {v.modelo}
                                     </strong>
@@ -439,11 +394,11 @@ export default function App() {
                                       <span className="plate">{v.placa}</span>
                                     </small>
                                   </td>
-                                  <td>{c.nome}</td>
-                                  <td>
+                                  <td data-label="Cliente">{c.nome}</td>
+                                  <td data-label="Status">
                                     <Badge status={o.status} />
                                   </td>
-                                  <td>
+                                  <td data-label="Responsável">
                                     {data.usuarios
                                       .find((u) => u.id === o.mecanicoId)
                                       ?.nome.split(" ")[0] || (
@@ -452,17 +407,17 @@ export default function App() {
                                       </span>
                                     )}
                                   </td>
-                                  <td>
+                                  <td data-label="Entrada">
                                     <span className="date-cell">
                                       {date(o.criadoEm, true)}
                                     </span>
                                   </td>
-                                  <td>
+                                  <td data-label="Previsão">
                                     <span className="date-cell">
                                       {date(o.previsaoEntrega, true)}
                                     </span>
                                   </td>
-                                  <td>
+                                  <td data-label="Detalhes">
                                     <button
                                       className="icon-button"
                                       onClick={() => setSelected(o.id)}
@@ -492,7 +447,7 @@ export default function App() {
                             .slice(pagination * 10, pagination * 10 + 10)
                             .map((c) => (
                               <tr key={c.id}>
-                                <td>
+                                <td data-label="Nome">
                                   <button
                                     className="table-link"
                                     onClick={() => {
@@ -503,9 +458,9 @@ export default function App() {
                                     {c.nome}
                                   </button>
                                 </td>
-                                <td>{c.telefone}</td>
-                                <td>{c.email || "Não informado"}</td>
-                                <td>
+                                <td data-label="Telefone">{c.telefone}</td>
+                                <td data-label="E-mail">{c.email || "Não informado"}</td>
+                                <td data-label="Cadastro">
                                   <button
                                     onClick={() => {
                                       setClient(c);
@@ -537,7 +492,7 @@ export default function App() {
                             .slice(pagination * 10, pagination * 10 + 10)
                             .map((v) => (
                               <tr key={v.id}>
-                                <td>
+                                <td data-label="Placa">
                                   <button
                                     className="table-link plate"
                                     onClick={() => {
@@ -548,23 +503,23 @@ export default function App() {
                                     {v.placa}
                                   </button>
                                 </td>
-                                <td>
+                                <td data-label="Veículo">
                                   <strong>
                                     {v.marca} {v.modelo}
                                   </strong>
                                 </td>
-                                <td>
+                                <td data-label="Ano / cor">
                                   {v.ano} / {v.cor}
                                 </td>
-                                <td>{number(v.km)} km</td>
-                                <td>
+                                <td data-label="Quilometragem">{number(v.km)} km</td>
+                                <td data-label="Cliente">
                                   {
                                     data.clientes.find(
                                       (c) => c.id === v.clienteId,
                                     )?.nome
                                   }
                                 </td>
-                                <td>
+                                <td data-label="Cadastro">
                                   <button
                                     onClick={() => {
                                       setVehicle(v);
@@ -594,12 +549,12 @@ export default function App() {
                             .slice(pagination * 10, pagination * 10 + 10)
                             .map((u) => (
                               <tr key={u.id}>
-                                <td>
+                                <td data-label="Nome">
                                   <strong>{u.nome}</strong>
                                 </td>
-                                <td>{u.email}</td>
-                                <td>{roles[u.papel]}</td>
-                                <td>
+                                <td data-label="E-mail">{u.email}</td>
+                                <td data-label="Papel">{roles[u.papel]}</td>
+                                <td data-label="Situação">
                                   <span
                                     className={`classification ${u.ativo ? "ok" : ""}`}
                                   >
@@ -633,12 +588,6 @@ export default function App() {
               )}
             </>
           )}
-        </main>
-        <footer className="workspace-footer">
-          <span>Garagem SaaS</span>
-          <span>Fase 1 · Protótipo de interface</span>
-        </footer>
-      </div>
       {toast && (
         <div role="status" className="toast">
           <Icon name="check" size={19} />
@@ -774,6 +723,15 @@ export default function App() {
           )}
         </Drawer>
       )}
-    </div>
+      {panel === "recovery" && <Drawer title="Dinheiro Esquecido" close={() => setPanel("")} wide>
+        <div className="recovery-intro"><Icon name="recovery" size={28} /><h2>Todo retorno começa com uma boa conversa.</h2><p>A identificação de orçamentos esquecidos, revisões atrasadas e reavaliações pendentes ainda não está disponível.</p></div>
+        <div className="notice"><Icon name="info" size={20} /><p>Os valores abaixo vêm da última versão de cada orçamento aguardando aprovação. Ainda não são oportunidades classificadas nem receita recuperada.</p></div>
+        <h3>Orçamentos aguardando resposta</h3>
+        {getDashboard(data.ordens, today).pendingBudgets.length === 0 ? <Empty title="Nenhum orçamento pendente">Não há versões aguardando decisão nas OS atuais.</Empty> :
+          <ul className="global-results">{getDashboard(data.ordens, today).pendingBudgets.map(({ order: item, version }) => <li key={item.id}>
+            <button onClick={() => openOrder(item.id)}><Icon name="orders" /><span><strong>OS #{item.numero} · {data.clientes.find((c) => c.id === item.clienteId)?.nome}</strong><small>Orçamento v{version.numero} · {date(version.criadoEm, true)} · {money(version.total)}</small><small>Próxima ação: consultar orçamento e decisão do cliente.</small></span><Icon name="arrow" size={18} /></button>
+          </li>)}</ul>}
+      </Drawer>}
+    </Workspace>
   );
 }
