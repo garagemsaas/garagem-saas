@@ -2,12 +2,15 @@ import { clearSession, getAccessToken, getSession, setSession } from "./session"
 import type {
   ApiProblem,
   Checklist,
+  ChecklistInput,
   Cliente,
   Diagnostico,
+  DiagnosticoInput,
   LoginInput,
   Evento,
   OrdemServico,
   OrcamentoVersao,
+  OrcamentoVersaoInput,
   Pagina,
   Sessao,
   StatusOs,
@@ -119,5 +122,14 @@ export const api = {
   },
   updateOrderStatus(id: string, status: StatusOs, revisao: number): Promise<OrdemServico> {
     return request<OrdemServico>(`/api/v1/ordens-servico/${id}/status`, { method: "POST", body: JSON.stringify({ status, revisao }) });
+  },
+  createChecklist(id: string, input: ChecklistInput): Promise<Checklist> {
+    return request<Checklist>(`/api/v1/ordens-servico/${id}/checklist`, { method: "POST", body: JSON.stringify(input) });
+  },
+  addDiagnostic(id: string, input: DiagnosticoInput): Promise<Diagnostico> {
+    return request<Diagnostico>(`/api/v1/ordens-servico/${id}/diagnosticos`, { method: "POST", body: JSON.stringify(input) });
+  },
+  createBudgetVersion(id: string, input: OrcamentoVersaoInput): Promise<OrcamentoVersao> {
+    return request<OrcamentoVersao>(`/api/v1/ordens-servico/${id}/orcamento/versoes`, { method: "POST", body: JSON.stringify(input) });
   },
 };

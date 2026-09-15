@@ -191,10 +191,34 @@ export default function App() {
           : data.usuarios.length;
   const order = data.ordens.find((o) => o.id === selected);
   function updateOrder(o: Order) {
+    const previous = data.ordens.find((item) => item.id === o.id);
     setData((d) => ({
       ...d,
       ordens: d.ordens.map((item) => (item.id === o.id ? o : item)),
     }));
+    if (!api.isConfigured || !previous) return;
+    const revision = Math.max(0, o.revisao - 1);
+    const writes: Promise<unknown>[] = [];
+    if (previous.status !== o.status) writes.push(api.updateOrderStatus(o.id, o.status, revision));
+    if (!previous.checklist && o.checklist) writes.push(api.createChecklist(o.id, {
+      observacoes: o.checklist.observacoes,
+      itens: o.checklist.itens.map((item) => ({ descricao: item.descricao, condicao: item.condicao, observacao: item.observacao })),
+    }));
+    if (o.diagnosticos.length > previous.diagnosticos.length) {
+      const item = o.diagnosticos.at(-1);
+      if (item) writes.push(api.addDiagnostic(o.id, {
+        descricao: item.descricao,
+        classificacao: item.classificacao === "OK" ? "BOM" : item.classificacao === "ACOMPANHAR" ? "ATENCAO" : "CRITICO",
+      }));
+    }
+    if (o.versoes.length > previous.versoes.length) {
+      const version = o.versoes.at(-1);
+      if (version) writes.push(api.createBudgetVersion(o.id, {
+        observacoes: version.observacoes,
+        itens: version.itens.map((item) => ({ tipo: item.tipo, descricao: item.descricao, quantidade: item.quantidade, valorUnitario: item.valorUnitario })),
+      }));
+    }
+    if (writes.length) void Promise.all(writes).then(() => hydrateOrder(o.id)).catch((error) => notify(error instanceof Error ? error.message : "Não foi possível salvar a alteração da OS."));
   }
   function saveClient(c: Client) {
     setData((d) => ({
