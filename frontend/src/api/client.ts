@@ -96,11 +96,26 @@ export const api = {
   listClients(search = "", page = 0, size = 20): Promise<Pagina<Cliente>> {
     return request<Pagina<Cliente>>(`/api/v1/clientes?busca=${encodeURIComponent(search)}&pagina=${page}&tamanho=${size}`);
   },
+  createClient(input: { nome: string; telefone: string; email?: string; revisao?: number }): Promise<Cliente> {
+    return request<Cliente>("/api/v1/clientes", { method: "POST", body: JSON.stringify({ ...input, revisao: input.revisao ?? 0 }) });
+  },
+  updateClient(id: string, input: { nome: string; telefone: string; email?: string; revisao: number }): Promise<Cliente> {
+    return request<Cliente>(`/api/v1/clientes/${id}`, { method: "PUT", body: JSON.stringify(input) });
+  },
   listVehicles(search = "", page = 0, size = 20): Promise<Pagina<Veiculo>> {
     return request<Pagina<Veiculo>>(`/api/v1/veiculos?busca=${encodeURIComponent(search)}&pagina=${page}&tamanho=${size}`);
   },
+  createVehicle(input: { clienteId: string; placa: string; marca: string; modelo: string; ano: number; km: number; cor: string; revisao?: number }): Promise<Veiculo> {
+    return request<Veiculo>("/api/v1/veiculos", { method: "POST", body: JSON.stringify({ ...input, revisao: input.revisao ?? 0 }) });
+  },
+  updateVehicle(id: string, input: { clienteId: string; placa: string; marca: string; modelo: string; ano: number; km: number; cor: string; revisao: number }): Promise<Veiculo> {
+    return request<Veiculo>(`/api/v1/veiculos/${id}`, { method: "PUT", body: JSON.stringify(input) });
+  },
   listOrders(page = 0, size = 20): Promise<Pagina<OrdemServico>> {
     return request<Pagina<OrdemServico>>(`/api/v1/ordens-servico?pagina=${page}&tamanho=${size}`);
+  },
+  createOrder(input: { veiculoId: string; mecanicoId?: string; kmEntrada: number; relato: string; previsaoEntrega?: string }): Promise<OrdemServico> {
+    return request<OrdemServico>("/api/v1/ordens-servico", { method: "POST", body: JSON.stringify(input) });
   },
   getOrder(id: string): Promise<OrdemServico> {
     return request<OrdemServico>(`/api/v1/ordens-servico/${id}`);
@@ -131,5 +146,14 @@ export const api = {
   },
   createBudgetVersion(id: string, input: OrcamentoVersaoInput): Promise<OrcamentoVersao> {
     return request<OrcamentoVersao>(`/api/v1/ordens-servico/${id}/orcamento/versoes`, { method: "POST", body: JSON.stringify(input) });
+  },
+  createPublicLink(id: string): Promise<{ id: string; url: string; token: string; expiraEm: string }> {
+    return request<{ id: string; url: string; token: string; expiraEm: string }>(`/api/v1/ordens-servico/${id}/links`, { method: "POST" });
+  },
+  getPublicOrder(token: string): Promise<unknown> {
+    return request<unknown>(`/api/v1/publico/${encodeURIComponent(token)}`);
+  },
+  decidePublicOrder(token: string, versaoId: string, aprovado: boolean): Promise<unknown> {
+    return request<unknown>(`/api/v1/publico/${encodeURIComponent(token)}/decisao`, { method: "POST", body: JSON.stringify({ versaoId, aprovado }) });
   },
 };

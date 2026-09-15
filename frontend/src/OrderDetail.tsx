@@ -23,6 +23,7 @@ import type {
 } from "./model";
 import { Badge, Drawer, Empty, Field, Icon } from "./ui";
 import { AddButton, Form } from "./forms";
+import { api } from "./api";
 
 const tabs = [
   "Resumo",
@@ -818,21 +819,20 @@ export default function OrderDetail({
                         )}
                       {!order.link?.ativo ? (
                         <button
-                          onClick={() =>
-                            change(
-                              {
-                                link: {
-                                  ativo: true,
-                                  expiraEm: new Date(
-                                    Date.now() + 7 * 86400000,
-                                  ).toISOString(),
-                                },
-                              },
-                              "Link de demonstração emitido com validade de 7 dias.",
-                            )
-                          }
+                          onClick={async () => {
+                            if (api.isConfigured) {
+                              try {
+                                const link = await api.createPublicLink(order.id);
+                                change({ link: { ativo: true, expiraEm: link.expiraEm, token: link.token, url: link.url } }, "Link público emitido com validade de 7 dias.");
+                              } catch (error) {
+                                notify(error instanceof Error ? error.message : "Não foi possível emitir o link.");
+                              }
+                              return;
+                            }
+                            change({ link: { ativo: true, expiraEm: new Date(Date.now() + 7 * 86400000).toISOString() } }, "Link de demonstração emitido com validade de 7 dias.");
+                          }}
                         >
-                          Gerar link de demonstração
+                          {api.isConfigured ? "Gerar link público" : "Gerar link de demonstração"}
                         </button>
                       ) : (
                         <>
@@ -1136,7 +1136,7 @@ export default function OrderDetail({
           close={() => setPanel("")}
         >
           <p className="demo-label">
-            Demonstração local · nenhuma decisão real será enviada
+            {api.isConfigured ? "Acompanhamento público · decisão registrada na oficina" : "Demonstração local · nenhuma decisão real será enviada"}
           </p>
           <div className="public-heading">
             <small>ACOMPANHE SEU VEÍCULO</small>
@@ -1198,8 +1198,16 @@ export default function OrderDetail({
                           </button>
                           <button
                             className={decision ? "primary" : "danger-button"}
-                            onClick={() => {
+                            onClick={async () => {
                               const aprovado = decision;
+                              if (api.isConfigured && order.link?.token) {
+                                try {
+                                  await api.decidePublicOrder(order.link.token, latest.id, aprovado);
+                                } catch (error) {
+                                  notify(error instanceof Error ? error.message : "Não foi possível registrar a decisão.");
+                                  return;
+                                }
+                              }
                               change(
                                 {
                                   status: aprovado
