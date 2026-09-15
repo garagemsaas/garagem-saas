@@ -1,3 +1,4 @@
+import { TableRegion } from './TableRegion';
 import { useRef, useState } from "react";
 import {
   date,
@@ -25,6 +26,7 @@ import { Badge, Drawer, Empty, Field, Icon } from "./ui";
 import { AddButton, Form } from "./forms";
 import { api, ApiError, diagnosisToApi, loadOrder } from "./api";
 import PrivatePhoto from "./PrivatePhoto";
+import { Timeline } from './Timeline';
 
 const tabs = [
   "Resumo",
@@ -37,32 +39,32 @@ const tabs = [
 export function BudgetTable({ version }: { version: Version }) {
   return (
     <>
-      <div className="table-scroll">
+      <TableRegion label="Itens registrados">
         <table className="budget-table">
           <thead>
             <tr>
-              <th>Item</th>
-              <th>Tipo</th>
-              <th className="numeric">Qtd.</th>
-              <th className="numeric">Valor unitário</th>
-              <th className="numeric">Subtotal</th>
+              <th scope="col">Item</th>
+              <th scope="col">Tipo</th>
+              <th scope="col" className="numeric">Qtd.</th>
+              <th scope="col" className="numeric">Valor unitário</th>
+              <th scope="col" className="numeric">Subtotal</th>
             </tr>
           </thead>
           <tbody>
             {version.itens.map((i) => (
               <tr key={i.id}>
-                <td>
+                <td data-label="Item">
                   <strong>{i.descricao}</strong>
                 </td>
-                <td>{i.tipo === "PECA" ? "Peça" : "Serviço"}</td>
-                <td className="numeric">{number(i.quantidade)}</td>
-                <td className="numeric">{money(i.valorUnitario)}</td>
-                <td className="numeric">{money(i.subtotal)}</td>
+                <td data-label="Tipo">{i.tipo === "PECA" ? "Peça" : "Serviço"}</td>
+                <td data-label="Quantidade" className="numeric">{number(i.quantidade)}</td>
+                <td data-label="Valor unitário" className="numeric">{money(i.valorUnitario)}</td>
+                <td data-label="Subtotal" className="numeric">{money(i.subtotal)}</td>
               </tr>
             ))}
           </tbody>
         </table>
-      </div>
+      </TableRegion>
       <div className="budget-total">
         <span>
           Total do orçamento{" "}
@@ -98,6 +100,7 @@ function ChecklistForm({
     <Form
       close={close}
       submit="Registrar checklist"
+      confirmation="O checklist preserva as condições de entrada e não poderá ser editado. Confira os itens antes de confirmar."
       note="Confira os dados antes de registrar. O checklist de entrada é único e não poderá ser editado."
       save={(f) => {
         if (itens.some((i) => !i.descricao.trim() || !i.condicao.trim()))
@@ -112,6 +115,7 @@ function ChecklistForm({
             <input
               required
               maxLength={200}
+              name={`itens[${n}].descricao`}
               value={i.descricao}
               onChange={(e) => edit(i.id, "descricao", e.target.value)}
               placeholder="Ex.: pneus, carroceria, combustível"
@@ -121,6 +125,7 @@ function ChecklistForm({
             <input
               required
               maxLength={100}
+              name={`itens[${n}].condicao`}
               value={i.condicao}
               onChange={(e) => edit(i.id, "condicao", e.target.value)}
               placeholder="Ex.: bom estado"
@@ -129,6 +134,7 @@ function ChecklistForm({
           <Field label="Observação">
             <input
               maxLength={1000}
+              name={`itens[${n}].observacao`}
               value={i.observacao}
               onChange={(e) => edit(i.id, "observacao", e.target.value)}
             />
@@ -192,6 +198,7 @@ function VersionForm({
     <Form
       close={close}
       submit={`Criar versão ${(previous?.numero || 0) + 1}`}
+      confirmation={`Registrar esta versão de ${money(total)}? Os valores serão preservados e qualquer correção exigirá uma nova versão.`}
       note="Cada versão preserva seus itens e valores. Ao criar uma nova, a OS volta à etapa Orçamento e precisa ser disponibilizada novamente ao cliente."
       save={(f) => {
         if (itens.some((i) => !i.descricao.trim()))
@@ -212,6 +219,7 @@ function VersionForm({
           <div className="form-grid">
             <Field label="Tipo">
               <select
+                name={`itens[${n}].tipo`}
                 value={i.tipo}
                 onChange={(e) =>
                   edit(i.id, { tipo: e.target.value as BudgetItem["tipo"] })
@@ -225,6 +233,7 @@ function VersionForm({
               <input
                 required
                 maxLength={500}
+                name={`itens[${n}].descricao`}
                 value={i.descricao}
                 onChange={(e) => edit(i.id, { descricao: e.target.value })}
               />
@@ -235,6 +244,7 @@ function VersionForm({
               <input
                 type="number"
                 min="0.001"
+                name={`itens[${n}].quantidade`}
                 max="999999.999"
                 step="0.001"
                 required
@@ -248,6 +258,7 @@ function VersionForm({
               <input
                 type="number"
                 min="0"
+                name={`itens[${n}].valorUnitario`}
                 max="99999999.99"
                 step="0.01"
                 required
@@ -323,7 +334,7 @@ function PhotoForm({
         }
         setBusy(true);
         try {
-          const bitmap = await createImageBitmap(file);
+          const bitmap = await createImageBitmap(file).catch(() => { throw new Error('Não foi possível ler esta imagem. Selecione um arquivo PNG ou JPEG válido.'); });
           const pixels = bitmap.width * bitmap.height;
           bitmap.close();
           if (pixels > 20_000_000)
@@ -429,23 +440,31 @@ export default function OrderDetail({
     office = role !== "MECANICO",
     diagnosis = role !== "ATENDENTE";
   async function perform(action: () => Promise<unknown>, event: string, revoke = false) {
-    if (saving.current) return;
+    if (saving.current) return false;
     saving.current = true; setBusy(true); setError('');
+    let committed = false;
     try {
       await action();
+      committed = true;
+      setPanel(''); notify(event);
       const fresh = await loadOrder(order.id);
       await update({ ...fresh, link: revoke ? undefined : order.link });
-      setPanel(''); notify(event);
+      return true;
     } catch (e) {
+      if (committed) {
+        setError('A alteração foi salva, mas os dados não puderam ser recarregados. Clique em Atualizar dados antes de continuar.');
+        return true;
+      }
       setError(e instanceof Error ? e.message : 'Não foi possível salvar.');
       if (e instanceof ApiError && e.status === 409) {
         try { await update({ ...await loadOrder(order.id), link: order.link }); } catch { /* Keep the original conflict visible. */ }
       }
+      return false;
     } finally { saving.current = false; setBusy(false); }
   }
   async function change(patch: Partial<Order>, event: string) {
     const path = `/ordens-servico/${order.id}`;
-    return perform(async () => {
+    const saved = await perform(async () => {
       if (patch.checklist) await api(`${path}/checklist`, 'POST', { observacoes: patch.checklist.observacoes, itens: patch.checklist.itens.map(({ descricao, condicao, observacao }) => ({ descricao, condicao, observacao })) });
       else if (patch.diagnosticos) {
         const d = patch.diagnosticos.at(-1)!;
@@ -457,13 +476,17 @@ export default function OrderDetail({
       } else if (patch.mecanicoId) await api(`${path}/responsavel`, 'PUT', { mecanicoId: patch.mecanicoId, revisao: order.revisao });
       else if (patch.status) await api(`${path}/status`, 'POST', { status: patch.status, revisao: order.revisao });
     }, event);
+    if (!saved) throw new Error('A alteração não foi salva. Confira o aviso e revise os dados antes de tentar novamente.');
   }
   async function createLink() {
     if (saving.current) return;
     saving.current = true; setBusy(true); setError('');
     try {
       const link = await api<NonNullable<Order['link']>>(`/ordens-servico/${order.id}/links`, 'POST');
-      await update({ ...await loadOrder(order.id), link: { ...link, ativo: true } });
+      // Preserve the one-time token even if the following history refresh fails.
+      const publicLink = { ...link, url: `${window.location.origin}/acompanhar#${encodeURIComponent(link.token ?? '')}`, ativo: true };
+      await update({ ...order, link: publicLink });
+      try { await update({ ...await loadOrder(order.id), link: publicLink }); } catch { setError('Link criado. Não foi possível atualizar o histórico; copie o link e atualize os dados.'); }
       notify('Link criado. Copie o endereço abaixo para compartilhar com o cliente.');
     } catch (e) { setError(e instanceof Error ? e.message : 'Falha ao gerar link.'); }
     finally { saving.current = false; setBusy(false); }
@@ -667,13 +690,13 @@ export default function OrderDetail({
             </div>
             {order.checklist ? (
               <>
-                <div className="table-scroll">
+                <TableRegion label="Itens registrados">
                   <table>
                     <thead>
                       <tr>
-                        <th>Item</th>
-                        <th>Condição</th>
-                        <th>Observação</th>
+                        <th scope="col">Item</th>
+                        <th scope="col">Condição</th>
+                        <th scope="col">Observação</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -688,7 +711,7 @@ export default function OrderDetail({
                       ))}
                     </tbody>
                   </table>
-                </div>
+      </TableRegion>
                 <div className="budget-notes">
                   <small>Observações da entrada</small>
                   <p>
@@ -828,12 +851,7 @@ export default function OrderDetail({
                         !latest.decisao && (
                           <button
                             className="primary"
-                            onClick={() =>
-                              change(
-                                { status: "AGUARDANDO_APROVACAO" },
-                                "Orçamento disponibilizado para aprovação.",
-                              )
-                            }
+                            onClick={() => setPanel('disponibilizar')}
                           >
                             Disponibilizar orçamento
                           </button>
@@ -920,8 +938,7 @@ export default function OrderDetail({
               </div>
             ) : (
               <Empty title="Nenhuma foto adicionada">
-                Adicione uma imagem para avaliar a galeria e a visualização
-                ampliada.
+                Registre as condições do veículo com fotos de entrada, diagnóstico ou serviço.
               </Empty>
             )}
           </>
@@ -934,19 +951,7 @@ export default function OrderDetail({
                 <p>Eventos em ordem cronológica, do recebimento à conclusão.</p>
               </div>
             </div>
-            <ol className="timeline">
-              {[...order.timeline]
-                .sort((a, b) => a.criadoEm.localeCompare(b.criadoEm))
-                .map((e) => (
-                  <li key={e.id}>
-                    <time>{date(e.criadoEm, true)}</time>
-                    <div>
-                      <strong>{e.descricao}</strong>
-                      <small>{e.origem}</small>
-                    </div>
-                  </li>
-                ))}
-            </ol>
+            <Timeline events={order.timeline} />
           </>
         )}
       </section>
@@ -1027,7 +1032,7 @@ export default function OrderDetail({
           <PhotoForm
             order={order}
             close={() => setPanel("")}
-            save={(upload) => perform(() => api(`/ordens-servico/${order.id}/fotos`, 'POST', upload), 'Foto adicionada à OS.')}
+            save={async (upload) => { if (!await perform(() => api(`/ordens-servico/${order.id}/fotos`, 'POST', upload), 'Foto adicionada à OS.')) throw new Error('Não foi possível enviar a foto. Confira o aviso e tente novamente.'); }}
           />
         </Drawer>
       )}
@@ -1107,6 +1112,11 @@ export default function OrderDetail({
           </Form>
         </Drawer>
       )}
+      {panel === 'disponibilizar' && <Drawer title="Disponibilizar orçamento" close={() => setPanel('')} error={error}>
+        <Form close={() => setPanel('')} submit="Confirmar disponibilização" save={() => change({ status: 'AGUARDANDO_APROVACAO' }, 'Orçamento disponibilizado para aprovação.')}>
+          <p>Disponibilizar a versão {latest?.numero} de {money(latest?.total ?? 0)}? O cliente poderá aprovar ou recusar o valor integral pelo link público.</p>
+        </Form>
+      </Drawer>}
       {panel === "revogar" && (
         <Drawer error={error} title="Revogar link do cliente" close={() => setPanel("")}>
           <p>
@@ -1126,8 +1136,6 @@ export default function OrderDetail({
           </div>
         </Drawer>
       )}
-{panel === "publico" && (...)}
-{panel === "recusado" && (...)}
       {photo && (
         <Drawer error={error} title="Foto do veículo" wide close={() => setPhoto(undefined)}>
           <PrivatePhoto

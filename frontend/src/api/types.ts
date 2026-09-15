@@ -10,7 +10,7 @@ export type StatusOs =
   | "TESTE"
   | "PRONTO";
 
-export type Classificacao = "BOM" | "ATENCAO" | "CRITICO";
+export type Classificacao = "VERDE" | "AMARELO" | "VERMELHO";
 
 export interface Sessao {
   accessToken: string;

@@ -1,4 +1,5 @@
-import { cloneElement, isValidElement, useEffect, useId, useRef } from "react";
+import { cloneElement, isValidElement, useContext, useEffect, useId, useRef } from "react";
+import { FormErrors } from './form-context';
 import type { ReactNode } from "react";
 import { statuses } from "./model";
 import type { Status } from "./model";
@@ -50,6 +51,9 @@ export function Field({
   hint?: string;
 }) {
   const id = useId();
+  const errors = useContext(FormErrors);
+  const fieldName = isValidElement<{ name?: string }>(children) ? children.props.name : undefined;
+  const error = fieldName ? errors[fieldName] : undefined;
   return (
     <label className="field">
       <span id={id}>{label}</span>
@@ -58,10 +62,12 @@ export function Field({
       ["input", "select", "textarea"].includes(children.type)
         ? cloneElement(children, {
             "aria-labelledby": id,
-            "aria-describedby": hint ? `${id}-hint` : undefined,
+            "aria-describedby": [hint && `${id}-hint`, error && `${id}-error`].filter(Boolean).join(' ') || undefined,
+            "aria-invalid": Boolean(error),
           })
         : children}
       {hint && <small id={`${id}-hint`}>{hint}</small>}
+      {error && <small id={`${id}-error`} className="field-error">{error}</small>}
     </label>
   );
 }
@@ -80,6 +86,11 @@ export function Drawer({
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
+  function safeClose() {
+    if (ref.current?.querySelector('form[aria-busy="true"]')) return;
+    if (ref.current?.querySelector('form[data-dirty="true"]') && !window.confirm('Descartar as alterações não salvas?')) return;
+    close();
+  }
   useEffect(() => {
     const previous = document.activeElement as HTMLElement;
     const overflow = document.body.style.overflow;
@@ -97,14 +108,14 @@ export function Drawer({
       className={`drawer ${wide ? "wide" : ""}`}
       onCancel={(e) => {
         e.preventDefault();
-        close();
+        safeClose();
       }}
     >
       <header>
         <h2 id={titleId}>{title}</h2>
         <button
           className="icon-button"
-          onClick={close}
+          onClick={safeClose}
           aria-label="Fechar painel"
         >
           <Icon name="close" />

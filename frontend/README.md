@@ -1,47 +1,88 @@
-# Frontend Garagem SaaS — Fase 1
+# Frontend Garagem SaaS — Fase 2 (Kauã)
 
-React + TypeScript + Vite. Interface integrada à API REST real; layout aprovado preservado. A fonte operacional é o backend, com PostgreSQL e MinIO privado.
-
-## Integração progressiva com a API
-
-A camada `src/api` já contém os tipos equivalentes aos DTOs publicados pelo backend, cliente HTTP, renovação de sessão e tratamento de erros em português. Para apontar o frontend para uma API local, copie `.env.example` para `.env.local` e defina:
-
-```env
-VITE_API_BASE_URL=http://localhost:8080
-```
-
-O protótipo continua iniciando em modo demonstração quando essa variável fica vazia. A conexão das telas ao estado remoto será feita por fluxo, depois que os contratos forem confirmados com o backend.
+React, TypeScript e Vite, integrado aos contratos REST documentados em [api-v1.md](../docs/api-v1.md).
+Não existe modo demonstração nem fallback com registros fictícios.
 
 ## Executar
 
-```sh
+Requer Node 22.18+ ou 24+:
+
+```powershell
+cd C:\Projetos\garagem-saas\frontend
 npm ci
-npm run dev -- --host 127.0.0.1 --port 5173
+npm run dev
 ```
 
-API em http://127.0.0.1:8080, encaminhada pelo proxy `/api` de Vite (dev/preview). Login exige oficina provisionada. Papel/usuário vêm da sessão; tokens somente em memória e novo login após reload. Registros continuam no banco.
+Abra o endereço indicado pelo Vite. O proxy encaminha `/api` para
+`http://127.0.0.1:8080`. O login precisa de uma oficina provisionada e credenciais válidas no backend.
+
+`VITE_API_BASE_URL` é opcional: vazio usa a mesma origem e o proxy local.
+Outra origem exige CORS configurado no backend. Em produção, configure o servidor
+para encaminhar `/api` à API e servir `index.html` também em `/acompanhar`.
+Nunca coloque segredos em variáveis `VITE_*`.
 
 ## Verificar
 
-```sh
+```powershell
 npm run lint
 npm run typecheck
 npm test
 npm run build
+npx playwright install chromium
+npm run test:ui
 ```
 
-Node 22.18+ ou 24+ para executar os testes TypeScript no Node. Roteiros `tests/e2e-real.mjs` e `tests/public-real.mjs` exigem API, PostgreSQL, MinIO, Playwright/Chromium e duas oficinas de teste novas. Executar separadamente conforme [fixture e reprodução](../docs/fase1-finalizacao.md#relatórios-e-reprodução). Não usam mocks de rede; criam registros reais no ambiente de teste.
+- Testes unitários: sessão, renovação concorrente, isolamento de respostas antigas,
+  erros RFC 7807, multipart, paginação e cálculos do dashboard.
+- Testes de navegador: cenários controlados do contrato REST, com Chromium em
+  1440×1000, 768×1024 e 390×844. Exercitam os cadastros, OS até conclusão,
+  fotos, aprovação pública, estados de erro/vazio/carregamento, permissões e
+  verificações axe de acessibilidade WCAG A/AA.
+- Esses testes usam API simulada **somente dentro da suíte de testes**; não comprovam
+  persistência no PostgreSQL/MinIO.
+- Os roteiros legados `tests/e2e-real.mjs` e `tests/public-real.mjs` pertencem à
+  Fase 1 e precisam de ambiente/fixtures reais e atualização dos seletores para
+  as novas confirmações. Não fazem parte de `npm run test:ui`.
 
-## Integração
+O workflow `.github/workflows/frontend.yml` executa lint, testes, build e testes
+de navegador em PRs que alteram o frontend.
 
-- `api.ts`: Bearer, refresh compartilhado, descarte de respostas de sessão antiga, paginação e mapeamento de diagnósticos.
-- `App.tsx` / `forms.tsx`: autenticação, cadastros, equipe, listas e abertura de OS.
-- `OrderDetail.tsx`: ações reais, revisões, conflitos e histórico do backend.
-- `PrivatePhoto.tsx`: bytes autenticados em Blob URL temporária, revogada ao desmontar.
-- `PublicOrder.tsx`: `/acompanhar#token`, resumo público e decisão integral com confirmação.
+## Organização
 
-Listas percorrem páginas de 100 e exibem dez por página; busca global é local sobre os registros carregados. Não há filtro de status/data/responsável na API. “Atualizar dados” busca o estado atual; não há tempo real. Links não podem ser recuperados após a emissão: copie imediatamente; a interface mantém o último link apenas no detalhe carregado.
+| Arquivo | Responsabilidade |
+|---|---|
+| `src/api.ts` | Cliente HTTP único: Bearer, refresh compartilhado, timeout, JSON, upload, fotos privadas e erros estruturados |
+| `src/api/types.ts` | DTOs e tipos do contrato, incluindo VERDE/AMARELO/VERMELHO |
+| `src/App.tsx` | Login, proteção das telas, navegação, clientes, veículos e listagem/abertura de OS |
+| `src/forms.tsx` | Formulário com envio bloqueado, confirmação, erros por campo e formulários de cadastro |
+| `src/ui.tsx` | Campos acessíveis, painel modal, status, busca, paginação e estados vazios |
+| `src/PageState.tsx` | Carregamento, erro recuperável e proteção contra falhas de renderização |
+| `src/TableRegion.tsx` | Região de tabela com rolagem por teclado e toque |
+| `src/Timeline.tsx` | Histórico cronológico reutilizável com estado vazio |
+| `src/OrderDetail.tsx` | Checklist, diagnóstico, orçamento versionado, fotos, responsável, status e links |
+| `src/PublicOrder.tsx` | Acompanhamento público e decisão integral do cliente com confirmação |
+| `src/icons.tsx` | Única fonte de ícones: lucide-react |
+| `src/design-system.css` | Responsividade, contraste e componentes visuais |
 
-O gerador `seed()` permanece como fixture histórica, sem uso no App integrado. Referências visuais preexistentes a módulos futuros não implementam Fase 2.
+## Comportamentos importantes
 
-[Contratos REST](../docs/api-contracts.md) · [Finalização](../docs/fase1-finalizacao.md) · [README geral](../README.md)
+A sessão fica somente em memória. Recarregar ou fechar a aba exige novo login.
+Ao receber 401, uma única renovação atende às chamadas concorrentes; se recusada,
+a interface limpa a sessão e volta ao login. Logout revoga o refresh quando a API
+está acessível. Papéis limitam as ações visíveis, e a API continua responsável por
+autorizar cada operação e isolar as oficinas.
+
+Cada ação da OS escreve uma única vez e só usa o resultado confirmado pela API.
+Checklist e versões de orçamento pedem confirmação e preservam seus registros.
+Mudança de status, disponibilização do orçamento, revogação do link e decisão
+pública também têm confirmação explícita. O link público usa a origem do frontend
+e o token no fragmento: `/acompanhar#token`. Copie ao emitir; a API não lista tokens
+já emitidos. A página pública exibe somente o resumo permitido pelo contrato,
+sem fotos, dados pessoais ou timeline interna.
+
+Listagens carregam todas as páginas de 100 registros e exibem dez por página;
+buscas são locais. O dashboard ainda calcula indicadores sobre esses registros.
+Paginação/filtros no servidor e uso do endpoint agregado `/dashboard` são uma
+evolução de escala, não implementada nesta entrega.
+
+Veja o [checklist e as evidências da entrega](../docs/fase2-kaua-frontend.md).

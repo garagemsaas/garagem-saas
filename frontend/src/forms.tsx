@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { ApiError } from './api';
+import { FormErrors } from './form-context';
 import type { FormEvent, ReactNode } from "react";
-import { Field, Icon } from "./ui";
+import { Empty, Field, Icon } from "./ui";
 import { roles, uid, val } from "./model";
 import type { Client, Vehicle, User, Order, Role } from "./model";
 
@@ -10,45 +12,74 @@ export function Form({
   close,
   submit = "Salvar",
   note,
+  confirmation,
 }: {
   children: ReactNode;
   save: (f: FormData) => void | Promise<void>;
   close: () => void | Promise<void>;
   submit?: string;
   note?: string;
+  confirmation?: string;
 }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [pending, setPending] = useState<FormData | null>(null);
+  const ref = useRef<HTMLFormElement>(null);
+  const saving = useRef(false);
+  async function persist(data: FormData) {
+    if (saving.current) return;
+    saving.current = true;
+    setBusy(true); setError(''); setFieldErrors({});
+    try {
+      await save(data);
+      if (ref.current) delete ref.current.dataset.dirty;
+      setPending(null);
+    } catch (err) {
+      setPending(null);
+      setError(err instanceof Error ? err.message : 'Confira os dados informados.');
+      if (err instanceof ApiError) setFieldErrors(Object.fromEntries(err.errors.map(item => [item.field, item.message])));
+      requestAnimationFrame(() => {
+        const target = ref.current?.querySelector<HTMLElement>('[aria-invalid="true"]') ?? ref.current?.querySelector<HTMLElement>('[role="alert"]');
+        target?.focus();
+      });
+    } finally { saving.current = false; setBusy(false); }
+  }
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (busy) return;
-    setBusy(true);
-    setError("");
-    try {
-      await save(new FormData(e.currentTarget));
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Confira os dados informados.",
-      );
-    } finally { setBusy(false); }
+    if (busy || pending) return;
+    const data = new FormData(e.currentTarget);
+    if (confirmation) { setPending(data); return; }
+    await persist(data);
   }
   return (
-    <form onSubmit={onSubmit}>
+    <form ref={ref} onSubmit={onSubmit} aria-busy={busy} onInput={() => { if (ref.current) ref.current.dataset.dirty = 'true'; }}>
       {note && <p className="form-note">{note}</p>}
-      {children}
+      <FormErrors.Provider value={fieldErrors}>
+        <fieldset className="form-fields" disabled={busy || Boolean(pending)}>{children}</fieldset>
+      </FormErrors.Provider>
       {error && (
-        <p role="alert" className="error">
+        <p role="alert" tabIndex={-1} className="error">
           {error}
         </p>
       )}
+      {pending && <section className="confirmation" role="alert">
+        <h3>Confirmar registro?</h3><p>{confirmation}</p>
+        <div className="form-actions">
+          <button type="button" disabled={busy} onClick={() => setPending(null)}>Revisar dados</button>
+          <button type="button" className="primary" disabled={busy} onClick={() => void persist(pending)}>{busy ? 'Salvando…' : 'Confirmar e salvar'}</button>
+        </div>
+      </section>}
+      {!pending && <>
       <div className="form-actions">
-        <button type="button" onClick={close}>
+        <button type="button" disabled={busy} onClick={() => { if (ref.current?.dataset.dirty !== 'true' || window.confirm('Descartar as alterações não salvas?')) void close(); }}>
           Cancelar
         </button>
         <button className="primary" type="submit" disabled={busy}>
-          {submit}
+          {busy ? 'Salvando…' : submit}
         </button>
       </div>
+      </>}
     </form>
   );
 }
@@ -122,6 +153,7 @@ export function VehicleForm({
   save: (v: Vehicle) => void | Promise<void>;
   close: () => void | Promise<void>;
 }) {
+  if (!clients.length) return <><Empty title="Cadastre um cliente primeiro">Todo veículo precisa estar vinculado ao seu proprietário. Abra Clientes e cadastre o contato antes de continuar.</Empty><button onClick={close}>Voltar</button></>;
   return (
     <Form
       close={close}
@@ -301,6 +333,7 @@ export function OrderForm({
 }) {
   const [vehicleId, setVehicleId] = useState("");
   const vehicle = vehicles.find((v) => v.id === vehicleId);
+  if (!vehicles.length) return <><Empty title="Cadastre um veículo primeiro">Abra Veículos e vincule um veículo ao cliente antes de abrir a ordem de serviço.</Empty><button onClick={close}>Voltar</button></>;
   return (
     <Form
       close={close}
