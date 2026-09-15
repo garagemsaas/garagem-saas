@@ -2,10 +2,14 @@ package br.com.garagem.ordemservico.api;
 
 import br.com.garagem.ordemservico.api.OsDtos.*;
 import br.com.garagem.ordemservico.application.OsService;
+import br.com.garagem.ordemservico.domain.StatusOs;
 import br.com.garagem.shared.persistence.Pagina;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.Valid;
+import java.time.Instant;
 import java.util.*;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -20,12 +24,51 @@ public class OsController {
   }
 
   @GetMapping
-  @Operation(summary = "Buscar OS por placa, cliente ou número")
+  @Operation(
+      summary = "Listar ordens de serviço da oficina",
+      description =
+          "Sempre restrito à oficina do token. Os filtros combinam com E lógico; o período"
+              + " compara a data de abertura da OS.")
   public Pagina<OsSaida> listar(
-      @RequestParam(defaultValue = "") String busca,
-      @RequestParam(defaultValue = "0") int pagina,
-      @RequestParam(defaultValue = "20") int tamanho) {
-    return service.listar(busca, pagina, tamanho);
+      @Parameter(description = "Texto único: casa com placa, nome do cliente ou número da OS")
+          @RequestParam(defaultValue = "")
+          String busca,
+      @Parameter(description = "Número exato da OS") @RequestParam(required = false) Long numero,
+      @Parameter(description = "Status atual") @RequestParam(required = false) StatusOs status,
+      @Parameter(description = "Cliente da mesma oficina") @RequestParam(required = false)
+          UUID clienteId,
+      @Parameter(description = "Veículo da mesma oficina") @RequestParam(required = false)
+          UUID veiculoId,
+      @Parameter(description = "Mecânico responsável") @RequestParam(required = false)
+          UUID mecanicoId,
+      @Parameter(description = "Parte da placa") @RequestParam(required = false) String placa,
+      @Parameter(
+              description = "Abertas a partir deste instante ISO-8601",
+              example = "2026-09-01T00:00:00Z")
+          @RequestParam(required = false)
+          @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+          Instant de,
+      @Parameter(
+              description = "Abertas até este instante ISO-8601",
+              example = "2026-09-30T23:59:59Z")
+          @RequestParam(required = false)
+          @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+          Instant ate,
+      @Parameter(description = "Página, começando em 0") @RequestParam(defaultValue = "0")
+          int pagina,
+      @Parameter(description = "Itens por página, máximo 100") @RequestParam(defaultValue = "20")
+          int tamanho,
+      @Parameter(
+              description =
+                  "campo,asc|desc — aceita numero, status, criadoEm, previsaoEntrega ou concluidaEm",
+              example = "numero,desc")
+          @RequestParam(required = false)
+          String ordenacao) {
+    return service.listar(
+        new OsFiltro(busca, numero, status, clienteId, veiculoId, mecanicoId, placa, de, ate),
+        pagina,
+        tamanho,
+        ordenacao);
   }
 
   @GetMapping("/{id}")

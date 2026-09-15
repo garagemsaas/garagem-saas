@@ -4,6 +4,7 @@ import br.com.garagem.cliente.api.ClienteDtos.*;
 import br.com.garagem.cliente.application.ClienteService;
 import br.com.garagem.shared.persistence.Pagina;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -19,12 +20,28 @@ public class ClienteController {
   }
 
   @GetMapping
-  @Operation(summary = "Listar clientes da oficina por nome")
+  @Operation(
+      summary = "Listar clientes da oficina",
+      description =
+          "Sempre restrito à oficina do token. Os filtros combinam entre si com E lógico e"
+              + " ignoram maiúsculas/minúsculas.")
   public Pagina<Saida> listar(
-      @RequestParam(defaultValue = "") String busca,
-      @RequestParam(defaultValue = "0") int pagina,
-      @RequestParam(defaultValue = "20") int tamanho) {
-    return service.listar(busca, pagina, tamanho);
+      @Parameter(description = "Texto único: casa com nome, telefone ou e-mail")
+          @RequestParam(defaultValue = "")
+          String busca,
+      @Parameter(description = "Parte do nome") @RequestParam(required = false) String nome,
+      @Parameter(description = "Parte do telefone") @RequestParam(required = false) String telefone,
+      @Parameter(description = "Parte do e-mail") @RequestParam(required = false) String email,
+      @Parameter(description = "Página, começando em 0") @RequestParam(defaultValue = "0")
+          int pagina,
+      @Parameter(description = "Itens por página, máximo 100") @RequestParam(defaultValue = "20")
+          int tamanho,
+      @Parameter(
+              description = "campo,asc|desc — aceita nome, telefone, email ou criadoEm",
+              example = "nome,asc")
+          @RequestParam(required = false)
+          String ordenacao) {
+    return service.listar(busca, nome, telefone, email, pagina, tamanho, ordenacao);
   }
 
   @GetMapping("/{id}")

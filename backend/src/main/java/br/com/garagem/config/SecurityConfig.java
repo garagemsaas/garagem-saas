@@ -1,10 +1,15 @@
 package br.com.garagem.config;
 
+import br.com.garagem.shared.error.ErrorCodes;
+import br.com.garagem.shared.error.ProblemJson;
 import br.com.garagem.tenancy.TenantRequestFilter;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import javax.crypto.spec.SecretKeySpec;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.*;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -18,9 +23,11 @@ import org.springframework.security.oauth2.jwt.*;
 import org.springframework.security.oauth2.server.resource.authentication.*;
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.*;
 
 @Configuration
 @EnableMethodSecurity
+@EnableConfigurationProperties(CorsProperties.class)
 public class SecurityConfig {
   @Bean
   PasswordEncoder passwords() {
@@ -54,14 +61,39 @@ public class SecurityConfig {
     return decoder;
   }
 
+  /**
+   * Origens explícitas, sem credenciais de navegador: a API autentica por cabeçalho Authorization,
+   * nunca por cookie, então não há por que ligar allowCredentials. Sem origens configuradas, nenhum
+   * cabeçalho CORS é emitido.
+   */
   @Bean
-  SecurityFilterChain security(HttpSecurity http, JdbcTemplate jdbc) throws Exception {
+  CorsConfigurationSource corsSource(CorsProperties properties) {
+    var config = new CorsConfiguration();
+    config.setAllowedOrigins(properties.allowedOrigins());
+    config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+    config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
+    config.setExposedHeaders(List.of("X-Request-Id"));
+    config.setAllowCredentials(false);
+    config.setMaxAge(3600L);
+    var source = new UrlBasedCorsConfigurationSource();
+    if (!properties.allowedOrigins().isEmpty()) source.registerCorsConfiguration("/**", config);
+    LoggerFactory.getLogger(SecurityConfig.class)
+        .atInfo()
+        .addKeyValue("origens_cors", properties.allowedOrigins().size())
+        .log("cors_configurado");
+    return source;
+  }
+
+  @Bean
+  SecurityFilterChain security(
+      HttpSecurity http, JdbcTemplate jdbc, CorsConfigurationSource corsSource) throws Exception {
     var roles = new JwtGrantedAuthoritiesConverter();
     roles.setAuthoritiesClaimName("papel");
     roles.setAuthorityPrefix("ROLE_");
     var converter = new JwtAuthenticationConverter();
     converter.setJwtGrantedAuthoritiesConverter(roles);
     return http.csrf(csrf -> csrf.disable())
+        .cors(c -> c.configurationSource(corsSource))
         .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(
             a ->
@@ -71,7 +103,8 @@ public class SecurityConfig {
                         "/v3/api-docs/**",
                         "/swagger-ui/**",
                         "/swagger-ui.html",
-                        "/actuator/health")
+                        "/actuator/health",
+                        "/actuator/health/**")
                     .permitAll()
                     .anyRequest()
                     .authenticated())
@@ -95,17 +128,15 @@ public class SecurityConfig {
         .build();
   }
 
+  /** Mesmo corpo RFC 7807 do resto da API, para o frontend tratar 401/403 de um jeito só. */
   private static void failure(jakarta.servlet.http.HttpServletResponse response, int code)
       throws java.io.IOException {
-    response.setStatus(code);
-    response.setCharacterEncoding("UTF-8");
-    response.setContentType("application/problem+json");
-    if (code == 401) response.setHeader("WWW-Authenticate", "Bearer");
-    response
-        .getWriter()
-        .write(
-            "{\"status\":"
-                + code
-                + ",\"detail\":\"Autenticação necessária ou acesso não permitido.\"}");
+    if (code == 401) {
+      response.setHeader("WWW-Authenticate", "Bearer");
+      ProblemJson.write(
+          response, 401, ErrorCodes.UNAUTHORIZED, "Autenticação necessária ou sessão expirada.");
+    } else {
+      ProblemJson.write(response, 403, ErrorCodes.FORBIDDEN, "Seu papel não permite esta ação.");
+    }
   }
 }

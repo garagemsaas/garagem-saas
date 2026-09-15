@@ -4,6 +4,7 @@ import br.com.garagem.shared.persistence.Pagina;
 import br.com.garagem.veiculo.api.VeiculoDtos.*;
 import br.com.garagem.veiculo.application.VeiculoService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -19,12 +20,30 @@ public class VeiculoController {
   }
 
   @GetMapping
-  @Operation(summary = "Listar veículos da oficina por placa")
+  @Operation(
+      summary = "Listar veículos da oficina",
+      description =
+          "Sempre restrito à oficina do token. Placas são comparadas sem hífen nem espaço.")
   public Pagina<Saida> listar(
-      @RequestParam(defaultValue = "") String busca,
-      @RequestParam(defaultValue = "0") int pagina,
-      @RequestParam(defaultValue = "20") int tamanho) {
-    return service.listar(busca, pagina, tamanho);
+      @Parameter(description = "Texto único: casa com placa, marca ou modelo")
+          @RequestParam(defaultValue = "")
+          String busca,
+      @Parameter(description = "Parte da placa") @RequestParam(required = false) String placa,
+      @Parameter(description = "Parte da marca") @RequestParam(required = false) String marca,
+      @Parameter(description = "Parte do modelo") @RequestParam(required = false) String modelo,
+      @Parameter(description = "Veículos de um cliente da mesma oficina")
+          @RequestParam(required = false)
+          UUID clienteId,
+      @Parameter(description = "Página, começando em 0") @RequestParam(defaultValue = "0")
+          int pagina,
+      @Parameter(description = "Itens por página, máximo 100") @RequestParam(defaultValue = "20")
+          int tamanho,
+      @Parameter(
+              description = "campo,asc|desc — aceita placa, marca, modelo, ano, km ou criadoEm",
+              example = "placa,asc")
+          @RequestParam(required = false)
+          String ordenacao) {
+    return service.listar(busca, placa, marca, modelo, clienteId, pagina, tamanho, ordenacao);
   }
 
   @GetMapping("/{id}")

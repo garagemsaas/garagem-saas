@@ -2,9 +2,11 @@ package br.com.garagem.auth.application;
 
 import br.com.garagem.auth.api.AuthDtos.*;
 import br.com.garagem.shared.error.ApiException;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
@@ -17,12 +19,21 @@ public class AuthService {
   private final JdbcTemplate jdbc;
   private final PasswordEncoder passwords;
   private final JwtEncoder encoder;
+  private final Duration accessTtl;
+  private final Duration refreshTtl;
   private final String dummy;
 
-  public AuthService(JdbcTemplate jdbc, PasswordEncoder passwords, JwtEncoder encoder) {
+  public AuthService(
+      JdbcTemplate jdbc,
+      PasswordEncoder passwords,
+      JwtEncoder encoder,
+      @Value("${app.jwt.access-ttl}") Duration accessTtl,
+      @Value("${app.jwt.refresh-ttl}") Duration refreshTtl) {
     this.jdbc = jdbc;
     this.passwords = passwords;
     this.encoder = encoder;
+    this.accessTtl = accessTtl;
+    this.refreshTtl = refreshTtl;
     dummy = passwords.encode(Tokens.novo());
   }
 
@@ -85,14 +96,14 @@ public class AuthService {
         account.oficinaId(),
         account.id(),
         Tokens.hash(refresh),
-        java.sql.Timestamp.from(now.plusSeconds(604800)));
+        java.sql.Timestamp.from(now.plus(refreshTtl)));
     var claims =
         JwtClaimsSet.builder()
             .issuer("garagem-api")
             .subject(account.id().toString())
             .audience(List.of("garagem-api"))
             .issuedAt(now)
-            .expiresAt(now.plusSeconds(900))
+            .expiresAt(now.plus(accessTtl))
             .claim("oficina_id", account.oficinaId().toString())
             .claim("papel", account.papel())
             .build();
@@ -106,6 +117,12 @@ public class AuthService {
         .addKeyValue("usuario_id", account.id())
         .log("sessao_emitida");
     return new Sessao(
-        access, refresh, 900, account.oficinaId(), account.id(), account.nome(), account.papel());
+        access,
+        refresh,
+        accessTtl.toSeconds(),
+        account.oficinaId(),
+        account.id(),
+        account.nome(),
+        account.papel());
   }
 }

@@ -6,6 +6,7 @@ import br.com.garagem.tenancy.TenantContext;
 import br.com.garagem.usuario.domain.*;
 import br.com.garagem.usuario.repository.UsuarioRepository;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import java.util.*;
@@ -37,14 +38,34 @@ public class UsuarioController {
     }
   }
 
+  /** Campos que a listagem aceita em {@code ordenacao}; qualquer outro é recusado com 400. */
+  public static final Set<String> ORDENACAO = Set.of("nome", "email", "papel", "criadoEm");
+
   @GetMapping
   @Transactional(readOnly = true)
-  @Operation(summary = "Listar equipe para atribuição de OS")
+  @Operation(
+      summary = "Listar equipe da oficina",
+      description = "Somente dados públicos da equipe. Nenhuma senha ou hash é retornado.")
   public Pagina<Saida> listar(
-      @RequestParam(defaultValue = "0") int pagina,
-      @RequestParam(defaultValue = "20") int tamanho) {
+      @Parameter(description = "Restringe a um papel") @RequestParam(required = false) Papel papel,
+      @Parameter(description = "true lista apenas quem pode acessar")
+          @RequestParam(required = false)
+          Boolean ativo,
+      @Parameter(description = "Página, começando em 0") @RequestParam(defaultValue = "0")
+          int pagina,
+      @Parameter(description = "Itens por página, máximo 100") @RequestParam(defaultValue = "20")
+          int tamanho,
+      @Parameter(
+              description = "campo,asc|desc — aceita nome, email, papel ou criadoEm",
+              example = "nome,asc")
+          @RequestParam(required = false)
+          String ordenacao) {
     return Pagina.de(
-        repo.findAllByOficinaId(TenantContext.current(), Pagina.request(pagina, tamanho))
+        repo.filtrar(
+                TenantContext.current(),
+                papel,
+                ativo,
+                Pagina.request(pagina, tamanho, ordenacao, ORDENACAO))
             .map(Saida::de));
   }
 
