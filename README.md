@@ -64,6 +64,30 @@ Conclusão
 
 ---
 
+## 🚧 Fase 3 — Primeira integração: frente de Cauã entregue
+
+A frente de **contratos e primeira integração**, sob responsabilidade de Cauã, está concluída na
+branch `feature/fase3-api-integration`, aguardando revisão. Ainda **não** foi mergeada na `main`.
+
+Foram entregues:
+
+- os seis contratos da primeira integração publicados com exemplos de requisição e resposta em
+  [docs/api-v1.md](docs/api-v1.md#contratos-da-primeira-integração);
+- documentação e OpenAPI reconciliados;
+- cinco bugs encontrados na integração corrigidos, cada um com teste de regressão;
+- `Fase3IT`, com 15 testes de integração contra PostgreSQL real.
+
+Relatório completo em [docs/fase3-caua.md](docs/fase3-caua.md).
+
+O contrato **não mudou**: nenhum campo foi removido, renomeado ou teve o tipo alterado, e nenhum
+status HTTP mudou. Quem já integrava contra a Fase 2 não precisa alterar nada.
+
+As pendências de produto da Fase 3 — consumir `/dashboard`, paginar a carga inicial, usar filtros e
+ordenação do backend nas telas e marcar campo a campo com `errors[]` — são do outro desenvolvedor e
+estão registradas no relatório.
+
+---
+
 ## 🚧 Fase 2 — Implementação entregue; aceite integrado pendente
 
 A implementação das frentes de API/segurança/infraestrutura e do frontend de Kauã está concluída. A homologação ponta a ponta com PostgreSQL e MinIO reais ainda precisa ser executada em um ambiente com Docker disponível.
@@ -666,10 +690,11 @@ Antes de continuar o desenvolvimento, leia principalmente:
 
 | Documento | Conteúdo |
 |---|---|
+| [docs/fase3-caua.md](docs/fase3-caua.md) | Fase 3: contratos publicados, bugs da integração, divergências e pendências. |
 | [docs/fase2-caua.md](docs/fase2-caua.md) | Estado detalhado da frente da Fase 2 e o que já foi concluído. |
 | [docs/fase2-kaua-frontend.md](docs/fase2-kaua-frontend.md) | Checklist, validações e limites da entrega de frontend de Kauã. |
 | [frontend/README.md](frontend/README.md) | Execução, testes e organização do frontend. |
-| [docs/api-v1.md](docs/api-v1.md) | Contratos REST, endpoints, DTOs, filtros, paginação, ordenação e dashboard. |
+| [docs/api-v1.md](docs/api-v1.md) | Contratos REST, endpoints, DTOs, filtros, paginação, ordenação e dashboard. **Comece pela seção "Contratos da primeira integração" para integrar o frontend.** |
 | [docs/api-errors.md](docs/api-errors.md) | Contrato de erros e códigos estáveis. |
 | [docs/permissoes.md](docs/permissoes.md) | Matriz de permissões por papel. |
 | [docs/staging.md](docs/staging.md) | Configuração, variáveis, health, logs e preparação de staging. |

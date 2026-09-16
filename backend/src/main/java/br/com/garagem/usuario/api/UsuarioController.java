@@ -26,12 +26,14 @@ public class UsuarioController {
     this.encoder = encoder;
   }
 
+  @io.swagger.v3.oas.annotations.media.Schema(name = "UsuarioEntrada")
   public record Entrada(
       @NotBlank @Size(max = 160) String nome,
       @NotBlank @Email @Size(max = 254) String email,
       @NotBlank @Size(min = 12, max = 72) String senha,
       @NotNull Papel papel) {}
 
+  @io.swagger.v3.oas.annotations.media.Schema(name = "UsuarioSaida")
   public record Saida(UUID id, String nome, String email, Papel papel, boolean ativo) {
     static Saida de(Usuario u) {
       return new Saida(u.id, u.nome, u.email, u.papel, u.ativo);
