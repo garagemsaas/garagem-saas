@@ -190,6 +190,129 @@ docs/permissoes.md
 
 ---
 
+# 🚧 Fase 4 — OS completa e acompanhamento público
+
+A Fase 4 está em andamento na branch compartilhada:
+
+```text
+feature/fase4-os-public-tracking
+```
+
+A regra desta etapa é **uma branch por fase**: Cauã e Kauã trabalham na mesma branch da Fase 4.  
+Não utilizar `main` para o desenvolvimento desta fase e não criar uma branch separada por desenvolvedor.
+
+## ✅ Cauã — API, domínio e acompanhamento público
+
+A parte do Cauã na Fase 4 está concluída.
+
+Checklist entregue:
+
+- [x] Endpoint de checklist
+- [x] Endpoint de diagnóstico
+- [x] Endpoint de orçamento
+- [x] Versionamento imutável
+- [x] Aprovação e recusa
+- [x] Criação de link público
+- [x] Expiração de link
+- [x] Revogação de link
+- [x] Fotos
+- [x] Timeline
+
+A entrega consolidou e validou o fluxo completo da ordem de serviço:
+
+```text
+Ordem de Serviço
+  ↓
+Checklist
+  ↓
+Diagnóstico
+  ↓
+Fotos
+  ↓
+Orçamento
+  ↓
+Versionamento
+  ↓
+Link público
+  ↓
+Aprovação / Recusa
+  ↓
+Timeline
+```
+
+Também foram revisados e validados:
+
+- autorização por papel;
+- isolamento multi-tenant por oficina;
+- conflitos de revisão;
+- imutabilidade das versões de orçamento;
+- proteção contra decisões públicas conflitantes;
+- expiração e revogação de links;
+- segurança de fotos privadas;
+- contratos REST;
+- Swagger/OpenAPI;
+- documentação da API;
+- fluxo público no frontend;
+- testes de integração e navegador.
+
+Evidência da validação final:
+
+```text
+12 testes unitários
+64 testes de integração
+Maven verify: BUILD SUCCESS
+```
+
+A documentação técnica da entrega está em:
+
+```text
+docs/fase4-caua.md
+```
+
+Os contratos atualizados permanecem em:
+
+```text
+docs/api-v1.md
+docs/api-errors.md
+docs/permissoes.md
+```
+
+## Próximo passo — Kauã
+
+A Fase 4 **ainda não deve ser marcada como concluída no geral**.
+
+O Kauã deve continuar a parte dele utilizando **a mesma branch**:
+
+```text
+feature/fase4-os-public-tracking
+```
+
+Antes de iniciar, deve sincronizar a branch:
+
+```powershell
+git switch feature/fase4-os-public-tracking
+git pull
+git status
+```
+
+Ele deve partir do código já entregue pelo Cauã, sem recriar endpoints, reintroduzir dados fictícios ou substituir integrações existentes sem necessidade técnica.
+
+Depois que o Kauã concluir a frente dele:
+
+```text
+commit
+  ↓
+push
+  ↓
+Fase 4 completa
+  ↓
+somente então criar a branch da Fase 5 a partir da Fase 4 atualizada
+```
+
+Não executar `git init`: o repositório já está inicializado.
+
+---
+
 # Situação das fases
 
 ```text
@@ -572,6 +695,8 @@ Antes de continuar o desenvolvimento, leia:
 | [docs/api-errors.md](docs/api-errors.md) | Padrão e códigos de erro da API. |
 | [docs/permissoes.md](docs/permissoes.md) | Regras e permissões por papel. |
 | [docs/fase2-caua.md](docs/fase2-caua.md) | Entregas da frente de API, segurança e infraestrutura da Fase 2. |
+| [docs/fase3-kaua-frontend.md](docs/fase3-kaua-frontend.md) | Entrega e validações do frontend conectado à API na Fase 3. |
+| [docs/fase4-caua.md](docs/fase4-caua.md) | Auditoria, correções, testes e evidências da parte do Cauã na Fase 4. |
 | [docs/staging.md](docs/staging.md) | Preparação e configuração de staging. |
 | [docs/arquitetura.md](docs/arquitetura.md) | Decisões arquiteturais. |
 | [docs/fase1-finalizacao.md](docs/fase1-finalizacao.md) | Finalização técnica da Fase 1. |
@@ -581,16 +706,33 @@ Antes de continuar o desenvolvimento, leia:
 
 # Para continuar a Fase 4
 
-Antes de implementar algo novo:
+A parte do Cauã está concluída. O próximo desenvolvimento da Fase 4 deve continuar na mesma branch:
 
 ```text
-1. Ler este README.
-2. Ler docs/api-v1.md.
-3. Conferir docs/permissoes.md.
-4. Conferir Swagger/OpenAPI.
-5. Verificar o código já existente.
-6. Identificar a tarefa da própria frente.
-7. Não refazer funcionalidades já implementadas.
+feature/fase4-os-public-tracking
+```
+
+Fluxo obrigatório para o próximo desenvolvedor:
+
+```text
+1. Entrar na branch feature/fase4-os-public-tracking.
+2. Executar git pull antes de alterar qualquer arquivo.
+3. Ler este README.
+4. Ler docs/fase4-caua.md.
+5. Ler docs/api-v1.md.
+6. Conferir docs/permissoes.md.
+7. Conferir Swagger/OpenAPI.
+8. Preservar as entregas já implementadas.
+9. Não usar a main durante o desenvolvimento da fase.
+10. Não criar uma branch separada por desenvolvedor dentro da mesma fase.
+```
+
+Comandos de sincronização:
+
+```powershell
+git switch feature/fase4-os-public-tracking
+git pull
+git status
 ```
 
 Especialmente na integração frontend/backend:
@@ -600,10 +742,15 @@ não inventar campos
 não inventar endpoints
 não inventar status
 não inventar permissões
+não reintroduzir mocks ou dados fictícios
 não contornar regras do backend
+não apagar ou refazer trabalho concluído sem necessidade técnica
 ```
 
 Quando houver divergência entre frontend e API, investigar o contrato antes de alterar qualquer lado.
+
+Ao terminar a parte do Kauã, fazer `commit` e `push` nessa mesma branch.  
+A branch da próxima fase só deve ser criada depois que a Fase 4 estiver completa e sincronizada.
 
 ---
 
@@ -654,6 +801,7 @@ O projeto já possui:
 ```text
 Fase 1 concluída
 Fase 2 concluída
+Fase 3 concluída
 API REST estabilizada
 autenticação
 multi-tenancy
@@ -667,22 +815,38 @@ dashboard backend
 Swagger/OpenAPI
 contrato de erros
 contratos da primeira integração
+Fase 4 / parte do Cauã concluída
+OS completa auditada
+versionamento imutável validado
+acompanhamento público validado
+aprovação e recusa validadas
+expiração e revogação de link validadas
+fotos privadas validadas
+timeline validada
 ```
 
-A frente de API/integração na Fase 3 foi concluída em:
+A Fase 3 foi concluída na branch:
 
 ```text
 feature/fase3-api-integration
 ```
 
-Antes de continuar, leia principalmente:
+A Fase 4 está sendo desenvolvida por Cauã e Kauã na branch compartilhada:
+
+```text
+feature/fase4-os-public-tracking
+```
+
+Antes de continuar a Fase 4, leia principalmente:
 
 ```text
 README.md
+docs/fase4-caua.md
 docs/api-v1.md
 docs/api-errors.md
 docs/permissoes.md
-docs/fase2-caua.md
+docs/fase3-kaua-frontend.md
 ```
 
-A Fase 3 geral está concluída. A Fase 4 geral permanece em andamento.
+A Fase 4 geral permanece em andamento até a conclusão da frente do Kauã.  
+Não utilizar `main` para o desenvolvimento desta fase e não criar uma branch separada por desenvolvedor.
