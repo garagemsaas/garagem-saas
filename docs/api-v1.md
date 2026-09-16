@@ -1,5 +1,9 @@
 # API v1 — inventário de contratos
 
+Fase 5: os contratos aditivos de Dinheiro Esquecido estão na
+[seção específica](#fase-5--dinheiro-esquecido). A contagem histórica abaixo descreve
+a API anterior à Fase 5; esta fase acrescenta 13 operações em 11 caminhos.
+
 Escrito para quem consome a API (frontend) e para quem mantém o backend.
 
 Fonte de verdade: os Controllers, DTOs e serviços deste checkout, mais `SecurityConfig`,
@@ -1192,3 +1196,178 @@ mudou. Quem já integrava contra a Fase 2 não precisa alterar nada.
 | OpenAPI: um schema por DTO | **Correção.** `ClienteEntrada`, `ClienteSaida`, `VeiculoEntrada`, `VeiculoSaida`, `UsuarioEntrada`, `UsuarioSaida` e `FotoSaida` deixaram de colidir em dois schemas chamados `Entrada` e `Saida`; as páginas viraram `PaginaClienteSaida`, `PaginaVeiculoSaida`, `PaginaUsuarioSaida` e `PaginaOsSaida`. Só afeta quem **gera cliente a partir do OpenAPI** — o corpo na rede é o mesmo de sempre. |
 | OpenAPI: `/auth/**` não declara mais 404 nem 409 | Sessão não endereça recurso; os dois status eram impossíveis ali e contradiziam este documento. |
 | Log `sessao_emitida` voltou a ser gravado | Sem efeito no contrato. O evento colidia com o contexto da requisição e era descartado pelo escritor de log estruturado. |
+
+## Fase 5 — Dinheiro Esquecido
+
+Referência de regras, persistência, concorrência e decisões: [fase5-caua.md](fase5-caua.md).
+Todos os endpoints abaixo exigem Bearer e papel **OWNER ou ATENDENTE**. MECANICO: 403.
+A oficina vem do contexto autenticado; nenhum request recebe oficinaId. IDs alheios
+respondem 404, filtros alheios retornam página vazia. Não há envio de WhatsApp/e-mail.
+
+Prefixo `D=/api/v1/dinheiro-esquecido`, `P=D/oportunidades/{id}`.
+
+| Método/caminho | Entrada | Resposta |
+|---|---|---|
+| POST `D/identificar` | sem corpo | 200 `{criadas, descartadas}` |
+| GET `D/oportunidades` | filtros/paginação abaixo | 200 `Pagina<RecuperacaoOportunidadeSaida>` |
+| GET `P` | — | 200 `RecuperacaoDetalhe` |
+| POST `P/contatos` | `RecuperacaoContatoEntrada` | 201 oportunidade atualizada |
+| POST `P/resultados` | `RecuperacaoResultadoEntrada` | 201 oportunidade atualizada |
+| POST `P/status` | `{status, observacao?, revisao}` | 200 oportunidade atualizada |
+| PUT `P/responsavel` | `{responsavelId?, revisao}` | 200 oportunidade atualizada |
+| PUT `P/proximo-contato` | `{proximoContatoEm?, revisao}` | 200 oportunidade atualizada |
+| GET `D/resumo` | `de?`, `ate?`, instantes ISO | 200 `RecuperacaoResumo` |
+| GET `/api/v1/ordens-servico/{id}/proxima-revisao` | — | 200 `{data, revisao}` |
+| PUT `/api/v1/ordens-servico/{id}/proxima-revisao` | `{data?, revisao}` | 200 `{data, revisao}` |
+| GET `/api/v1/orcamento-versoes/{id}/reavaliacao` | — | 200 `{data, revisao}` |
+| PUT `/api/v1/orcamento-versoes/{id}/reavaliacao` | `{data?, revisao}` | 200 `{data, revisao}` |
+
+Os schemas novos têm prefixo `Recuperacao` no OpenAPI para não colidir com DTOs de OS.
+Todos os campos `revisao` de entrada são obrigatórios, inteiros e não negativos;
+saída já contém a revisão persistida. Em 409, recarregue antes de uma nova decisão.
+
+### Identificar
+
+Sem corpo nem data controlada pelo frontend. Idempotente: uma oportunidade por
+origem, inclusive após encerrar; versões posteriores podem originar novas oportunidades.
+Usa 7 dias desde **primeira publicação**, 30 dias desde recusa (ou `reavaliarEm`) e
+próxima revisão por data. Regras completas no documento da fase. GET não faz varredura.
+Origens que deixaram de ser elegíveis são descartadas com auditoria. Processamento
+por OS: em falha parcial, repetir é seguro e não duplica as já gravadas.
+
+### Lista operacional
+
+Envelope existente: `{itens, pagina, tamanho, total, totalPaginas}`. Paginação no banco.
+`pagina=0`, `tamanho=20` aparado a 1–100; página além do fim é 200 com `itens:[]`.
+
+| Parâmetro opcional | Regra |
+|---|---|
+| `tipo` | ORCAMENTO_ESQUECIDO, REVISAO_ATRASADA, REAVALIACAO_PENDENTE |
+| `status` | ABERTA, EM_CONTATO, AGENDADA, RECUPERADA, PERDIDA, DESCARTADA |
+| `responsavelId`, `clienteId`, `veiculoId` | UUID exato; oficina autenticada |
+| `de`, `ate` | Instantes ISO-8601 inclusivos sobre **criadoEm** |
+| `proximoContatoDe`, `proximoContatoAte` | Instantes inclusivos sobre próximo contato |
+| `faixaIdade` | DIAS_0_7, DIAS_8_15, DIAS_16_30, DIAS_31_60, MAIS_60 |
+| `ordenacao` | `campo,asc|desc`: criadoEm, elegivelDesde, proximoContatoEm, valorPotencial, status, tipo, id |
+
+Filtros combinam com E. Intervalo invertido, enum/data/UUID inválido e sort fora da
+allowlist: 400. Padrão `criadoEm,desc`, desempate `id,asc`, nulos por último.
+Idade: dias completos desde elegibilidade, congelados no encerramento.
+
+`RecuperacaoOportunidadeSaida`:
+
+```json
+{
+  "id":"f6e25050-41bc-4ff4-b986-f972d22965f9",
+  "tipo":"ORCAMENTO_ESQUECIDO", "status":"ABERTA",
+  "cliente":{"id":"43688b50-fa08-48c6-8821-ef8690460adc","nome":"Marina","telefone":"11999999999","email":null},
+  "veiculo":{"id":"e6ae57d7-8c4d-4314-a185-fb208b057f36","placa":"ABC1234","marca":"Fiat","modelo":"Uno"},
+  "origem":{"ordemServicoId":"1e41609e-4185-4d88-bf0d-22695120234a","numeroOs":1,"orcamentoVersaoId":"755b6667-ce2d-4095-af5c-72dfd670fe50"},
+  "responsavel":null, "valorPotencial":2000.00,
+  "criadoEm":"2026-09-16T12:00:00Z", "elegivelDesde":"2026-09-14T12:00:00Z",
+  "diasEmAberto":2, "ultimoContatoEm":null, "proximoContatoEm":null,
+  "encerradaEm":null, "revisao":0
+}
+```
+
+`responsavel` é null ou `{id,nome}`. Em REVISAO_ATRASADA, `orcamentoVersaoId` e
+`valorPotencial` são null: apresentar “não avaliado”. Nunca somar potencial como receita.
+
+### Detalhe e históricos
+
+`RecuperacaoDetalhe = {oportunidade, contatos, resultado, auditoria}`. Coleções vazias
+são `[]`; resultado ausente é null. Históricos em ordem `criadoEm,id`, crescente.
+
+- Contato: `{id, usuarioId, realizadoEm, canal, resultado, observacao, proximoContatoEm}`.
+- Resultado: `{id, usuarioId, registradoEm, valorRecuperado, ordemServicoId, observacao}`.
+- Auditoria: `{id, usuarioId, criadoEm, tipo, anterior, novo, observacao}`. Anterior/novo
+  são textos ou null; tipos: OPORTUNIDADE_CRIADA, STATUS_ALTERADO, RESPONSAVEL_ALTERADO,
+  CONTATO_REGISTRADO, PROXIMO_CONTATO_ALTERADO, RESULTADO_REGISTRADO, VALOR_RECUPERADO,
+  ENCERRAMENTO. Perda/descarte aparecem no status e motivo, sem excluir histórico.
+
+### Contatos
+
+```json
+{"canal":"WHATSAPP","resultado":"INTERESSADO","observacao":"Cliente pediu retorno","proximoContatoEm":"2026-10-20T14:00:00Z","revisao":0}
+```
+
+Canal obrigatório: TELEFONE, WHATSAPP, EMAIL, PRESENCIAL, OUTRO. Resultado obrigatório:
+SEM_RESPOSTA, CONTATO_REALIZADO, INTERESSADO, NAO_INTERESSADO, AGENDADO. Observação
+opcional, máximo 4000 caracteres. Instante da tentativa e usuário vêm do servidor.
+Próximo contato opcional, mas deve ser futuro; omitido/null limpa a data atual.
+Cada POST acrescenta histórico. AGENDADO exige data e muda para AGENDADA; demais
+resultados mudam para EM_CONTATO. NAO_INTERESSADO não encerra automaticamente.
+
+PUT `P/proximo-contato` altera a data com auditoria sem acrescentar tentativa fictícia.
+Ao limpar a data de uma oportunidade AGENDADA, ela passa para EM_CONTATO.
+
+### Resultado, status e responsável
+
+```json
+{"valorRecuperado":1450.00,"ordemServicoId":"1e41609e-4185-4d88-bf0d-22695120234a","observacao":"Serviço contratado","revisao":2}
+```
+
+Valor obrigatório, explícito, não negativo, até 17 dígitos inteiros e duas casas.
+Pode ser diferente do potencial e pode ser zero. Mais de duas casas é recusado,
+não arredondado silenciosamente. OS opcional, da mesma oficina, não necessariamente
+a origem. Observação opcional até 4000 caracteres. Resultado único, imutável;
+encerra em RECUPERADA, carimba data/autor e limpa próximo contato. Repetição: 409.
+
+POST `P/status`: EM_CONTATO permitido enquanto ativa; AGENDADA exige próximo contato;
+PERDIDA exige tentativa prévia e motivo; DESCARTADA exige motivo. Exemplo:
+`{"status":"PERDIDA","observacao":"Cliente desistiu","revisao":3}`.
+RECUPERADA somente via resultados. Não há retorno a ABERTA nem reabertura terminal.
+Estados terminais bloqueiam novas escritas na oportunidade.
+
+PUT `P/responsavel`: `{"responsavelId":"<uuid>","revisao":1}`. Deve ser OWNER/ATENDENTE
+ativo da oficina; papel inválido/inativo é 400, outro tenant é 404. Null remove atribuição.
+
+### Programações de origem
+
+PUT próxima revisão: `{"data":"2026-10-16","revisao":6}`, usando **revisão da OS**.
+Exige OS PRONTO e data não anterior à conclusão. Null remove antes de gerar oportunidade.
+É uma alteração de pós-serviço auditada na timeline, sem reabrir a OS. Após identificação,
+usar próximo contato; novo ciclo de revisão é programado na nova OS concluída.
+
+PUT reavaliação recebe o mesmo formato, mas usa **revisão própria da programação**,
+obtida pelo GET (0 se ainda não existir). Exige versão recusada e data não anterior à
+recusa. Null restaura 30 dias. Depois de gerar oportunidade, usar próximo contato.
+A versão e a decisão permanecem imutáveis; ajuste fica auditado na timeline da OS.
+
+Datas de programação são LocalDate (`AAAA-MM-DD`), no fuso America/Sao_Paulo.
+Demais datas são instantes ISO. Não há parâmetro para alterar fuso na V1 do módulo.
+
+### Resumo
+
+GET `D/resumo?de=2026-09-01T00:00:00Z&ate=2026-09-30T23:59:59Z`.
+
+- `geradoEm`: instante da consulta.
+- `oportunidadesAbertas`: ABERTA + EM_CONTATO + AGENDADA criadas no período.
+- `valorPotencialConhecido`: soma do potencial dessas ativas; null ignorado; vazio = 0.
+- `valorRecuperado`, `quantidadeRecuperada`, `quantidadePerdida`: encerramentos no período,
+  inclusive oportunidades criadas antes dele. Valores efetivos, sem usar potencial.
+- `taxaRecuperacao`: **100 × recuperadas / (recuperadas + perdidas)** encerradas no período.
+  Descarta DESCARTADA do denominador; sem denominador = 0.00; duas casas HALF_UP.
+- `porTipo`, `porStatus`, `porResponsavel`, `porPeriodo`, `porIdade`: arrays
+  `[{"chave":"...","quantidade":1}]`. Grupos vazios omitidos. Responsável = UUID ou
+  SEM_RESPONSAVEL; período = mês de criação `AAAA-MM`, em São Paulo; idade = faixas
+  acima apenas das ativas. Outros agrupamentos incluem todos os status da coorte criada.
+
+Sem de/ate: todos os registros do tenant. Limites independentes e inclusivos.
+Não é taxa de conversão da coorte criada, pois encerramentos usam sua própria data.
+Agregações no PostgreSQL, sem baixar a carteira toda na aplicação.
+
+### Erros e concorrência
+
+400 VALIDATION_ERROR com errors[] para campos obrigatórios/limites; INVALID_REQUEST
+para regra de entrada, enum/filtro/sort/data inválidos. 401 UNAUTHORIZED sem sessão,
+403 FORBIDDEN para MECANICO, 404 NOT_FOUND para recurso ou vínculo alheio/inexistente.
+409 CONFLICT para revisão antiga, terminal, transição proibida ou segunda recuperação;
+STALE_REVISION/DUPLICATE permanecem possíveis nas proteções finais de persistência.
+500 INTERNAL_ERROR genérico, sem SQL/stack trace. Todos preservam code, timestamp,
+requestId e Problem Details. Nenhum code novo nesta fase.
+
+Identificação serializa por OS; operações comerciais serializam por oportunidade
+com revisão. Dois contatos enviados com a mesma revisão podem produzir 201 + 409;
+o rejeitado não é registrado. Após recarregar, o usuário pode registrar a outra
+ tentativa. Não repetir gravação financeira automaticamente após conflito.

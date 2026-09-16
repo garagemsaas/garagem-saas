@@ -182,6 +182,12 @@ public class OsService {
           .findByOrcamentoVersaoIdAndOficinaId(atual.id, TenantContext.current())
           .isPresent())
         throw ApiException.conflict("Crie uma nova versão antes de solicitar outra decisão.");
+      jdbc.update(
+          "insert into acompanhamento_orcamento(id,oficina_id,orcamento_versao_id,publicado_em) values(?,?,?,?) on conflict(oficina_id,orcamento_versao_id) do nothing",
+          UUID.randomUUID(),
+          TenantContext.current(),
+          atual.id,
+          java.sql.Timestamp.from(Instant.now()));
     }
     if (o.status == StatusOs.AGUARDANDO_APROVACAO && input.status() == StatusOs.EM_MANUTENCAO)
       throw ApiException.conflict("A manutenção exige aprovação do cliente pelo link.");
