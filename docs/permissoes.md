@@ -100,3 +100,31 @@ Papel é só a primeira porta. Passar por ela não dá acesso a nada de outra of
 2. Ajuste a linha correspondente em `Fase2IT#matrizDePermissoes` — a lista `regras` é a matriz.
 3. Atualize esta tabela.
 4. Rode `mvn verify`. A matriz falha em qualquer divergência entre código e tabela.
+
+## Fase 5 — Dinheiro Esquecido
+
+Acrescenta permissões comerciais sem mudar a matriz anterior. OWNER e ATENDENTE
+já operam orçamento e relações com clientes; MECANICO continua restrito ao trabalho
+operacional e não recebe acesso ao módulo de recuperação financeira.
+
+| Operação | OWNER | ATENDENTE | MECANICO |
+|---|:--:|:--:|:--:|
+| Identificar/reconciliar oportunidades | ✅ | ✅ | ❌ |
+| Listar, detalhe e históricos | ✅ | ✅ | ❌ |
+| Registrar contato manual e próximo contato | ✅ | ✅ | ❌ |
+| Atribuir responsável comercial | ✅ | ✅ | ❌ |
+| Agendar, encerrar como perdida/descartada | ✅ | ✅ | ❌ |
+| Registrar recuperação efetiva | ✅ | ✅ | ❌ |
+| Resumo/relatórios | ✅ | ✅ | ❌ |
+| Consultar/programar próxima revisão da OS concluída | ✅ | ✅ | ❌ |
+| Consultar/programar reavaliação da versão recusada | ✅ | ✅ | ❌ |
+
+Responsável comercial deve ser OWNER ou ATENDENTE ativo da mesma oficina; não se
+confunde com o mecânico responsável da OS. Oficina sempre do contexto autenticado;
+404 para leitura/escrita/vínculo alheio, página vazia para filtros alheios.
+Programar revisão é exceção limitada após PRONTO: apenas data e revisão da OS,
+com auditoria, sem reabrir nem alterar sua execução. Resultados e contatos imutáveis.
+
+A matriz nova e os dois tenants são exercitados em `Fase5IT`, incluindo todos os
+métodos para MECANICO e ausência de sessão, operações permitidas ao ATENDENTE,
+atribuição incompatível/inativa, referências cruzadas e relatórios isolados.

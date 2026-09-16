@@ -21,4 +21,5 @@ public class OrdemServico extends TenantEntity {
   public String relato;
   public Instant previsaoEntrega;
   public Instant concluidaEm;
+  public java.time.LocalDate proximaRevisaoEm;
 }
