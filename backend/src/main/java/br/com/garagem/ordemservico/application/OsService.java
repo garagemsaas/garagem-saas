@@ -344,6 +344,7 @@ public class OsService {
             .findByIdAndOficinaId(linkId, TenantContext.current())
             .filter(a -> a.ordemServicoId.equals(id))
             .orElseThrow(ApiException::missing);
+    if (l.revogadoEm != null) return;
     l.revogadoEm = Instant.now();
     evento(id, "LINK_REVOGADO", "Link de acesso revogado.", autor());
   }
@@ -360,7 +361,7 @@ public class OsService {
     // Recheck capability under the same OS lock used by revocation and version creation.
     var valid =
         jdbc.queryForObject(
-            "select count(*) from link_acesso_publico where id=? and oficina_id=? and revogado_em is null and expira_em>now()",
+            "select count(*) from link_acesso_publico where id=? and oficina_id=? and revogado_em is null and expira_em>clock_timestamp()",
             Integer.class,
             linkId,
             TenantContext.current());
@@ -408,6 +409,11 @@ public class OsService {
             StatusOs.TESTE,
             StatusOs.PRONTO)
         .contains(o.status)) orc = versaoSaida(ultimaVersao(o.id));
+    else if (o.status == StatusOs.ORCAMENTO) {
+      // A recusa continua consultável até que uma nova versão em preparação a substitua.
+      var historico = versoes(o.id);
+      if (!historico.isEmpty() && historico.getLast().decisao() != null) orc = historico.getLast();
+    }
     return new PublicoSaida(
         o.numero, o.status, v.marca + " " + v.modelo + " · " + v.placa, o.previsaoEntrega, orc);
   }

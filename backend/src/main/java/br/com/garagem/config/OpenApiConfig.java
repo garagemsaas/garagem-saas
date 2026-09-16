@@ -49,6 +49,17 @@ public class OpenApiConfig {
                         .scheme("bearer")
                         .bearerFormat("JWT"))
                 .addSchemas("Problema", problema())
+                .addResponses(
+                    "FotoGrande", resposta("413 PAYLOAD_TOO_LARGE: foto acima de 10 MB", false))
+                .addResponses(
+                    "TipoNaoSuportado",
+                    resposta(
+                        "415 UNSUPPORTED_MEDIA_TYPE: envie PNG/JPEG válido em multipart", false))
+                .addResponses(
+                    "StorageIndisponivel",
+                    resposta(
+                        "503 STORAGE_UNAVAILABLE: armazenamento temporariamente indisponível",
+                        false))
                 .addResponses("Invalido", resposta("Request inválido ou validação recusada", true))
                 .addResponses("NaoAutenticado", resposta("Sem sessão válida", false))
                 .addResponses("SemPermissao", resposta("Papel não autorizado", false))
@@ -113,7 +124,10 @@ public class OpenApiConfig {
                     "application/problem+json",
                     new MediaType()
                         .schema(new Schema<>().$ref("#/components/schemas/Problema"))
-                        .addExamples("exemplo", new Example().value(exemplo))));
+                        .examples(
+                            comCampos
+                                ? java.util.Map.of("exemplo", new Example().value(exemplo))
+                                : null)));
   }
 
   private static Schema<?> problema() {

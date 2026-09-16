@@ -40,6 +40,7 @@ export default function PublicOrder({ token }: { token: string }) {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Não foi possível registrar a decisão.');
       setDecision(null);
+      if (e instanceof ApiError && e.status === 404) { setInvalid(true); setData(undefined); }
       if (e instanceof ApiError && e.status === 409) {
         try { setData(await api<PublicSummary>(path)); } catch { setData(undefined); }
       }
@@ -59,7 +60,7 @@ export default function PublicOrder({ token }: { token: string }) {
             <div className="confirmation"><h3>Confirmar {decision ? 'aprovação integral' : 'recusa do orçamento'}?</h3><p>Versão {data.orcamento.numero} · {money(data.orcamento.total)}. A decisão ficará registrada e não poderá ser alterada para esta versão.</p><div className="form-actions"><button disabled={busy} onClick={() => setDecision(null)}>Voltar</button><button className="primary" disabled={busy} onClick={decide}>Confirmar {decision ? 'aprovação' : 'recusa'}</button></div></div>}
         </>}
       </> : <PageState state="empty" title="Orçamento em preparação">A oficina disponibilizará os valores quando a avaliação estiver concluída.</PageState>}
-      <button disabled={busy} onClick={async () => { setBusy(true); try { setData(await api<PublicSummary>(path)); setDecision(null); setError(''); } catch (e) { setError(e instanceof Error ? e.message : 'Falha ao atualizar.'); } finally { setBusy(false); } }}>Atualizar acompanhamento</button>
+      <button disabled={busy} onClick={async () => { setBusy(true); try { setData(await api<PublicSummary>(path)); setDecision(null); setError(''); } catch (e) { setError(e instanceof Error ? e.message : 'Falha ao atualizar.'); if (e instanceof ApiError && e.status === 404) { setInvalid(true); setData(undefined); setDecision(null); } } finally { setBusy(false); } }}>Atualizar acompanhamento</button>
     </>}
   </main>;
 }
