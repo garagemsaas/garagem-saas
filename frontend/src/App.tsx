@@ -10,7 +10,7 @@ import type { Page } from "./navigation";
 import { getDashboard } from "./dashboard-model";
 import { date, money, number, roles } from "./model";
 import type { Client, Order, Vehicle } from "./model";
-import { api, currentSession, emptyData, loadData, loadOrder, setApiSession } from "./api";
+import { allPages, api, currentSession, emptyData, loadData, loadOrder, orderSummary, setApiSession } from "./api";
 import type { Session } from "./api";
 import "./App.css";
 import "./design-system.css";
@@ -26,6 +26,8 @@ const subtitles: Record<Page, string> = {
 };
 export default function App() {
   const [data, setData] = useState(emptyData);
+  const [options, setOptions] = useState(emptyData);
+  const [recoveryOrders, setRecoveryOrders] = useState<Order[]>([]);
   const [session, setSession] = useState<(Session & { role: Session['papel']; oficina: string }) | null>(null);
   const [busy, setBusy] = useState(false);
   const [dataError, setDataError] = useState('');
@@ -33,16 +35,7 @@ export default function App() {
   const [dataLoading, setDataLoading] = useState(false);
   const [detailAttempt, setDetailAttempt] = useState(0);
   const loadSequence = useRef(0);
-  const epoch = useRef(0);
-  async function reloadData() {
-    const current = epoch.current;
-    const sequence = ++loadSequence.current;
-    setDataLoading(true);
-    try {
-      const result = await loadData();
-      if (current === epoch.current && sequence === loadSequence.current) setData(result);
-    } finally { if (sequence === loadSequence.current) setDataLoading(false); }
-  }
+  const [reload, setReload] = useState(0);
   const [today, setToday] = useState(() => new Date());
   useEffect(() => {
     const timer = window.setInterval(() => setToday(new Date()), 60_000);
@@ -64,7 +57,7 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [toast]);
   useEffect(() => {
-    const expired = () => { epoch.current++; setSession(null); setData(emptyData()); setSelectedId(''); setDetailLoading(false); setDataError(''); setPanel(''); setLoginError('Sessão expirada. Entre novamente.'); };
+    const expired = () => { setSession(null); setData(emptyData()); setOptions(emptyData()); setRecoveryOrders([]); setClient(undefined); setVehicle(undefined); setToast(''); setSelectedId(''); setDetailLoading(false); setDataError(''); setPanel(''); setLoginError('Sessão expirada. Entre novamente.'); };
     const renewed = () => { const value = currentSession(); if (value) setSession(previous => previous ? { ...value, role: value.papel, oficina: previous.oficina } : null); };
     window.addEventListener('session-expired', expired);
     window.addEventListener('session-updated', renewed);
@@ -93,8 +86,9 @@ export default function App() {
   }
   async function logout() {
     const previous = currentSession();
-    epoch.current++;
+
     setApiSession(null); setSession(null); setData(emptyData());
+    setOptions(emptyData()); setRecoveryOrders([]);
     setClient(undefined); setVehicle(undefined); navigate('orders'); setToast('');
     if (previous) {
       try { await api('/auth/logout', 'POST', { oficinaId: previous.oficinaId, refreshToken: previous.refreshToken }); }
@@ -103,33 +97,10 @@ export default function App() {
   }
   const user = session;
   const canWrite = session?.role !== "MECANICO";
-  const clean = query.trim().toLocaleLowerCase("pt-BR");
-  const orders = data.ordens.filter(
-    (o) =>
-      `${o.numero}`.includes(clean) ||
-      data.veiculos
-        .find((v) => v.id === o.veiculoId)!
-        .placa.toLowerCase()
-        .includes(clean) ||
-      data.clientes
-        .find((c) => c.id === o.clienteId)!
-        .nome.toLocaleLowerCase("pt-BR")
-        .includes(clean),
-  );
-  const clients = data.clientes.filter((c) =>
-    c.nome.toLocaleLowerCase("pt-BR").includes(clean),
-  );
-  const vehicles = data.veiculos.filter((v) =>
-    v.placa.toLowerCase().includes(clean),
-  );
-  const total =
-    page === "orders"
-      ? orders.length
-      : page === "clients"
-        ? clients.length
-        : page === "vehicles"
-          ? vehicles.length
-          : data.usuarios.length;
+  const orders = data.ordens;
+  const clients = data.clientes;
+  const vehicles = data.veiculos;
+  const total = data.total;
   const order = data.ordens.find((o) => o.id === selected);
   function updateOrder(o: Order) {
     setData((d) => ({
@@ -138,23 +109,70 @@ export default function App() {
     }));
   }
   async function saveClient(c: Client) {
-    const saved = await api<Client>(client ? `/clientes/${client.id}` : '/clientes', client ? 'PUT' : 'POST', c);
+    const saved = await api<Client>(client ? `/clientes/${client.id}` : '/clientes', client ? 'PUT' : 'POST', { nome: c.nome, telefone: c.telefone, email: c.email || null, revisao: c.revisao });
     setData(d => ({ ...d, clientes: d.clientes.some(item => item.id === saved.id) ? d.clientes.map(item => item.id === saved.id ? saved : item) : [...d.clientes, saved] }));
-    setClient(saved); finish('Cliente salvo.');
+    setClient(saved); finish('Cliente salvo.'); setReload(n => n + 1);
   }
   async function saveVehicle(v: Vehicle) {
-    const saved = await api<Vehicle>(vehicle ? `/veiculos/${vehicle.id}` : '/veiculos', vehicle ? 'PUT' : 'POST', v);
+    const saved = await api<Vehicle>(vehicle ? `/veiculos/${vehicle.id}` : '/veiculos', vehicle ? 'PUT' : 'POST', { clienteId: v.clienteId, placa: v.placa, marca: v.marca, modelo: v.modelo, ano: v.ano, km: v.km, cor: v.cor, revisao: v.revisao });
     setData(d => ({ ...d, veiculos: d.veiculos.some(item => item.id === saved.id) ? d.veiculos.map(item => item.id === saved.id ? saved : item) : [...d.veiculos, saved] }));
-    setVehicle(saved); finish('Veículo salvo.');
+    setVehicle(saved); finish('Veículo salvo.'); setReload(n => n + 1);
   }
+  const sessionId = session?.usuarioId;
   useEffect(() => {
-    if (!session || !selected) return;
+    if (!sessionId || selected) return;
     let active = true;
-    loadOrder(selected).then(o => { if (active) setData(d => ({ ...d, ordens: d.ordens.map(item => item.id === o.id ? { ...o, link: item.link } : item) })); })
+    const sequence = ++loadSequence.current;
+    // Synchronize the loading indicator with this API request's lifecycle.
+    // oxlint-disable-next-line react/set-state-in-effect
+    setDataLoading(true); setDataError('');
+    const timer = window.setTimeout(() => {
+      loadData(page, pagination, query).then(result => {
+        if (active && sequence === loadSequence.current) setData(result);
+      }).catch(error => { if (active) setDataError(error.message); })
+        .finally(() => { if (active) setDataLoading(false); });
+    }, query ? 300 : 0);
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [sessionId, page, pagination, query, reload, selected]);
+  const [optionsLoading, setOptionsLoading] = useState(false);
+  const [optionsError, setOptionsError] = useState('');
+  const [optionsAttempt, setOptionsAttempt] = useState(0);
+  useEffect(() => {
+    if (!sessionId || panel !== 'recovery') return;
+    let active = true;
+    // oxlint-disable-next-line react/set-state-in-effect -- API request lifecycle
+    setOptionsLoading(true); setOptionsError('');
+    allPages<Order>('/ordens-servico?status=AGUARDANDO_APROVACAO')
+      .then(rows => Promise.all(rows.map(async o => ({ ...orderSummary(o), versoes: await api<Order['versoes']>(`/ordens-servico/${o.id}/orcamento/versoes`) }))))
+      .then(ordens => { if (active) setRecoveryOrders(ordens); })
+      .catch(error => { if (active) setOptionsError(error.message); })
+      .finally(() => { if (active) setOptionsLoading(false); });
+    return () => { active = false; };
+  }, [sessionId, panel, optionsAttempt]);
+  useEffect(() => {
+    if (!sessionId || !['new-orders', 'new-vehicles', 'edit-vehicle'].includes(panel)) return;
+    let active = true;
+    // oxlint-disable-next-line react/set-state-in-effect -- API request lifecycle
+    setOptionsLoading(true); setOptionsError('');
+    Promise.all([allPages<Client>('/clientes'), panel === 'new-orders' ? allPages<Vehicle>('/veiculos') : Promise.resolve(null), panel === 'new-orders' ? allPages<import('./model').User>('/usuarios?ativo=true') : Promise.resolve(null)])
+      .then(([clientes, veiculos, usuarios]) => { if (active) setOptions({ ...emptyData(), clientes, veiculos: veiculos ?? [], usuarios: usuarios ?? [] }); })
+      .catch(error => { if (active) setOptionsError(error.message); })
+      .finally(() => { if (active) setOptionsLoading(false); });
+    return () => { active = false; };
+  }, [sessionId, panel, optionsAttempt]);
+  useEffect(() => {
+    if (!sessionId || !selected) return;
+    // oxlint-disable-next-line react/set-state-in-effect -- API request lifecycle
+    setDataLoading(false); setDetailLoading(true);
+    let active = true;
+    loadOrder(selected).then(async o => {
+      const [cliente, veiculo, usuarios] = await Promise.all([api<Client>(`/clientes/${o.clienteId}`), api<Vehicle>(`/veiculos/${o.veiculoId}`), allPages<import('./model').User>('/usuarios')]);
+      if (active) setData(d => ({ ...d, clientes: [...d.clientes.filter(c => c.id !== cliente.id), cliente], veiculos: [...d.veiculos.filter(v => v.id !== veiculo.id), veiculo], usuarios, ordens: [...d.ordens.filter(item => item.id !== o.id), { ...o, link: d.ordens.find(item => item.id === o.id)?.link }] }));
+    })
       .catch(e => { if (active) setDataError(e.message); })
       .finally(() => { if (active) setDetailLoading(false); });
     return () => { active = false; };
-  }, [selected, session, detailAttempt]);
+  }, [selected, sessionId, detailAttempt]);
   if (!session)
     return (
       <div className="login-page">
@@ -205,7 +223,7 @@ export default function App() {
                   setApiSession(value);
                   setSession({ ...value, role: value.papel, oficina });
                   navigate('overview');
-                  try { await reloadData(); } catch (error) { setDataError(error instanceof Error ? error.message : 'Não foi possível carregar a oficina.'); }
+
                 } catch (error) {
                   setApiSession(null); setData(emptyData());
                   setLoginError(error instanceof Error ? error.message : 'Não foi possível entrar.');
@@ -277,8 +295,8 @@ export default function App() {
       openClient={(c) => { navigate("clients"); setClient(c); setPanel("view-client"); }}
       openVehicle={(v) => { navigate("vehicles"); setVehicle(v); setPanel("view-vehicle"); }}
       openRecovery={() => setPanel("recovery")}>
-          <button className="text-button" disabled={dataLoading || detailLoading} onClick={async () => { setDataError(''); try { await reloadData(); if (selected) { setDetailLoading(true); setDetailAttempt(n => n + 1); } } catch (e) { setDataError(e instanceof Error ? e.message : 'Falha ao atualizar.'); } }}>{dataLoading ? 'Atualizando…' : 'Atualizar dados'}</button>
-          {dataLoading ? <PageState state="loading" title="Carregando dados da oficina" /> : detailLoading ? <PageState state="loading" title="Carregando ordem de serviço" /> : dataError ? <PageState state="error" title="Não foi possível carregar os dados" retry={() => { setDataError(''); if (selected) { setDetailLoading(true); setDetailAttempt(n => n + 1); } else void reloadData().catch(e => setDataError(e.message)); }}>{dataError}</PageState> : page === "overview" ? <Suspense fallback={<PageState state="loading" title="Preparando sua visão geral" />}><Dashboard orders={data.ordens} clients={data.clientes} vehicles={data.veiculos}
+          <button className="text-button" disabled={dataLoading || detailLoading} onClick={() => { setDataError(''); if (selected) { setDetailLoading(true); setDetailAttempt(n => n + 1); } else setReload(n => n + 1); }}>{dataLoading ? 'Atualizando…' : 'Atualizar dados'}</button>
+          {dataLoading && !query ? <PageState state="loading" title="Carregando dados da oficina" /> : detailLoading ? <PageState state="loading" title="Carregando ordem de serviço" /> : dataError ? <PageState state="error" title="Não foi possível carregar os dados" retry={() => { setDataError(''); if (selected) { setDetailLoading(true); setDetailAttempt(n => n + 1); } else setReload(n => n + 1); }}>{dataError}</PageState> : page === "overview" ? <Suspense fallback={<PageState state="loading" title="Preparando sua visão geral" />}><Dashboard summary={data.dashboard} orders={data.ordens} clients={data.clientes} vehicles={data.veiculos}
             today={today} canWrite={canWrite} openOrder={openOrder}
             newOrder={() => { navigate("orders"); setPanel("new-orders"); }}
             viewOrders={() => navigate("orders")} viewRecovery={() => setPanel("recovery")} /></Suspense> :
@@ -324,7 +342,8 @@ export default function App() {
                   </button>
                 )}
               </div>
-              <section className="list-panel">
+              <section className="list-panel" aria-busy={dataLoading}>
+                {dataLoading && <p role="status">Buscando registros…</p>}
                 <div className="list-toolbar">
                   <h2>
                     {page === "orders"
@@ -347,8 +366,8 @@ export default function App() {
                         page === "orders"
                           ? "Buscar por placa, cliente ou nº da OS"
                           : page === "clients"
-                            ? "Buscar por nome do cliente"
-                            : "Buscar por placa"
+                            ? "Buscar por nome, telefone ou e-mail"
+                            : "Buscar por placa, marca ou modelo"
                       }
                     />
                   )}
@@ -385,7 +404,7 @@ export default function App() {
                         </thead>
                         <tbody>
                           {orders
-                            .slice(pagination * 10, pagination * 10 + 10)
+
                             .map((o) => {
                               const v = data.veiculos.find(
                                   (v) => v.id === o.veiculoId,
@@ -462,7 +481,7 @@ export default function App() {
                         </thead>
                         <tbody>
                           {clients
-                            .slice(pagination * 10, pagination * 10 + 10)
+
                             .map((c) => (
                               <tr key={c.id}>
                                 <td data-label="Nome">
@@ -507,7 +526,7 @@ export default function App() {
                         </thead>
                         <tbody>
                           {vehicles
-                            .slice(pagination * 10, pagination * 10 + 10)
+
                             .map((v) => (
                               <tr key={v.id}>
                                 <td data-label="Placa">
@@ -564,7 +583,7 @@ export default function App() {
                         </thead>
                         <tbody>
                           {data.usuarios
-                            .slice(pagination * 10, pagination * 10 + 10)
+
                             .map((u) => (
                               <tr key={u.id}>
                                 <td data-label="Nome">
@@ -621,17 +640,17 @@ export default function App() {
       )}
       {panel === "new-orders" && (
         <Drawer title="Abrir ordem de serviço" close={() => setPanel("")}>
-          <OrderForm
-            vehicles={data.veiculos}
-            clients={data.clientes}
-            users={data.usuarios}
+          {optionsLoading ? <PageState state="loading" title="Carregando veículos e equipe" /> : optionsError ? <PageState state="error" title="Não foi possível carregar as opções" retry={() => setOptionsAttempt(n => n + 1)}>{optionsError}</PageState> : <OrderForm
+            vehicles={options.veiculos}
+            clients={options.clientes}
+            users={options.usuarios}
             close={() => setPanel("")}
             save={async (input) => {
               const o = await api<Order>('/ordens-servico', 'POST', { ...input, mecanicoId: input.mecanicoId || null, previsaoEntrega: input.previsaoEntrega || null });
               setData(d => ({ ...d, ordens: [...d.ordens, { ...o, diagnosticos: [], versoes: [], fotos: [], timeline: [] }] }));
               setSelected(o.id); finish(`OS #${o.numero} aberta.`);
             }}
-          />
+          />}
         </Drawer>
       )}
       {(panel === "new-clients" || panel === "edit-client") && (
@@ -651,13 +670,13 @@ export default function App() {
           title={vehicle ? "Editar veículo" : "Cadastrar veículo"}
           close={() => setPanel("")}
         >
-          <VehicleForm
+          {optionsLoading ? <PageState state="loading" title="Carregando clientes" /> : optionsError ? <PageState state="error" title="Não foi possível carregar as opções" retry={() => setOptionsAttempt(n => n + 1)}>{optionsError}</PageState> : <VehicleForm
             current={vehicle}
-            clients={data.clientes}
+            clients={options.clientes}
             vehicles={data.veiculos}
             close={() => setPanel("")}
             save={saveVehicle}
-          />
+          />}
         </Drawer>
       )}
       {panel === "new-team" && (
@@ -667,7 +686,7 @@ export default function App() {
             close={() => setPanel("")}
             save={async (u) => {
               const saved = await api<typeof u>('/usuarios', 'POST', { nome: u.nome, email: u.email, senha: u.senha, papel: u.papel });
-              setData(d => ({ ...d, usuarios: [...d.usuarios, saved] })); finish('Usuário cadastrado.');
+              setData(d => ({ ...d, usuarios: [...d.usuarios, saved] })); finish('Usuário cadastrado.'); setReload(n => n + 1);
             }}
           />
         </Drawer>
@@ -717,8 +736,8 @@ export default function App() {
         <div className="recovery-intro"><Icon name="recovery" size={28} /><h2>Todo retorno começa com uma boa conversa.</h2><p>A identificação de orçamentos esquecidos, revisões atrasadas e reavaliações pendentes ainda não está disponível.</p></div>
         <div className="notice"><Icon name="info" size={20} /><p>Os valores abaixo vêm da última versão de cada orçamento aguardando aprovação. Ainda não são oportunidades classificadas nem receita recuperada.</p></div>
         <h3>Orçamentos aguardando resposta</h3>
-        {getDashboard(data.ordens, today).pendingBudgets.length === 0 ? <Empty title="Nenhum orçamento pendente">Não há versões aguardando decisão nas OS atuais.</Empty> :
-          <ul className="global-results">{getDashboard(data.ordens, today).pendingBudgets.map(({ order: item, version }) => <li key={item.id}>
+        {optionsLoading ? <PageState state="loading" title="Carregando orçamentos" /> : optionsError ? <PageState state="error" title="Falha ao carregar orçamentos" retry={() => setOptionsAttempt(n => n + 1)}>{optionsError}</PageState> : getDashboard(recoveryOrders, today).pendingBudgets.length === 0 ? <Empty title="Nenhum orçamento pendente">Não há versões aguardando decisão nas OS atuais.</Empty> :
+          <ul className="global-results">{getDashboard(recoveryOrders, today).pendingBudgets.map(({ order: item, version }) => <li key={item.id}>
             <button onClick={() => openOrder(item.id)}><Icon name="orders" /><span><strong>OS #{item.numero} · {data.clientes.find((c) => c.id === item.clienteId)?.nome}</strong><small>Orçamento v{version.numero} · {date(version.criadoEm, true)} · {money(version.total)}</small><small>Próxima ação: consultar orçamento e decisão do cliente.</small></span><Icon name="arrow" size={18} /></button>
           </li>)}</ul>}
       </Drawer>}

@@ -5,6 +5,8 @@ import type { IconName } from "./icons";
 import { roles } from "./model";
 import type { Client, Order, Role, Vehicle } from "./model";
 import { getDashboard } from "./dashboard-model";
+import { listPage } from './api';
+import { PageState } from './PageState';
 
 import { labels } from "./navigation";
 import type { Page } from "./navigation";
@@ -24,9 +26,26 @@ interface WorkspaceProps {
 }
 
 export default function Workspace(props: WorkspaceProps) {
-  const { page, navigate, children, role, name, workshop, logout, orders, clients, vehicles, today, openOrder, openClient, openVehicle, openRecovery } = props;
+  const { page, navigate, children, role, name, workshop, logout, orders, clients, today, openOrder, openClient, openVehicle, openRecovery } = props;
   const [panel, setPanel] = useState<Panel>(null);
   const [query, setQuery] = useState("");
+  const [results, setResults] = useState({ orders: [] as Order[], clients: [] as Client[], vehicles: [] as Vehicle[], total: 0 });
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState('');
+  const [attempt, setAttempt] = useState(0);
+  useEffect(() => {
+    if (panel !== 'search' || !query.trim()) return;
+    let active = true;
+    // oxlint-disable-next-line react/set-state-in-effect -- API request lifecycle
+    setSearchLoading(true); setSearchError('');
+    const timer = window.setTimeout(() => {
+      Promise.all([listPage<Order>('/ordens-servico', 0, query), listPage<Client>('/clientes', 0, query), listPage<Vehicle>('/veiculos', 0, query)])
+        .then(([orders, clients, vehicles]) => { if (active) setResults({ orders: orders.itens, clients: clients.itens, vehicles: vehicles.itens, total: orders.total + clients.total + vehicles.total }); })
+        .catch(error => { if (active) setSearchError(error.message); })
+        .finally(() => { if (active) setSearchLoading(false); });
+    }, 300);
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [panel, query, attempt]);
   const menuRef = useRef<HTMLDialogElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const mainRef = useRef<HTMLElement>(null);
@@ -49,14 +68,8 @@ export default function Workspace(props: WorkspaceProps) {
   const initials = name.split(" ").map((part) => part[0]).slice(0, 2).join("");
   const dashboard = getDashboard(orders, today);
   const clean = query.trim().toLocaleLowerCase("pt-BR");
-  const match = (text: string) => text.toLocaleLowerCase("pt-BR").includes(clean);
-  const matchedOrders = clean ? orders.filter((order) => {
-    const vehicle = vehicles.find((v) => v.id === order.veiculoId);
-    return match(`${order.numero} ${vehicle?.placa ?? ""} ${vehicle?.marca ?? ""} ${vehicle?.modelo ?? ""} ${clients.find((c) => c.id === order.clienteId)?.nome ?? ""}`);
-  }) : [];
-  const matchedClients = clean ? clients.filter((c) => match(`${c.nome} ${c.telefone} ${c.email}`)) : [];
-  const matchedVehicles = clean ? vehicles.filter((v) => match(`${v.placa} ${v.marca} ${v.modelo}`)) : [];
-  const total = matchedOrders.length + matchedClients.length + matchedVehicles.length;
+  const matchedOrders = results.orders, matchedClients = results.clients, matchedVehicles = results.vehicles;
+  const total = results.total;
   const navButton = (id: Page, icon: IconName = id) => <button key={id} aria-current={page === id ? "page" : undefined} className={page === id ? "active" : ""} onClick={() => move(id)}><Icon name={icon} /><span>{labels[id]}</span></button>;
   const navigation = <>
     <div className="workspace-brand"><Brand /></div>
@@ -93,13 +106,15 @@ export default function Workspace(props: WorkspaceProps) {
     </div>
     {panel === "search" && <Drawer title="Buscar na oficina" close={() => setPanel(null)}>
       <Search value={query} onChange={setQuery} placeholder="OS, placa, veículo ou cliente" />
-      <p className="search-count" role="status">{clean ? `${total} resultado(s) na oficina` : "Busque nos clientes, veículos e ordens de serviço."}</p>
-      {clean && total === 0 && <Empty title="Nenhum resultado">Tente outro nome, placa ou número de OS.</Empty>}
+      <p className="search-count" role="status">{clean ? searchLoading ? 'Buscando…' : `${total} resultado(s) na oficina. Exibindo até 10 por categoria; refine a busca ou consulte a listagem.` : "Busque nos clientes, veículos e ordens de serviço."}</p>
+      {clean && searchError && <PageState state="error" title="Falha na busca" retry={() => setAttempt(n => n + 1)}>{searchError}</PageState>}
+      {clean && !searchLoading && !searchError && total === 0 && <Empty title="Nenhum resultado">Tente outro nome, placa ou número de OS.</Empty>}
+      {clean && !searchLoading && !searchError &&
       <ul className="global-results">
         {matchedOrders.map((o) => <li key={o.id}><button onClick={() => { setPanel(null); openOrder(o.id); }}><Icon name="orders" /><span><strong>OS #{o.numero}</strong><small>{clients.find((c) => c.id === o.clienteId)?.nome}</small></span><Icon name="arrow" size={16} /></button></li>)}
         {matchedClients.map((c) => <li key={c.id}><button onClick={() => { setPanel(null); openClient(c); }}><Icon name="clients" /><span><strong>{c.nome}</strong><small>Cliente · {c.telefone}</small></span><Icon name="arrow" size={16} /></button></li>)}
         {matchedVehicles.map((v) => <li key={v.id}><button onClick={() => { setPanel(null); openVehicle(v); }}><Icon name="vehicles" /><span><strong>{v.marca} {v.modelo}</strong><small>Veículo · {v.placa}</small></span><Icon name="arrow" size={16} /></button></li>)}
-      </ul>
+      </ul>}
     </Drawer>}
     {panel === "notifications" && <Drawer title="Notificações" close={() => setPanel(null)}>
       <p>Os avisos em tempo real ainda não estão disponíveis. Estas são as pendências identificadas nas OS carregadas.</p>

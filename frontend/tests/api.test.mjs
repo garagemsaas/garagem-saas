@@ -1,11 +1,67 @@
 import test, { afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { api, allPages, currentSession, setApiSession, photoBlob, ApiError } from '../src/api.ts';
+import { api, allPages, listPage, loadData, currentSession, setApiSession, photoBlob, ApiError } from '../src/api.ts';
 
 const originalFetch = globalThis.fetch;
 const originalWindow = globalThis.window;
 const fakeSession = { accessToken: 'access-test', refreshToken: 'refresh-test', oficinaId: 'oficina-test', usuarioId: 'user-test', nome: 'Teste', papel: 'OWNER', expiresIn: 900 };
 const response = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+test('listagem solicita somente a página e codifica busca sem criar parâmetros', async () => {
+  let calls = 0;
+  globalThis.fetch = async path => {
+    calls++;
+    const url = new URL(path, 'http://localhost');
+    assert.equal(url.searchParams.get('pagina'), '2');
+    assert.equal(url.searchParams.get('tamanho'), '10');
+    assert.equal(url.searchParams.get('busca'), 'Ana & João');
+    return response({ itens: [{ id: 'c21' }], total: 21, pagina: 2, tamanho: 10 });
+  };
+  const result = await loadData('clients', 2, 'Ana & João');
+  assert.equal(calls, 1); assert.equal(result.total, 21); assert.equal(result.clientes[0].id, 'c21');
+});
+
+test('página de veículos resolve proprietário fora da página sem buscar a base inteira', async () => {
+  const calls = [];
+  globalThis.fetch = async path => {
+    calls.push(path);
+    if (path.includes('/veiculos?')) return response({ itens: [{ id: 'v', clienteId: 'c' }], total: 34 });
+    assert.equal(path, '/api/v1/clientes/c');
+    return response({ id: 'c', nome: 'Cliente relacionado' });
+  };
+  const result = await loadData('vehicles');
+  assert.equal(calls.length, 2); assert.equal(result.clientes[0].id, 'c'); assert.equal(result.total, 34);
+});
+
+test('busca preserva filtro de status e omite busca vazia', async () => {
+  globalThis.fetch = async path => {
+    const params = new URL(path, 'http://localhost').searchParams;
+    assert.equal(params.get('status'), 'PRONTO'); assert.equal(params.has('busca'), false);
+    return response({ itens: [], total: 0 });
+  };
+  await listPage('/ordens-servico?status=PRONTO');
+});
+
+test('JSON de sucesso inválido retorna erro compreensível', async () => {
+  globalThis.fetch = async () => new Response('<html>Proxy</html>');
+  await assert.rejects(api('/clientes'), e => e instanceof ApiError && e.message.includes('resposta inválida'));
+});
+
+test('401 atrasado reutiliza token já renovado sem rotacionar novamente', async () => {
+  setApiSession(fakeSession);
+  let finishSlow;
+  let refreshes = 0;
+  globalThis.fetch = async (path, options) => {
+    if (path.endsWith('/auth/refresh')) { refreshes++; return response({ ...fakeSession, accessToken: 'new-token' }); }
+    if (options.headers.Authorization === 'Bearer new-token') return response({ ok: true });
+    if (path.endsWith('/slow')) return new Promise(resolve => { finishSlow = resolve; });
+    return response({}, 401);
+  };
+  const slow = api('/slow');
+  await api('/fast');
+  finishSlow(response({}, 401));
+  await slow;
+  assert.equal(refreshes, 1);
+});
 afterEach(() => { globalThis.fetch = originalFetch; globalThis.window = originalWindow; setApiSession(null); });
 
 test('leituras concorrentes renovam um refresh uma única vez e repetem com o novo JWT', async () => {

@@ -80,9 +80,15 @@ e o token no fragmento: `/acompanhar#token`. Copie ao emitir; a API não lista t
 já emitidos. A página pública exibe somente o resumo permitido pelo contrato,
 sem fotos, dados pessoais ou timeline interna.
 
-Listagens carregam todas as páginas de 100 registros e exibem dez por página;
-buscas são locais. O dashboard ainda calcula indicadores sobre esses registros.
-Paginação/filtros no servidor e uso do endpoint agregado `/dashboard` são uma
-evolução de escala, não implementada nesta entrega.
+Listagens consultam páginas de 10 registros com `pagina`, `tamanho` e `busca`.
+A contagem vem de `total` e a busca é executada no backend, com espera de 300 ms
+e descarte de respostas de consultas anteriores. As relações da página são
+resolvidas por ID. A busca geral mostra até 10 resultados por categoria.
+Os indicadores vêm de `/dashboard`; prioridades e entradas são explicitamente
+limitadas às 10 OS recentes exibidas. Detalhes e versões são carregados sob demanda.
+Os seletores de cadastro ainda percorrem páginas de 100, somente ao abrir o
+formulário; a listagem da equipe necessária para responsáveis e a consulta de
+orçamentos pendentes também percorrem páginas. Esses seletores podem evoluir
+para autocomplete remoto quando o volume exigir.
 
-Veja o [checklist e as evidências da entrega](../docs/fase2-kaua-frontend.md).
+Veja o [checklist e as evidências da fase 3](../docs/fase3-kaua-frontend.md).

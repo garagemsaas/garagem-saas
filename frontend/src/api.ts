@@ -1,5 +1,7 @@
 import type { Client, Vehicle, User, Order, Role, Diagnosis, Photo } from './model';
 import type { ApiProblem, CampoInvalido } from './api/types';
+import type { Dashboard } from './api/types';
+import type { Page } from './navigation';
 
 const baseUrl = (import.meta.env?.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '') ?? '';
 
@@ -27,6 +29,7 @@ export function currentSession() { return session; }
 async function request(path: string, method = 'GET', body?: unknown, retry = true): Promise<Response> {
   const start = generation;
   const authenticated = !path.startsWith('/auth/') && !path.startsWith('/publico/');
+  const accessToken = session?.accessToken;
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (authenticated && session) headers.Authorization = `Bearer ${session.accessToken}`;
   if (body !== undefined && !(body instanceof FormData)) headers['Content-Type'] = 'application/json';
@@ -37,6 +40,8 @@ async function request(path: string, method = 'GET', body?: unknown, retry = tru
   } catch { throw new ApiError(0, 'Não foi possível conectar à API. Verifique a conexão e tente novamente.'); }
   if (authenticated && start !== generation) throw new ApiError(401, 'A sessão foi encerrada.');
   if (response.status === 401 && authenticated && session && retry) {
+    // A slower request may return 401 after another request already rotated the token.
+    if (accessToken !== session.accessToken) return request(path, method, body, false);
     if (!renewal) {
       const previous = session;
       renewal = api<Session>('/auth/refresh', 'POST', { oficinaId: previous.oficinaId, refreshToken: previous.refreshToken })
@@ -70,8 +75,13 @@ async function request(path: string, method = 'GET', body?: unknown, retry = tru
   return response;
 }
 export async function api<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
+  const start = generation;
   const response = await request(path, method, body);
-  return response.status === 204 ? undefined as T : response.json() as Promise<T>;
+  let value: T;
+  try { value = response.status === 204 ? undefined as T : await response.json() as T; }
+  catch { throw new ApiError(response.status, 'A API retornou uma resposta inválida. Tente novamente.'); }
+  if (!path.startsWith('/auth/') && !path.startsWith('/publico/') && start !== generation) throw new ApiError(401, 'A sessão foi encerrada.');
+  return value;
 }
 export async function photoBlob(path: string) { return (await request(path)).blob(); }
 export interface PageResult<T> { itens: T[]; pagina: number; tamanho: number; total: number }
@@ -83,16 +93,29 @@ export async function allPages<T>(path: string): Promise<T[]> {
     if (!next.itens.length || result.length >= next.total) return result;
   }
 }
-export const emptyData = () => ({ clientes: [] as Client[], veiculos: [] as Vehicle[], usuarios: [] as User[], ordens: [] as Order[] });
+export const emptyData = () => ({ clientes: [] as Client[], veiculos: [] as Vehicle[], usuarios: [] as User[], ordens: [] as Order[], total: 0, dashboard: null as Dashboard | null });
+export function listPage<T>(path: string, pagina = 0, busca = '', tamanho = 10) {
+  const params = new URLSearchParams({ pagina: String(pagina), tamanho: String(tamanho) });
+  if (busca.trim()) params.set('busca', busca.trim());
+  return api<PageResult<T>>(`${path}${path.includes('?') ? '&' : '?'}${params}`);
+}
 export const diagnosisToApi = { OK: 'VERDE', ACOMPANHAR: 'AMARELO', TROCAR: 'VERMELHO' } as const;
 const diagnosisFromApi = { VERDE: 'OK', AMARELO: 'ACOMPANHAR', VERMELHO: 'TROCAR' } as const;
 export function orderSummary(o: Order): Order {
   return { ...o, mecanicoId: o.mecanicoId ?? '', previsaoEntrega: o.previsaoEntrega ?? '', diagnosticos: [], versoes: [], fotos: [], timeline: [] };
 }
-export async function loadData() {
-  const [clientes, veiculos, usuarios, orders] = await Promise.all([
-    allPages<Client>('/clientes'), allPages<Vehicle>('/veiculos'), allPages<User>('/usuarios'), allPages<Order>('/ordens-servico')
-  ]);
+export async function loadData(page: Page = 'overview', pagina = 0, busca = '') {
+  const data = emptyData();
+  const path = { overview: '/ordens-servico', orders: '/ordens-servico', clients: '/clientes', vehicles: '/veiculos', team: '/usuarios' }[page];
+  const result = await listPage<Client | Vehicle | User | Order>(path, pagina, busca);
+  data.total = result.total;
+  if (page === 'clients') data.clientes = result.itens as Client[];
+  else if (page === 'vehicles') data.veiculos = result.itens as Vehicle[];
+  else if (page === 'team') data.usuarios = result.itens as User[];
+  else data.ordens = (result.itens as Order[]).map(orderSummary);
+  if (page === 'overview') data.dashboard = await api<Dashboard>('/dashboard');
+  if (page === 'orders' || page === 'overview') data.usuarios = await allPages<User>('/usuarios');
+  const { clientes, veiculos, ordens: orders } = data;
   // Relations may have been created by another user between paginated reads.
   for (const o of orders) {
     if (!veiculos.some(v => v.id === o.veiculoId)) veiculos.push(await api<Vehicle>(`/veiculos/${o.veiculoId}`));
@@ -101,8 +124,7 @@ export async function loadData() {
   for (const v of veiculos) {
     if (!clientes.some(c => c.id === v.clienteId)) clientes.push(await api<Client>(`/clientes/${v.clienteId}`));
   }
-  const ordens = await Promise.all(orders.map(async o => ({ ...orderSummary(o), versoes: await api<Order['versoes']>(`/ordens-servico/${o.id}/orcamento/versoes`) })));
-  return { clientes, veiculos, usuarios, ordens };
+  return data;
 }
 export async function loadOrder(id: string): Promise<Order> {
   const path = `/ordens-servico/${id}`;
