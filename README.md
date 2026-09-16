@@ -119,6 +119,15 @@ docs/staging.md
 
 A Fase 3 está em andamento.
 
+### Kauã — frontend
+
+Implementação entregue nesta branch: login e sessão reais, clientes, veículos,
+ordens de serviço e alterações de status; paginação e busca no servidor,
+indicadores via `/dashboard`, erros e carregamentos. Não há dados fictícios nas
+telas de produção. O aceite com API, PostgreSQL e MinIO reais continua pendente.
+Checklist, validações e instruções para o novo PR em
+[docs/fase3-kaua-frontend.md](docs/fase3-kaua-frontend.md).
+
 ## API e integração
 
 A Fase 3 foi concluída na branch:

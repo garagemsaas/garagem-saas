@@ -5,6 +5,7 @@ import type { Client, Order, Vehicle } from "./model";
 import { getDashboard } from "./dashboard-model";
 
 interface DashboardProps {
+  summary: import("./api/types").Dashboard | null;
   orders: Order[];
   vehicles: Vehicle[];
   clients: Client[];
@@ -25,7 +26,7 @@ function Metric({ icon, label, value, detail }: {
   </div>;
 }
 
-export default function Dashboard({ orders, vehicles, clients, today, canWrite, openOrder, newOrder, viewOrders, viewRecovery }: DashboardProps) {
+export default function Dashboard({ summary, orders, vehicles, clients, today, canWrite, openOrder, newOrder, viewOrders, viewRecovery }: DashboardProps) {
   const dashboard = getDashboard(orders, today);
   const vehicleName = (order: Order) => {
     const vehicle = vehicles.find((v) => v.id === order.veiculoId);
@@ -39,9 +40,9 @@ export default function Dashboard({ orders, vehicles, clients, today, canWrite, 
       {canWrite && <button className="primary" onClick={newOrder}><Icon name="plus" size={18} />Abrir OS</button>}
     </div>
     <dl className="metrics" aria-label="Indicadores da oficina">
-      <Metric icon="work" label="OS em andamento" value={String(dashboard.ongoing.length).padStart(2, "0")} detail="Do recebimento ao teste" />
-      <Metric icon="clock" label="Aguardando aprovação" value={String(dashboard.waiting.length).padStart(2, "0")} detail="Aguardam decisão do cliente" />
-      <Metric icon="good" label="Veículos prontos" value={String(dashboard.ready.length).padStart(2, "0")} detail="Serviços concluídos" />
+      <Metric icon="work" label="OS em andamento" value={String(summary?.emAndamento ?? 0).padStart(2, "0")} detail="Do recebimento ao teste" />
+      <Metric icon="clock" label="Aguardando aprovação" value={String(summary?.porStatus.AGUARDANDO_APROVACAO ?? 0).padStart(2, "0")} detail="Aguardam decisão do cliente" />
+      <Metric icon="good" label="Veículos prontos" value={String(summary?.prontas ?? 0).padStart(2, "0")} detail="Serviços concluídos" />
       <Metric icon="parking" label="Ocupação do pátio" value="—" detail="Capacidade não disponível" />
     </dl>
 
@@ -54,13 +55,13 @@ export default function Dashboard({ orders, vehicles, clients, today, canWrite, 
       <div className="recovery-amount"><span>Potencial de recuperação</span>
         <strong>Em apuração</strong>
         <p>Oportunidades ainda não classificadas.<br />O total será exibido quando houver uma origem verificável.</p>
-        <div className="pending-origin"><Icon name="orders" size={18} /><span><b>{money(dashboard.pendingTotal)}</b> em {dashboard.pendingBudgets.length} orçamento(s) aguardando resposta. <span>Esse valor não representa receita recuperada.</span></span></div>
+        <div className="pending-origin"><Icon name="orders" size={18} /><span><b>{money(summary?.orcamentosAguardandoDecisao.total ?? 0)}</b> em {summary?.orcamentosAguardandoDecisao.quantidade ?? 0} orçamento(s) aguardando resposta. <span>Esse valor não representa receita recuperada.</span></span></div>
       </div>
     </section>
 
     <div className="dashboard-columns">
       <section className="surface priorities" aria-labelledby="priorities-title">
-        <header className="surface-heading"><div><h2 id="priorities-title">Prioridades do dia <span className="count">{dashboard.priorities.length}</span></h2><p>Próximos passos para o trabalho avançar.</p></div><Icon name="orders" /></header>
+        <header className="surface-heading"><div><h2 id="priorities-title">Prioridades nas OS recentes <span className="count">{dashboard.priorities.length}</span></h2><p>Próximos passos para o trabalho avançar.</p></div><Icon name="orders" /></header>
         {dashboard.priorities.length === 0 ? <Empty title="Tudo em ordem por aqui">Nenhuma pendência identificada nas ordens atuais.</Empty> :
           <ul className="priority-list">{dashboard.priorities.map(({ order, reason, overdue }) => <li key={order.id}>
             <span className={`priority-symbol ${overdue ? "critical" : "attention"}`}><Icon name={overdue ? "critical" : "clock"} size={19} /></span>
@@ -70,8 +71,8 @@ export default function Dashboard({ orders, vehicles, clients, today, canWrite, 
         <footer className="surface-footer"><button className="text-action" onClick={viewOrders}>Ver todas as ordens<Icon name="forward" size={16} /></button></footer>
       </section>
       <section className="surface" aria-labelledby="entries-title">
-        <header className="surface-heading"><div><h2 id="entries-title">Entradas de hoje</h2><p>Recebimentos registrados na oficina.</p></div><Icon name="calendar" size={20} /></header>
-        {dashboard.entries.length === 0 ? <Empty title="Nenhuma entrada hoje">As OS recebidas hoje aparecerão aqui.</Empty> :
+        <header className="surface-heading"><div><h2 id="entries-title">Entradas de hoje nas OS recentes</h2><p>Recebimentos registrados na oficina.</p></div><Icon name="calendar" size={20} /></header>
+        {dashboard.entries.length === 0 ? <Empty title="Nenhuma entrada nas OS recentes">Consulte todas as ordens para outros recebimentos.</Empty> :
           <ul className="entry-list">{dashboard.entries.map((order) => <li key={order.id}>
             <time dateTime={order.criadoEm}>{new Date(order.criadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</time>
             <button onClick={() => openOrder(order.id)}><strong>{vehicleName(order)}</strong><span>{clients.find((c) => c.id === order.clienteId)?.nome ?? "Cliente não informado"} · OS #{order.numero}</span></button>

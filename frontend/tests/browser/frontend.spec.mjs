@@ -10,7 +10,7 @@ async function fixture(context, role = 'OWNER') {
   const state = {
     clients: [], vehicles: [], orders: [], versions: [], diagnostics: [], photos: [], timeline: [], checklist: null,
     users: [{ id: 'mechanic', nome: 'Mecânico de teste', email: 'mechanic@example.test', papel: 'MECANICO', ativo: true }],
-    failClients: false, fieldError: false, expired: false, delay: 0, writes: [],
+    failClients: false, fieldError: false, expired: false, delay: 0, writes: [], statusConflict: false,
   };
   const emit = description => state.timeline.push({ id: String(state.timeline.length), descricao: description, origem: 'USUARIO', criadoEm: new Date().toISOString() });
   await context.route('**/api/v1/**', async route => {
@@ -20,7 +20,12 @@ async function fixture(context, role = 'OWNER') {
     const method = req.method();
     const body = req.headers()['content-type']?.includes('application/json') ? req.postDataJSON() : {};
     const send = (data, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(data) });
-    const page = rows => ({ itens: rows, pagina: 0, tamanho: 100, total: rows.length, totalPaginas: rows.length ? 1 : 0 });
+    const page = rows => {
+      const pagina = Number(url.searchParams.get('pagina') ?? 0), tamanho = Number(url.searchParams.get('tamanho') ?? 20);
+      const busca = (url.searchParams.get('busca') ?? '').toLowerCase();
+      const filtered = rows.filter(row => JSON.stringify(row).toLowerCase().includes(busca));
+      return { itens: filtered.slice(pagina * tamanho, (pagina + 1) * tamanho), pagina, tamanho, total: filtered.length, totalPaginas: Math.ceil(filtered.length / tamanho) };
+    };
     if (state.delay) await new Promise(resolve => setTimeout(resolve, state.delay));
     if (path.startsWith('/publico/')) {
       expect(req.headers().authorization).toBeUndefined();
@@ -38,6 +43,7 @@ async function fixture(context, role = 'OWNER') {
     if (state.expired) return send({ detail: 'Sessão expirada.' }, 401);
     if (path === '/auth/refresh') return send({ ...session, papel: role });
     expect(req.headers().authorization).toBe('Bearer test-access');
+    if (path === '/dashboard') return state.failClients ? send({ detail: 'Serviço indisponível.' }, 503) : send({ emAndamento: state.orders.filter(o => o.status !== 'PRONTO').length, prontas: state.orders.filter(o => o.status === 'PRONTO').length, porStatus: { AGUARDANDO_APROVACAO: state.orders.filter(o => o.status === 'AGUARDANDO_APROVACAO').length }, orcamentosAguardandoDecisao: { total: 0, quantidade: 0 } });
     if (path === '/usuarios') return send(page(state.users));
     for (const [resource, key] of [['clientes', 'clients'], ['veiculos', 'vehicles']]) {
       if (!path.startsWith(`/${resource}`)) continue;
@@ -67,7 +73,11 @@ async function fixture(context, role = 'OWNER') {
       if (suffix.endsWith('/conteudo')) return route.fulfill({ contentType: 'image/png', body: png });
     }
     state.writes.push(path);
-    if (suffix === '/status') { order.status = body.status; order.revisao++; emit('Status atualizado'); return send(order); }
+    if (suffix === '/status') {
+      if (state.statusConflict) { state.statusConflict = false; order.revisao++; return send({ code: 'CONFLICT', detail: 'A OS mudou. Atualize os dados.' }, 409); }
+      expect(body.revisao).toBe(order.revisao);
+      order.status = body.status; order.revisao++; emit('Status atualizado'); return send(order);
+    }
     if (suffix === '/responsavel') { order.mecanicoId = body.mecanicoId; order.revisao++; return send(order); }
     if (suffix === '/checklist') { state.checklist = { ...body, id: 'checklist', itens: body.itens.map((i, n) => ({ ...i, id: `item-${n}` })) }; emit('Checklist registrado'); return send(state.checklist, 201); }
     if (suffix === '/diagnosticos') {
@@ -207,7 +217,7 @@ test('carregamento, erro recuperável, validação por campo, busca vazia e sess
   state.fieldError = false;
   await page.getByLabel('Nome completo *').fill('Nome completo');
   await page.getByRole('button', { name: 'Salvar', exact: true }).click(); await saved(page);
-  await page.getByRole('textbox', { name: 'Buscar por nome do cliente' }).fill('inexistente');
+  await page.getByRole('textbox', { name: 'Buscar por nome, telefone ou e-mail' }).fill('inexistente');
   await expect(page.getByRole('heading', { name: 'Nenhum resultado encontrado' })).toBeVisible();
   state.expired = true;
   await page.getByRole('button', { name: 'Atualizar dados', exact: true }).click();
@@ -231,4 +241,54 @@ test('mecânico consulta cadastros sem ações de escritório', async ({ page, c
   await expect(page.getByRole('button', { name: 'Abrir OS', exact: true })).toHaveCount(0);
   await nav(page, 'Clientes'); await expect(page.getByRole('button', { name: 'Cadastrar cliente', exact: true })).toHaveCount(0);
   await nav(page, 'Veículos'); await expect(page.getByRole('button', { name: 'Cadastrar veículo', exact: true })).toHaveCount(0);
+});
+
+test('paginação remota, busca por e-mail e edição preservam registros fora da página', async ({ page, context }) => {
+  const state = await fixture(context);
+  state.clients = Array.from({ length: 21 }, (_, i) => ({ id: `c${i}`, nome: `Cliente ${String(i).padStart(2, '0')}`, telefone: '11912345678', email: `pessoa${i}@example.test`, revisao: 0 }));
+  const reads = [];
+  page.on('request', req => { if (req.url().includes('/clientes?')) reads.push(new URL(req.url())); });
+  await login(page); await nav(page, 'Clientes');
+  await expect(page.getByRole('button', { name: 'Cliente 00', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Cliente 20', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Próxima página' }).click();
+  await expect(page.getByRole('button', { name: 'Cliente 10', exact: true })).toBeVisible();
+  const search = page.getByRole('textbox', { name: 'Buscar por nome, telefone ou e-mail' });
+  await search.fill('pessoa20@example.test');
+  await expect(page.getByRole('button', { name: 'Cliente 20', exact: true })).toBeVisible();
+  await expect(search).toBeFocused();
+  expect(reads.every(url => url.searchParams.get('tamanho') === '10')).toBe(true);
+  expect(reads.some(url => url.searchParams.get('pagina') === '1')).toBe(true);
+  await page.getByRole('button', { name: 'Cliente 20', exact: true }).click();
+  await page.getByRole('button', { name: 'Editar cadastro' }).click();
+  await page.getByLabel('Nome completo *').fill('Cliente editado');
+  await page.getByRole('button', { name: 'Salvar', exact: true }).click(); await saved(page);
+  await expect(page.getByRole('button', { name: 'Cliente editado', exact: true })).toBeVisible();
+  expect(state.clients.find(c => c.id === 'c20').revisao).toBe(1);
+  expect(state.clients).toHaveLength(21);
+});
+
+test('busca global consulta API e conflito de status permite revisão antes de tentar novamente', async ({ page, context }) => {
+  const state = await fixture(context);
+  state.clients = [{ id: 'c', nome: 'Cliente distante', telefone: '11912345678', email: '', revisao: 0 }];
+  state.vehicles = [{ id: 'v', clienteId: 'c', placa: 'ABC1D23', marca: 'Fiat', modelo: 'Uno', ano: 2020, km: 100, cor: 'Prata', revisao: 0 }];
+  state.orders = [{ id: 'os-1', numero: 1, clienteId: 'c', veiculoId: 'v', mecanicoId: 'mechanic', status: 'RECEBIDO', kmEntrada: 100, relato: 'Ruído', revisao: 0, criadoEm: new Date().toISOString() }];
+  await login(page); await nav(page, 'Clientes');
+  await page.getByRole('button', { name: 'Buscar na oficina', exact: true }).click();
+  await page.getByRole('textbox', { name: 'OS, placa, veículo ou cliente' }).fill('ABC1D23');
+  await expect(page.getByRole('button', { name: /Fiat Uno/ })).toBeVisible();
+  await page.getByRole('button', { name: /Fiat Uno/ }).click();
+  await expect(page.getByRole('heading', { name: 'Cadastro do veículo' })).toBeVisible();
+  await page.getByRole('button', { name: 'Fechar painel', exact: true }).click();
+  await nav(page, 'Ordens de Serviço');
+  await page.getByRole('button', { name: 'Ver detalhes da OS 1' }).click();
+  state.statusConflict = true;
+  await page.getByRole('button', { name: 'Atualizar status', exact: true }).click();
+  await page.getByLabel('Próxima etapa *').selectOption('DIAGNOSTICO');
+  await page.getByRole('button', { name: 'Confirmar status', exact: true }).click();
+  await expect(page.locator('dialog[open]')).toContainText('A OS mudou');
+  expect(state.orders[0].status).toBe('RECEBIDO');
+  await page.getByRole('button', { name: 'Confirmar status', exact: true }).click(); await saved(page);
+  expect(state.orders[0].status).toBe('DIAGNOSTICO');
+  expect(state.orders[0].revisao).toBe(2);
 });
