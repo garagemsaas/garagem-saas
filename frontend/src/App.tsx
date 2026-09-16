@@ -7,10 +7,10 @@ import { PageState } from "./PageState";
 import Workspace from "./Workspace";
 import { labels } from "./navigation";
 import type { Page } from "./navigation";
-import { getDashboard } from "./dashboard-model";
-import { date, money, number, roles } from "./model";
+import Recovery from './Recovery';
+import { date, number, roles } from "./model";
 import type { Client, Order, Vehicle } from "./model";
-import { allPages, api, currentSession, emptyData, loadData, loadOrder, orderSummary, setApiSession } from "./api";
+import { allPages, api, currentSession, emptyData, loadData, loadOrder, setApiSession } from "./api";
 import type { Session } from "./api";
 import "./App.css";
 import "./design-system.css";
@@ -27,7 +27,6 @@ const subtitles: Record<Page, string> = {
 export default function App() {
   const [data, setData] = useState(emptyData);
   const [options, setOptions] = useState(emptyData);
-  const [recoveryOrders, setRecoveryOrders] = useState<Order[]>([]);
   const [session, setSession] = useState<(Session & { role: Session['papel']; oficina: string }) | null>(null);
   const [busy, setBusy] = useState(false);
   const [dataError, setDataError] = useState('');
@@ -57,7 +56,7 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [toast]);
   useEffect(() => {
-    const expired = () => { setSession(null); setData(emptyData()); setOptions(emptyData()); setRecoveryOrders([]); setClient(undefined); setVehicle(undefined); setToast(''); setSelectedId(''); setDetailLoading(false); setDataError(''); setPanel(''); setLoginError('Sessão expirada. Entre novamente.'); };
+    const expired = () => { setSession(null); setData(emptyData()); setOptions(emptyData()); setClient(undefined); setVehicle(undefined); setToast(''); setSelectedId(''); setDetailLoading(false); setDataError(''); setPanel(''); setLoginError('Sessão expirada. Entre novamente.'); };
     const renewed = () => { const value = currentSession(); if (value) setSession(previous => previous ? { ...value, role: value.papel, oficina: previous.oficina } : null); };
     window.addEventListener('session-expired', expired);
     window.addEventListener('session-updated', renewed);
@@ -88,7 +87,7 @@ export default function App() {
     const previous = currentSession();
 
     setApiSession(null); setSession(null); setData(emptyData());
-    setOptions(emptyData()); setRecoveryOrders([]);
+    setOptions(emptyData());
     setClient(undefined); setVehicle(undefined); navigate('orders'); setToast('');
     if (previous) {
       try { await api('/auth/logout', 'POST', { oficinaId: previous.oficinaId, refreshToken: previous.refreshToken }); }
@@ -137,18 +136,6 @@ export default function App() {
   const [optionsLoading, setOptionsLoading] = useState(false);
   const [optionsError, setOptionsError] = useState('');
   const [optionsAttempt, setOptionsAttempt] = useState(0);
-  useEffect(() => {
-    if (!sessionId || panel !== 'recovery') return;
-    let active = true;
-    // oxlint-disable-next-line react/set-state-in-effect -- API request lifecycle
-    setOptionsLoading(true); setOptionsError('');
-    allPages<Order>('/ordens-servico?status=AGUARDANDO_APROVACAO')
-      .then(rows => Promise.all(rows.map(async o => ({ ...orderSummary(o), versoes: await api<Order['versoes']>(`/ordens-servico/${o.id}/orcamento/versoes`) }))))
-      .then(ordens => { if (active) setRecoveryOrders(ordens); })
-      .catch(error => { if (active) setOptionsError(error.message); })
-      .finally(() => { if (active) setOptionsLoading(false); });
-    return () => { active = false; };
-  }, [sessionId, panel, optionsAttempt]);
   useEffect(() => {
     if (!sessionId || !['new-orders', 'new-vehicles', 'edit-vehicle'].includes(panel)) return;
     let active = true;
@@ -732,14 +719,8 @@ export default function App() {
           )}
         </Drawer>
       )}
-      {panel === "recovery" && <Drawer title="Dinheiro Esquecido" close={() => setPanel("")} wide>
-        <div className="recovery-intro"><Icon name="recovery" size={28} /><h2>Todo retorno começa com uma boa conversa.</h2><p>A identificação de orçamentos esquecidos, revisões atrasadas e reavaliações pendentes ainda não está disponível.</p></div>
-        <div className="notice"><Icon name="info" size={20} /><p>Os valores abaixo vêm da última versão de cada orçamento aguardando aprovação. Ainda não são oportunidades classificadas nem receita recuperada.</p></div>
-        <h3>Orçamentos aguardando resposta</h3>
-        {optionsLoading ? <PageState state="loading" title="Carregando orçamentos" /> : optionsError ? <PageState state="error" title="Falha ao carregar orçamentos" retry={() => setOptionsAttempt(n => n + 1)}>{optionsError}</PageState> : getDashboard(recoveryOrders, today).pendingBudgets.length === 0 ? <Empty title="Nenhum orçamento pendente">Não há versões aguardando decisão nas OS atuais.</Empty> :
-          <ul className="global-results">{getDashboard(recoveryOrders, today).pendingBudgets.map(({ order: item, version }) => <li key={item.id}>
-            <button onClick={() => openOrder(item.id)}><Icon name="orders" /><span><strong>OS #{item.numero} · {data.clientes.find((c) => c.id === item.clienteId)?.nome}</strong><small>Orçamento v{version.numero} · {date(version.criadoEm, true)} · {money(version.total)}</small><small>Próxima ação: consultar orçamento e decisão do cliente.</small></span><Icon name="arrow" size={18} /></button>
-          </li>)}</ul>}
+      {panel === "recovery" && canWrite && <Drawer title="Dinheiro Esquecido" close={() => setPanel("")} wide>
+        <Recovery openOrder={openOrder} />
       </Drawer>}
     </Workspace>
   );

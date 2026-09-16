@@ -592,6 +592,11 @@ Antes de continuar o desenvolvimento, leia:
 
 # Para continuar a Fase 5
 
+Entrega do frontend nos oito itens solicitados por Kauã:
+[carteira, contatos, recuperação e validação](docs/fase5-kaua-frontend.md).
+O documento distingue a entrega atual das funções adicionais disponíveis na API
+e do aceite integrado antes do piloto.
+
 Leia [docs/fase5-caua.md](docs/fase5-caua.md), os contratos da API e a matriz de
 permissões. Confira a branch antes de alterar arquivos: deve ser
 `feature/fase5-dinheiro-esquecido`. Não crie nem troque de branch automaticamente.

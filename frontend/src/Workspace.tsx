@@ -80,7 +80,7 @@ export default function Workspace(props: WorkspaceProps) {
       {upcoming.map((item) => <button key={item.id} onClick={() => setPanel(item.id)}><Icon name={item.id} /><span>{item.name}</span><small>Em breve</small></button>)}
     </nav>
     <span className="navigation-caption">CRESCIMENTO</span>
-    <nav aria-label="Crescimento"><button className="recovery-nav" onClick={() => { setPanel(null); openRecovery(); }}><Icon name="recovery" /><span>Dinheiro Esquecido</span></button></nav>
+    {role !== 'MECANICO' && <nav aria-label="Crescimento"><button className="recovery-nav" onClick={() => { setPanel(null); openRecovery(); }}><Icon name="recovery" /><span>Dinheiro Esquecido</span></button></nav>}
     <div className="navigation-bottom"><nav aria-label="Administração">
       {role === "OWNER" && navButton("team")}
       <button onClick={() => setPanel("settings")}><Icon name="settings" /><span>Configurações</span></button>
