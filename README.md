@@ -115,17 +115,19 @@ docs/staging.md
 
 ---
 
-# 🚧 Fase 3 — Primeira integração
+# ✅ Fase 3 — Primeira integração
 
-A Fase 3 está em andamento.
+A Fase 3 está concluída. A branch da Fase 4 contém as entregas de Cauã e Kauã.
 
 ### Kauã — frontend
 
 Implementação entregue nesta branch: login e sessão reais, clientes, veículos,
 ordens de serviço e alterações de status; paginação e busca no servidor,
 indicadores via `/dashboard`, erros e carregamentos. Não há dados fictícios nas
-telas de produção. O aceite com API, PostgreSQL e MinIO reais continua pendente.
-Checklist, validações e instruções para o novo PR em
+telas de produção. A validação histórica desta entrega está documentada abaixo;
+a auditoria da Fase 4 acrescentou testes HTTP com PostgreSQL/MinIO e smoke de navegador
+com API real, registrados em [docs/fase4-caua.md](docs/fase4-caua.md).
+Checklist e validações da entrega original em
 [docs/fase3-kaua-frontend.md](docs/fase3-kaua-frontend.md).
 
 ## API e integração
@@ -201,12 +203,17 @@ Fase 3 — Cauã / API e primeira integração
 ✅ Concluída
 
 Fase 3 geral
+✅ Concluída
+
+Fase 4 — OS completa e acompanhamento público
 🚧 Em andamento
+
+Fase 4 / parte do Cauã
+✅ Concluída — 12 testes unitários + 64 de integração, Maven verify BUILD SUCCESS
 ```
 
-A conclusão da frente não significa automaticamente que toda a Fase 3 esteja concluída.
-
-As demais frentes devem ser finalizadas antes de marcar a Fase 3 geral como encerrada.
+A auditoria, correções, evidências e pendências da Fase 4 estão em
+[docs/fase4-caua.md](docs/fase4-caua.md). O encerramento geral depende também da frente do Kauã.
 
 ---
 
@@ -572,7 +579,7 @@ Antes de continuar o desenvolvimento, leia:
 
 ---
 
-# Para continuar a Fase 3
+# Para continuar a Fase 4
 
 Antes de implementar algo novo:
 
@@ -618,7 +625,7 @@ Não restaurar automaticamente versões antigas de stash ou branches antigas sob
 
 # Escopo futuro
 
-Não implementar dentro da Fase 3 sem planejamento específico:
+Não implementar dentro da Fase 4 sem planejamento específico:
 
 ```text
 agenda avançada
@@ -678,4 +685,4 @@ docs/permissoes.md
 docs/fase2-caua.md
 ```
 
-A Fase 3 geral permanece em andamento até a conclusão das demais frentes.
+A Fase 3 geral está concluída. A Fase 4 geral permanece em andamento.

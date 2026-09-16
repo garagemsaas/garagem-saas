@@ -246,8 +246,11 @@ como hash SHA-256. Ele escopa **uma única OS**. Não dá para enumerar: formato
 inexistente, expirado e revogado respondem 404 idênticos.
 
 `PublicoSaida` = `{ numero, status, veiculo (texto), previsaoEntrega, orcamento }` e nada mais. Sem
-dados do cliente, sem fotos, sem timeline, sem ids internos. O orçamento só acompanha a resposta
-quando a OS já passou de `AGUARDANDO_APROVACAO`.
+dados do cliente, fotos, timeline, autor, oficina ou IP. O orçamento conserva o `id` de versão
+necessário à decisão e os IDs dos itens do DTO existente. Não inclui IDs de OS/cliente/usuário.
+É disponibilizado em `AGUARDANDO_APROVACAO`, `EM_MANUTENCAO`, `AGUARDANDO_PECA`, `TESTE` e `PRONTO`.
+Após recusa, a versão decidida também permanece visível em `ORCAMENTO`; criar uma nova versão
+ainda não disponibilizada faz `orcamento` voltar a `null`.
 
 `DecisaoEntrada` = `{ versaoId, aprovado }`. Exigir o `versaoId` evita que o cliente aprove sem
 querer uma versão diferente da que está vendo. Repetir a **mesma** decisão é idempotente; a decisão
@@ -321,6 +324,145 @@ Sem sessão. Não são módulos de negócio.
 
 Nenhum outro endpoint do Actuator está exposto: `/actuator/env`, `/beans` e `/loggers` respondem
 erro 4xx.
+
+## Complementos da Fase 4 — OS e acompanhamento público
+
+Auditoria de 16/09/2026. Nenhum endpoint novo. As tabelas do inventário acima continuam
+definindo métodos, autenticação, papéis, respostas e parâmetros. Nesta seção, `O` significa
+`/api/v1/ordens-servico/{id}`. Escritas e leituras internas usam Bearer; IDs de outra oficina
+respondem 404 `NOT_FOUND`. Sem sessão: 401 `UNAUTHORIZED`; papel proibido: 403 `FORBIDDEN`.
+Não existe parâmetro para escolher a oficina. As rotas públicas recebem somente o token do link.
+
+### Checklist e diagnóstico: entradas e saídas
+
+`POST O/checklist` (todos os papéis, 201) recebe:
+
+```json
+{"observacoes":"Risco na porta","itens":[{"descricao":"Pneus","condicao":"Bom","observacao":"Sem avarias"}]}
+```
+
+`observacoes` é opcional, até 4000 caracteres. `itens`: 1–100, sem elementos nulos.
+`descricao`: obrigatória, não branca, até 200; `condicao`: obrigatória, até 100;
+`observacao`: opcional, até 1000. Saída: `{id, observacoes, itens:[{id, descricao,
+condicao, observacao}]}`. `GET O/checklist` retorna a mesma estrutura (200), ou 404 se ausente.
+Não há PUT/PATCH. Segundo registro e OS concluída: 409 `CONFLICT`. Payload inválido:
+400 `VALIDATION_ERROR` com `errors[]`. Todos os três papéis podem registrar checklist;
+não existe papel autenticado proibido nessa operação.
+
+`POST O/diagnosticos` (OWNER/MECANICO, 201) recebe:
+
+```json
+{"descricao":"Pastilhas desgastadas","classificacao":"VERMELHO"}
+```
+
+Descrição obrigatória, não branca, até 4000; classificação obrigatória:
+`VERDE|AMARELO|VERMELHO`. Não existem outros campos opcionais no request.
+Saída: `{id, descricao, classificacao, criadoEm}`. `GET O/diagnosticos` (todos, 200)
+retorna array cronológico, inclusive vazio. Registros são acrescentados; não há edição.
+Atendente não registra (403). OS concluída: 409 `CONFLICT`. Campo ausente/branco:
+400 `VALIDATION_ERROR`; enum desconhecido: 400 `INVALID_REQUEST`.
+
+### Fotos privadas
+
+`POST O/fotos` (todos, 201): `multipart/form-data`, parte binária `arquivo` obrigatória,
+parâmetro `finalidade=ENTRADA|DIAGNOSTICO|SERVICO`, `descricao` opcional até 500,
+`checklistItemId` ou `diagnosticoItemId` opcional, nunca os dois. Vínculo deve ser da mesma OS.
+Não há endpoint de exclusão. Exemplo: arquivo PNG com `finalidade=DIAGNOSTICO` e
+`diagnosticoItemId=<id retornado ao registrar diagnóstico>`.
+
+Resposta e elementos de `GET O/fotos` (200):
+`{id, finalidade, descricao, contentType, tamanho, checklistItemId, diagnosticoItemId}`.
+`tamanho` é o número de bytes da imagem regravada. Sem URL/chave/credencial do storage.
+`GET O/fotos/{fotoId}/conteudo` retorna bytes PNG/JPEG autenticados, com `no-store` e `nosniff`.
+Foto/OS/vínculo inexistente: 404; objeto perdido ou storage indisponível: 503
+`STORAGE_UNAVAILABLE`, preservando a metadata para investigação.
+
+Limite: 10 MiB (10 × 1024 × 1024 bytes), inclusive após regravação; acima dele: 413
+`PAYLOAD_TOO_LARGE` tanto no multipart quanto no serviço. Arquivo vazio, finalidade inválida,
+descrição longa ou mais de 20 megapixels: 400 `INVALID_REQUEST`. Conteúdo não PNG/JPEG ou
+multipart incompatível: 415 `UNSUPPORTED_MEDIA_TYPE`. OS concluída: 409 `CONFLICT`.
+
+### Orçamento e versões
+
+`POST O/orcamento/versoes` (OWNER/ATENDENTE, 201):
+
+```json
+{"observacoes":"Valores apresentados ao cliente","itens":[{"tipo":"SERVICO","descricao":"Inspeção","quantidade":1.5,"valorUnitario":100.01}]}
+```
+
+`observacoes`: opcional, até 4000, **pública quando a versão é disponibilizada**; não colocar
+anotações privadas. `itens`: 1–100, sem nulos. `tipo=PECA|SERVICO`; descrição obrigatória
+até 500; quantidade de 0.001 a 999999.999 (3 casas); valor unitário de 0 a 99999999.99
+(2 casas). O backend calcula cada subtotal com HALF_UP para duas casas e soma os subtotais.
+No exemplo, subtotal e total são 150.02. `total`/`subtotal` enviados não são autoridade.
+
+Resposta: `{id, numero, observacoes, total, criadoEm, itens, decisao}`; cada item contém
+`{id, tipo, descricao, quantidade, valorUnitario, subtotal}`. `decisao` é `null` ou
+`{aprovado, criadoEm, canal:"LINK_PUBLICO"}`. `GET O/orcamento/versoes` retorna esse array
+ordenado por número crescente, com as decisões preservadas nas respectivas versões.
+
+Exige `ORCAMENTO` ou `AGUARDANDO_APROVACAO`; criar versão deixa a OS em `ORCAMENTO`.
+Etapa incompatível: 409 `CONFLICT`; valores inválidos: 400 `VALIDATION_ERROR`.
+Não existe atualização destrutiva, nem revisão no request de nova versão: duas criações
+concorrentes acrescentam duas versões distintas sob lock da OS. Constraints garantem
+numeração única; triggers V1/V2 bloqueiam mutações e inserção tardia de itens, validando total.
+Revisão continua obrigatória no contrato de status/responsável; revisão antiga: 409 `CONFLICT`.
+
+### Link, consulta e decisão
+
+`POST O/links` (OWNER/ATENDENTE, sem corpo, 201) retorna
+`{id, url, token, expiraEm}`. Exemplo de URL: `https://oficina.exemplo/acompanhar#<token>`.
+Token opaco: 32 bytes aleatórios (256 bits), Base64 URL sem padding, 43 caracteres;
+somente SHA-256 persistido. `criadoEm`, `expiraEm` e `revogadoEm` ficam no banco.
+Ativo significa não revogado e ainda não expirado; não há campo `ativo` no DTO.
+`PUBLIC_LINK_TTL` configura validade (padrão P7D). Link acompanha a OS, não fica congelado
+em uma versão. O ID da versão é conferido na decisão para impedir aprovação de versão substituída.
+
+`DELETE O/links/{linkId}` (OWNER/ATENDENTE, 204) é idempotente: preserva primeira data e
+único evento de revogação. OS/link/vínculo inacessível: 404 `NOT_FOUND`.
+Revogação e decisão usam o mesmo lock. Após obtê-lo, a decisão revalida a validade pelo
+horário corrente do PostgreSQL (`clock_timestamp()`), inclusive se expirou durante a espera.
+
+`GET /api/v1/publico/{token}` (sem JWT, 200) retorna o resumo descrito no inventário.
+Token malformado, inexistente, expirado ou revogado: 404 `NOT_FOUND`, sem distinguir motivo.
+Exemplo de orçamento em preparação:
+
+```json
+{"numero":12,"status":"ORCAMENTO","veiculo":"Fiat Uno · ABC1D23","previsaoEntrega":null,"orcamento":null}
+```
+
+`POST /api/v1/publico/{token}/decisao` (sem JWT) recebe:
+
+```json
+{"versaoId":"755b6667-ce2d-4095-af5c-72dfd670fe50","aprovado":true}
+```
+
+Ambos obrigatórios; `false` registra recusa. Não existe comentário/motivo no contrato.
+200 retorna o resumo atualizado. Aprovar muda para `EM_MANUTENCAO`; recusar, para `ORCAMENTO`.
+São persistidos versão, decisão, timestamp, link, canal e IP direto da conexão.
+IP, autor e IDs administrativos não são devolvidos no resumo.
+
+| Sequência na mesma versão atual | Resultado |
+|---|---|
+| aprovar → aprovar | 200, sem nova decisão/evento |
+| aprovar → recusar | 409 `CONFLICT` |
+| recusar → recusar | 200, sem nova decisão/evento |
+| recusar → aprovar | 409 `CONFLICT` |
+| versão substituída ou etapa não aguardando (sem decisão anterior) | 409 `CONFLICT` |
+| qualquer decisão após expirar/revogar | 404 `NOT_FOUND`, mesmo repetida |
+
+O resumo nunca inclui checklist, diagnóstico privado, fotos ou timeline. Os campos do
+orçamento são destinados ao cliente. Erros MVC públicos usam `instance=/api/v1/publico/oculto`,
+sem ecoar token. Logs de acesso mascaram a credencial; resposta pública usa `Cache-Control: no-store`.
+
+### Timeline persistida
+
+`GET O/timeline` (todos, 200) retorna `{id, tipo, descricao, origem, autorId, criadoEm}[]`,
+ordenado por `criadoEm` crescente e `id` como desempate. Eventos existentes estão enumerados no
+inventário. Exemplo: `tipo=ORCAMENTO_RECUSADO`, `origem=LINK_PUBLICO`, `autorId=null`,
+`descricao="Cliente recusou o orçamento v1 pelo link."`. Mudança automática também gera
+`STATUS_ALTERADO`. Apenas endpoints autenticados consultam o histórico; outra oficina: 404.
+Eventos são persistidos na mesma transação da ação e protegidos por trigger contra mutação.
 
 ## Contratos da primeira integração
 

@@ -3,6 +3,7 @@ package br.com.garagem.ordemservico.foto.api;
 import br.com.garagem.ordemservico.foto.application.FotoService;
 import br.com.garagem.ordemservico.foto.application.FotoService.Saida;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.util.*;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
@@ -19,6 +20,9 @@ public class FotoController {
 
   @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   @ResponseStatus(HttpStatus.CREATED)
+  @ApiResponse(responseCode = "413", ref = "#/components/responses/FotoGrande")
+  @ApiResponse(responseCode = "415", ref = "#/components/responses/TipoNaoSuportado")
+  @ApiResponse(responseCode = "503", ref = "#/components/responses/StorageIndisponivel")
   @Operation(
       summary = "Anexar foto PNG/JPEG privada",
       description =
@@ -42,6 +46,7 @@ public class FotoController {
   }
 
   @GetMapping("/{fotoId}/conteudo")
+  @ApiResponse(responseCode = "503", ref = "#/components/responses/StorageIndisponivel")
   @Operation(
       summary = "Ler foto mediante autenticação e isolamento da oficina",
       description =

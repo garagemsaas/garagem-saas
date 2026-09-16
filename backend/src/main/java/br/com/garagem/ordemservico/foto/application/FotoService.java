@@ -83,8 +83,8 @@ public class FotoService {
           .findByIdAndOficinaId(diagnosticoId, TenantContext.current())
           .filter(d -> d.ordemServicoId.equals(osId))
           .orElseThrow(ApiException::missing);
-    if (file.isEmpty() || file.getSize() > 10 * 1024 * 1024)
-      throw ApiException.invalid("Envie uma foto PNG ou JPEG de até 10 MB.");
+    if (file.getSize() > 10 * 1024 * 1024) throw tamanhoExcedido();
+    if (file.isEmpty()) throw ApiException.invalid("Envie uma foto PNG ou JPEG de até 10 MB.");
     byte[] bytes;
     String contentType;
     try {
@@ -113,8 +113,7 @@ public class FotoService {
     } catch (IOException e) {
       throw naoSuportado();
     }
-    if (bytes.length > 10 * 1024 * 1024)
-      throw ApiException.invalid("A foto processada excede 10 MB.");
+    if (bytes.length > 10 * 1024 * 1024) throw tamanhoExcedido();
     FotoVeiculo f = new FotoVeiculo();
     f.ordemServicoId = osId;
     f.autorId = OsService.autor();
@@ -180,6 +179,11 @@ public class FotoService {
           ErrorCodes.STORAGE_UNAVAILABLE,
           "Foto temporariamente indisponível.");
     }
+  }
+
+  private static ApiException tamanhoExcedido() {
+    return new ApiException(
+        HttpStatus.PAYLOAD_TOO_LARGE, ErrorCodes.PAYLOAD_TOO_LARGE, "A foto deve ter até 10 MB.");
   }
 
   private static ApiException naoSuportado() {

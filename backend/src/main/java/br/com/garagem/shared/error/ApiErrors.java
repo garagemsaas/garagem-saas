@@ -149,9 +149,16 @@ public class ApiErrors {
 
   private ResponseEntity<ProblemDetail> problem(
       HttpStatus status, String code, String detail, List<CampoInvalido> errors) {
-    return ResponseEntity.status(status)
-        .contentType(MediaType.APPLICATION_PROBLEM_JSON)
-        .body(corpo(status, code, detail, errors));
+    var body = corpo(status, code, detail, errors);
+    if (org.springframework.web.context.request.RequestContextHolder.getRequestAttributes()
+        instanceof org.springframework.web.context.request.ServletRequestAttributes attributes) {
+      String path = attributes.getRequest().getRequestURI();
+      if (path.startsWith("/api/v1/publico/")) {
+        // Impede o Spring MVC de preencher instance com a credencial presente na URL.
+        body.setInstance(URI.create("/api/v1/publico/oculto"));
+      }
+    }
+    return ResponseEntity.status(status).contentType(MediaType.APPLICATION_PROBLEM_JSON).body(body);
   }
 
   /** Monta o corpo canônico usado também pelos filtros de segurança e tenancy. */

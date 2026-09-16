@@ -90,7 +90,7 @@ Papel é só a primeira porta. Passar por ela não dá acesso a nada de outra of
 | Caminho | Como é protegido |
 |---|---|
 | `POST /api/v1/auth/**` | São os endpoints de sessão. Login não revela qual credencial falhou; refresh e logout conferem o hash do token junto com a oficina. |
-| `GET/POST /api/v1/publico/{token}` | O token de 43 caracteres **é** a credencial, escopada a uma única OS e válida por sete dias. Não permite enumerar: formato errado, token inexistente, expirado ou revogado respondem 404 igualmente. O resumo devolve só número da OS, status, descrição do veículo, previsão e a versão atual do orçamento — nunca fotos, dados do cliente ou histórico. |
+| `GET /api/v1/publico/{token}` e `POST /api/v1/publico/{token}/decisao` | O token de 43 caracteres **é** a credencial, escopada a uma única OS, com validade configurável (padrão sete dias). Formato errado, token inexistente, expirado ou revogado respondem 404 igualmente. O resumo devolve número da OS, status, descrição do veículo, previsão e orçamento disponibilizado; a recusa atual permanece consultável até nova versão. Nunca fotos, dados do cliente ou histórico privado. |
 | `GET /actuator/health` e sondas | Só `status`. `show-details: never`, e nenhum outro endpoint do Actuator está exposto. |
 | `/v3/api-docs`, `/swagger-ui/**` | Documentação do contrato. Não expõe dado de oficina. Em staging e produção, restrinja no proxy se não quiser a documentação pública. |
 

@@ -103,7 +103,10 @@ public class OsController {
 
   @PostMapping("/{id}/checklist")
   @ResponseStatus(HttpStatus.CREATED)
-  @Operation(summary = "Registrar checklist de entrada")
+  @Operation(
+      summary = "Registrar checklist de entrada",
+      description =
+          "Todos os papéis. Único por OS; 1 a 100 itens. Sem atualização. Duplicado ou OS concluída: 409.")
   public ChecklistSaida checklist(
       @PathVariable UUID id, @Valid @RequestBody ChecklistEntradaDto input) {
     return service.checklist(id, input);
@@ -118,7 +121,10 @@ public class OsController {
   @PostMapping("/{id}/diagnosticos")
   @ResponseStatus(HttpStatus.CREATED)
   @PreAuthorize("hasAnyRole('OWNER','MECANICO')")
-  @Operation(summary = "Adicionar diagnóstico classificado")
+  @Operation(
+      summary = "Adicionar diagnóstico classificado",
+      description =
+          "OWNER ou MECANICO. Acrescenta item VERDE, AMARELO ou VERMELHO. Sem edição. OS concluída: 409.")
   public DiagnosticoSaida diagnostico(
       @PathVariable UUID id, @Valid @RequestBody DiagnosticoEntrada input) {
     return service.diagnostico(id, input);
@@ -133,7 +139,10 @@ public class OsController {
   @PostMapping("/{id}/orcamento/versoes")
   @ResponseStatus(HttpStatus.CREATED)
   @PreAuthorize("hasAnyRole('OWNER','ATENDENTE')")
-  @Operation(summary = "Criar versão imutável do orçamento e retornar à etapa de orçamento")
+  @Operation(
+      summary = "Criar versão imutável do orçamento e retornar à etapa de orçamento",
+      description =
+          "OWNER ou ATENDENTE. Exige ORCAMENTO ou AGUARDANDO_APROVACAO. Total calculado no servidor, arredondamento HALF_UP por item. Criações serializadas por OS; histórico preservado. Não recebe revisão: sempre acrescenta nova versão.")
   public VersaoSaida versao(@PathVariable UUID id, @Valid @RequestBody VersaoEntrada input) {
     return service.novaVersao(id, input);
   }
@@ -153,7 +162,10 @@ public class OsController {
   @PostMapping("/{id}/links")
   @ResponseStatus(HttpStatus.CREATED)
   @PreAuthorize("hasAnyRole('OWNER','ATENDENTE')")
-  @Operation(summary = "Emitir link público válido por sete dias; token exibido uma única vez")
+  @Operation(
+      summary = "Emitir link público; token exibido uma única vez",
+      description =
+          "OWNER ou ATENDENTE. Escopo: uma OS; validade PUBLIC_LINK_TTL (padrão sete dias). URL com token no fragmento. Somente o hash é persistido. O cliente decide informando a versão que visualizou.")
   public LinkSaida link(@PathVariable UUID id) {
     return service.criarLink(id);
   }
@@ -161,7 +173,10 @@ public class OsController {
   @DeleteMapping("/{id}/links/{linkId}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   @PreAuthorize("hasAnyRole('OWNER','ATENDENTE')")
-  @Operation(summary = "Revogar link público")
+  @Operation(
+      summary = "Revogar link público",
+      description =
+          "OWNER ou ATENDENTE. 204 inclusive se já revogado, preservando a primeira data e evento. Link ou OS inacessível: 404.")
   public void revogar(@PathVariable UUID id, @PathVariable UUID linkId) {
     service.revogarLink(id, linkId);
   }

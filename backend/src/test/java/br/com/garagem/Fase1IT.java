@@ -973,7 +973,45 @@ class Fase1IT {
         base + "/status",
         Map.of("status", "AGUARDANDO_APROVACAO", "revisao", o.path("revisao").asLong()),
         200);
+    var initialVersion =
+        httpJson(http, token, "GET", base + "/orcamento/versoes", null, 200).get(0);
+    version =
+        httpJson(
+            http,
+            token,
+            "POST",
+            base + "/orcamento/versoes",
+            Map.of(
+                "itens",
+                List.of(
+                    Map.of(
+                        "tipo",
+                        "SERVICO",
+                        "descricao",
+                        "Troca de pastilhas revisada",
+                        "quantidade",
+                        2,
+                        "valorUnitario",
+                        150))),
+            201);
+    assertThat(version.path("numero").asInt()).isEqualTo(2);
+    assertThat(httpJson(http, token, "GET", base + "/orcamento/versoes", null, 200).get(0))
+        .isEqualTo(initialVersion);
+    o = httpJson(http, token, "GET", base, null, 200);
+    httpJson(
+        http,
+        token,
+        "POST",
+        base + "/status",
+        Map.of("status", "AGUARDANDO_APROVACAO", "revisao", o.path("revisao").asLong()),
+        200);
     var l = httpJson(http, token, "POST", base + "/links", Map.of(), 201);
+    assertThat(
+            httpJson(http, null, "GET", "/api/v1/publico/" + l.path("token").asText(), null, 200)
+                .path("orcamento")
+                .path("id")
+                .asText())
+        .isEqualTo(version.path("id").asText());
     httpJson(
         http,
         null,
@@ -1013,6 +1051,287 @@ class Fase1IT {
         Map.of("descricao", "Tardio", "classificacao", "VERDE"),
         409);
     httpJson(http, null, "GET", "/actuator/health", null, 200);
+  }
+
+  @Test
+  void fase4ErrosPublicosNaoExponhemToken() throws Exception {
+    String os = prepararOrcamento(a);
+    var v = versao(a, os, "10.00");
+    var l = link(a, os);
+    String token = l.path("token").asText();
+    String path = "/api/v1/publico/" + token + "/decisao";
+    for (var input :
+        List.of(Map.of(), Map.of("versaoId", v.path("id").asText(), "aprovado", true))) {
+      int code = input.isEmpty() ? 400 : 409;
+      var error = send(null, path, input, code);
+      assertThat(error.toString()).doesNotContain(token);
+      assertThat(error.hasNonNull("requestId")).isTrue();
+      assertThat(error.hasNonNull("timestamp")).isTrue();
+    }
+  }
+
+  @Test
+  void fase4RevogacaoRepetidaPreservaDataEEvento() throws Exception {
+    String os = os(a);
+    var l = link(a, os);
+    String path = "/api/v1/ordens-servico/" + os + "/links/" + l.path("id").asText();
+    mvc.perform(delete(path).header("Authorization", "Bearer " + a))
+        .andExpect(status().isNoContent());
+    var before =
+        jdbc.queryForMap(
+            "select revogado_em from link_acesso_publico where id=?",
+            UUID.fromString(l.path("id").asText()));
+    mvc.perform(delete(path).header("Authorization", "Bearer " + a))
+        .andExpect(status().isNoContent());
+    assertThat(
+            jdbc.queryForMap(
+                "select revogado_em from link_acesso_publico where id=?",
+                UUID.fromString(l.path("id").asText())))
+        .isEqualTo(before);
+    assertThat(read(a, "/api/v1/ordens-servico/" + os + "/timeline", 200).findValuesAsText("tipo"))
+        .containsOnlyOnce("LINK_REVOGADO");
+    read(null, "/api/v1/publico/" + l.path("token").asText(), 404);
+  }
+
+  @Test
+  void fase4UploadAcimaDoLimiteResponde413() throws Exception {
+    String os = os(a);
+    mvc.perform(
+            multipart("/api/v1/ordens-servico/" + os + "/fotos")
+                .file(
+                    new MockMultipartFile(
+                        "arquivo", "grande.png", "image/png", new byte[10 * 1024 * 1024 + 1]))
+                .param("finalidade", "ENTRADA")
+                .header("Authorization", "Bearer " + a))
+        .andExpect(status().isPayloadTooLarge())
+        .andExpect(jsonPath("code").value("PAYLOAD_TOO_LARGE"));
+  }
+
+  @Test
+  void fase4VersoesConcorrentesPreservamHistorico() throws Exception {
+    String os = prepararOrcamento(a);
+    versao(a, os, "10.01");
+    // Comparar snapshots persistidos evita confundir precisão de Instant/JDBC com mutação.
+    var first = read(a, "/api/v1/ordens-servico/" + os + "/orcamento/versoes", 200).get(0);
+    var start = new CountDownLatch(1);
+    try (var executor = Executors.newFixedThreadPool(2)) {
+      Callable<JsonNode> action =
+          () -> {
+            start.await();
+            return versao(a, os, "20.01");
+          };
+      var one = executor.submit(action);
+      var two = executor.submit(action);
+      start.countDown();
+      assertThat(
+              List.of(
+                  one.get(20, TimeUnit.SECONDS).path("numero").asInt(),
+                  two.get(20, TimeUnit.SECONDS).path("numero").asInt()))
+          .containsExactlyInAnyOrder(2, 3);
+    }
+    var versions = read(a, "/api/v1/ordens-servico/" + os + "/orcamento/versoes", 200);
+    assertThat(versions.size()).isEqualTo(3);
+    assertThat(versions.get(0)).isEqualTo(first);
+  }
+
+  @Test
+  void fase4DecisoesContrariasConcorrentesNaoSeSobrescrevem() throws Exception {
+    String os = prepararOrcamento(a);
+    var v = versao(a, os, "10.00");
+    statusOs(a, os, "AGUARDANDO_APROVACAO");
+    String path = "/api/v1/publico/" + link(a, os).path("token").asText() + "/decisao";
+    var start = new CountDownLatch(1);
+    try (var executor = Executors.newFixedThreadPool(2)) {
+      var futures = new ArrayList<Future<Integer>>();
+      for (boolean approve : List.of(true, false))
+        futures.add(
+            executor.submit(
+                () -> {
+                  start.await();
+                  return mvc.perform(
+                          post(path)
+                              .contentType("application/json")
+                              .content(
+                                  json.writeValueAsString(
+                                      Map.of(
+                                          "versaoId", v.path("id").asText(), "aprovado", approve))))
+                      .andReturn()
+                      .getResponse()
+                      .getStatus();
+                }));
+      start.countDown();
+      assertThat(
+              List.of(
+                  futures.get(0).get(20, TimeUnit.SECONDS),
+                  futures.get(1).get(20, TimeUnit.SECONDS)))
+          .containsExactlyInAnyOrder(200, 409);
+    }
+    var versions = read(a, "/api/v1/ordens-servico/" + os + "/orcamento/versoes", 200);
+    boolean approved = versions.get(0).path("decisao").path("aprovado").asBoolean();
+    assertThat(read(a, "/api/v1/ordens-servico/" + os, 200).path("status").asText())
+        .isEqualTo(approved ? "EM_MANUTENCAO" : "ORCAMENTO");
+    var timeline = read(a, "/api/v1/ordens-servico/" + os + "/timeline", 200);
+    assertThat(
+            timeline.findValuesAsText("tipo").stream()
+                .filter(t -> t.equals("ORCAMENTO_APROVADO") || t.equals("ORCAMENTO_RECUSADO"))
+                .count())
+        .isEqualTo(1);
+  }
+
+  @Test
+  void fase4RecusaRepetidaEContrariaEExpiracao() throws Exception {
+    String os = prepararOrcamento(a);
+    var v = versao(a, os, "10.00");
+    statusOs(a, os, "AGUARDANDO_APROVACAO");
+    var l = link(a, os);
+    String path = "/api/v1/publico/" + l.path("token").asText();
+    var refusal = Map.of("versaoId", v.path("id").asText(), "aprovado", false);
+    send(null, path + "/decisao", refusal, 200);
+    send(null, path + "/decisao", refusal, 200);
+    assertThat(read(null, path, 200).path("orcamento").path("decisao").path("aprovado").isBoolean())
+        .isTrue();
+    send(null, path + "/decisao", Map.of("versaoId", v.path("id").asText(), "aprovado", true), 409);
+    assertThat(read(a, "/api/v1/ordens-servico/" + os + "/timeline", 200).findValuesAsText("tipo"))
+        .containsOnlyOnce("ORCAMENTO_RECUSADO");
+    jdbc.update(
+        "update link_acesso_publico set expira_em=clock_timestamp()-interval '1 second' where id=?",
+        UUID.fromString(l.path("id").asText()));
+    read(null, path, 404);
+    send(null, path + "/decisao", refusal, 404);
+  }
+
+  @Test
+  void fase4ExpiracaoERevogacaoDuranteEsperaDoLockImpedemDecisao() throws Exception {
+    for (boolean revoke : List.of(false, true)) {
+      String os = prepararOrcamento(a);
+      var v = versao(a, os, "10.00");
+      statusOs(a, os, "AGUARDANDO_APROVACAO");
+      var l = link(a, os);
+      String path = "/api/v1/publico/" + l.path("token").asText() + "/decisao";
+      try (var connection = jdbc.getDataSource().getConnection();
+          var executor = Executors.newSingleThreadExecutor()) {
+        connection.setAutoCommit(false);
+        try (var lock =
+            connection.prepareStatement("select id from ordem_servico where id=? for update")) {
+          lock.setObject(1, UUID.fromString(os));
+          lock.executeQuery().close();
+        }
+        var future =
+            executor.submit(
+                () ->
+                    mvc.perform(
+                            post(path)
+                                .contentType("application/json")
+                                .content(
+                                    json.writeValueAsString(
+                                        Map.of(
+                                            "versaoId", v.path("id").asText(), "aprovado", true))))
+                        .andReturn()
+                        .getResponse()
+                        .getStatus());
+        try {
+          long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+          boolean waiting = false;
+          while (System.nanoTime() < deadline) {
+            waiting =
+                Boolean.TRUE.equals(
+                    jdbc.queryForObject(
+                        "select exists(select 1 from pg_stat_activity where datname=current_database() and wait_event_type='Lock' and query like '%ordem_servico%' and pid<>pg_backend_pid())",
+                        Boolean.class));
+            if (waiting) break;
+            Thread.sleep(20);
+          }
+          assertThat(waiting).as("decisão deve aguardar lock da OS").isTrue();
+          // A transação da decisão já começou. Este instante fica depois de seu now().
+          jdbc.update(
+              revoke
+                  ? "update link_acesso_publico set revogado_em=clock_timestamp() where id=?"
+                  : "update link_acesso_publico set expira_em=clock_timestamp() where id=?",
+              UUID.fromString(l.path("id").asText()));
+        } finally {
+          connection.rollback();
+        }
+        assertThat(future.get(20, TimeUnit.SECONDS)).isEqualTo(404);
+      }
+      assertThat(
+              read(a, "/api/v1/ordens-servico/" + os + "/orcamento/versoes", 200)
+                  .get(0)
+                  .path("decisao")
+                  .isNull())
+          .isTrue();
+    }
+  }
+
+  @Test
+  void fase4ValidacaoDeChecklistDiagnosticoERevogacao() throws Exception {
+    String os = os(a), base = "/api/v1/ordens-servico/" + os;
+    var checklist = Map.of("itens", List.of(Map.of("descricao", "Pneu", "condicao", "Bom")));
+    var diagnostico = Map.of("descricao", "Inspecionar", "classificacao", "AMARELO");
+    for (String target : List.of(base, "/api/v1/ordens-servico/" + UUID.randomUUID())) {
+      send(null, target + "/checklist", checklist, 401);
+      if (!target.equals(base)) {
+        send(a, target + "/checklist", checklist, 404);
+        send(a, target + "/diagnosticos", diagnostico, 404);
+      }
+    }
+    assertThat(send(a, base + "/checklist", Map.of("itens", List.of()), 400).path("code").asText())
+        .isEqualTo("VALIDATION_ERROR");
+    send(
+        a,
+        base + "/checklist",
+        Map.of("itens", List.of(Map.of("descricao", "", "condicao", ""))),
+        400);
+    send(a, base + "/diagnosticos", Map.of("descricao", "", "classificacao", "VERDE"), 400);
+    send(
+        a, base + "/diagnosticos", Map.of("descricao", "Teste", "classificacao", "INVENTADO"), 400);
+    var l = link(a, os);
+    String revoke = base + "/links/" + l.path("id").asText();
+    mvc.perform(delete(revoke)).andExpect(status().isUnauthorized());
+    mvc.perform(delete(revoke).header("Authorization", "Bearer " + mecanico))
+        .andExpect(status().isForbidden());
+    read(null, "/api/v1/publico/invalido", 404);
+    read(null, "/api/v1/publico/" + Tokens.novo(), 404);
+    read(a, base + "/fotos/" + UUID.randomUUID() + "/conteudo", 404);
+  }
+
+  @Test
+  void fase4TimelinePersistidaCronologicaESemCredenciais() throws Exception {
+    String os = prepararOrcamento(a);
+    versao(a, os, "10.00");
+    var l = link(a, os);
+    var timeline = read(a, "/api/v1/ordens-servico/" + os + "/timeline", 200);
+    assertThat(timeline.size())
+        .isEqualTo(
+            jdbc.queryForObject(
+                "select count(*) from evento_ordem_servico where ordem_servico_id=? and oficina_id=?",
+                Integer.class,
+                UUID.fromString(os),
+                oficinaA));
+    assertThat(timeline.findValuesAsText("criadoEm").stream().map(Instant::parse).toList())
+        .isSorted();
+    assertThat(timeline.toString()).doesNotContain(l.path("token").asText());
+    read(b, "/api/v1/ordens-servico/" + os + "/timeline", 404);
+    statusOs(a, os, "AGUARDANDO_APROVACAO");
+    var summary = read(null, "/api/v1/publico/" + l.path("token").asText(), 200);
+    assertThat(summary.properties())
+        .extracting(Map.Entry::getKey)
+        .containsExactlyInAnyOrder("numero", "status", "veiculo", "previsaoEntrega", "orcamento");
+    assertThat(summary.toString())
+        .doesNotContain("autorId", "oficinaId", "clienteId", "token", "email", "ipOrigem");
+  }
+
+  @Test
+  void fase4OpenApiDescreveFotosETokenPublico() throws Exception {
+    var paths = read(null, "/v3/api-docs", 200).path("paths");
+    var upload = paths.path("/api/v1/ordens-servico/{osId}/fotos").path("post");
+    for (String code : List.of("201", "413", "415", "503"))
+      assertThat(upload.path("responses").has(code)).isTrue();
+    for (String suffix : List.of("", "/decisao")) {
+      var operation =
+          paths.path("/api/v1/publico/{token}" + suffix).path(suffix.isEmpty() ? "get" : "post");
+      assertThat(operation.path("parameters").findValuesAsText("name")).contains("token");
+      assertThat(operation.path("security").toString()).doesNotContain("bearer");
+    }
   }
 
   JsonNode httpJson(
