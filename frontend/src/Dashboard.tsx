@@ -50,11 +50,11 @@ export default function Dashboard({ summary, orders, vehicles, clients, today, c
       <div className="recovery-copy"><span className="section-kicker"><Icon name="recovery" size={18} />RELACIONAMENTO QUE GERA RETORNO</span>
         <h2 id="recovery-title">Dinheiro Esquecido</h2>
         <p>Sua oficina já tem clientes.<br />Faça eles voltarem.</p>
-        <button onClick={viewRecovery}>Explorar oportunidades<Icon name="forward" size={18} /></button>
+        {canWrite && <button onClick={viewRecovery}>Explorar oportunidades<Icon name="forward" size={18} /></button>}
       </div>
       <div className="recovery-amount"><span>Potencial de recuperação</span>
-        <strong>Em apuração</strong>
-        <p>Oportunidades ainda não classificadas.<br />O total será exibido quando houver uma origem verificável.</p>
+        <strong>Carteira de oportunidades</strong>
+        <p>Consulte origens, próximos contatos e valores recuperados no painel de oportunidades.</p>
         <div className="pending-origin"><Icon name="orders" size={18} /><span><b>{money(summary?.orcamentosAguardandoDecisao.total ?? 0)}</b> em {summary?.orcamentosAguardandoDecisao.quantidade ?? 0} orçamento(s) aguardando resposta. <span>Esse valor não representa receita recuperada.</span></span></div>
       </div>
     </section>
