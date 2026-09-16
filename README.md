@@ -66,7 +66,7 @@ Conclusão
 
 As duas frentes da Fase 2 foram concluídas.
 
-### Cauã — API, contratos, segurança e infraestrutura
+API, contratos, segurança e infraestrutura
 
 Concluído:
 
@@ -119,9 +119,9 @@ docs/staging.md
 
 A Fase 3 está em andamento.
 
-## ✅ Cauã — API e integração
+## API e integração
 
-A frente de Cauã na Fase 3 foi concluída na branch:
+A Fase 3 foi concluída na branch:
 
 ```text
 feature/fase3-api-integration
@@ -195,7 +195,7 @@ Fase 3 geral
 🚧 Em andamento
 ```
 
-A conclusão da frente do Cauã não significa automaticamente que toda a Fase 3 esteja concluída.
+A conclusão da frente não significa automaticamente que toda a Fase 3 esteja concluída.
 
 As demais frentes devem ser finalizadas antes de marcar a Fase 3 geral como encerrada.
 
@@ -653,7 +653,7 @@ contrato de erros
 contratos da primeira integração
 ```
 
-A frente de API/integração do Cauã na Fase 3 foi concluída em:
+A frente de API/integração na Fase 3 foi concluída em:
 
 ```text
 feature/fase3-api-integration
