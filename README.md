@@ -12,29 +12,27 @@ O projeto utiliza arquitetura de **monólito modular**, API REST, frontend React
 
 ## ✅ Fase 1 — Concluída
 
-A Fase 1 do Garagem SaaS foi concluída e validada.
+A Fase 1 foi concluída e integrada.
 
 O núcleo operacional está funcional com:
 
-- frontend integrado à API real;
-- PostgreSQL;
-- MinIO privado para fotos;
 - autenticação;
-- usuários e permissões;
 - clientes;
 - veículos;
 - ordens de serviço;
+- responsáveis;
 - checklist;
 - diagnóstico;
-- fotos;
-- orçamento versionado;
+- fotos privadas;
+- orçamento;
 - aprovação pública;
 - timeline;
-- isolamento entre oficinas;
-- Docker Compose;
-- testes de integração.
+- PostgreSQL;
+- MinIO;
+- frontend integrado à API real;
+- isolamento entre oficinas.
 
-Fluxo principal validado:
+Fluxo principal:
 
 ```text
 Login
@@ -64,239 +62,23 @@ Conclusão
 
 ---
 
-## 🚧 Fase 3 — Primeira integração: frente de Cauã entregue
+## ✅ Fase 2 — Concluída
 
-A frente de **contratos e primeira integração**, sob responsabilidade de Cauã, está concluída na
-branch `feature/fase3-api-integration`, aguardando revisão. Ainda **não** foi mergeada na `main`.
+As duas frentes da Fase 2 foram concluídas.
 
-Foram entregues:
+### Cauã — API, contratos, segurança e infraestrutura
 
-- os seis contratos da primeira integração publicados com exemplos de requisição e resposta em
-  [docs/api-v1.md](docs/api-v1.md#contratos-da-primeira-integração);
-- documentação e OpenAPI reconciliados;
-- cinco bugs encontrados na integração corrigidos, cada um com teste de regressão;
-- `Fase3IT`, com 15 testes de integração contra PostgreSQL real.
+Concluído:
 
-Relatório completo em [docs/fase3-caua.md](docs/fase3-caua.md).
-
-O contrato **não mudou**: nenhum campo foi removido, renomeado ou teve o tipo alterado, e nenhum
-status HTTP mudou. Quem já integrava contra a Fase 2 não precisa alterar nada.
-
-As pendências de produto da Fase 3 — consumir `/dashboard`, paginar a carga inicial, usar filtros e
-ordenação do backend nas telas e marcar campo a campo com `errors[]` — são do outro desenvolvedor e
-estão registradas no relatório.
-
----
-
-## 🚧 Fase 2 — Implementação entregue; aceite integrado pendente
-
-A implementação das frentes de API/segurança/infraestrutura e do frontend de Kauã está concluída. A homologação ponta a ponta com PostgreSQL e MinIO reais ainda precisa ser executada em um ambiente com Docker disponível.
-
-A frente de **API, contratos, validação funcional, segurança e infraestrutura**, sob responsabilidade de Cauã, foi concluída, testada e integrada à `main`.
-
-PR integrado:
-
-```text
-#7 — feature/fase2-api-contracts-security
-```
-
-Commit principal da entrega:
-
-```text
-feat: finalize phase 2 api security and infrastructure
-```
-
-A `main` já contém essa implementação.
-
----
-
-# ✅ Fase 2 — Frente de frontend de Kauã
-
-A implementação do frontend atribuída a Kauã foi concluída no PR #8, originado da branch `feature/fase2-api-contracts-security`.
-
-Foram entregues:
-
-- cliente HTTP único, sessão com renovação de token e proteção das telas autenticadas;
-- login, clientes, veículos, ordens de serviço, checklist, diagnóstico, orçamento, fotos e histórico;
-- página pública do cliente com confirmação de aprovação ou recusa;
-- estados de carregamento, erro e vazio, erros por campo e confirmações para ações importantes;
-- componentes reutilizáveis de formulário, status, tabelas e timeline;
-- responsividade para desktop, tablet e celular, acessibilidade e ícones exclusivamente Lucide;
-- remoção dos dados demonstrativos do código de produção;
-- documentação, workflow de CI e testes de frontend.
-
-Validação local aprovada:
-
-```text
-npm run lint        ✅
-npm run typecheck   ✅
-npm test            ✅ 18 testes
-npm run build       ✅
-npm run test:ui     ✅ 12 testes em desktop, tablet e celular
-```
-
-Os testes de navegador usam respostas REST controladas apenas dentro da suíte. O aceite integrado contra API, PostgreSQL e MinIO reais permanece pendente porque o Docker Engine não ficou disponível durante a validação local.
-
-Detalhes em [docs/fase2-kaua-frontend.md](docs/fase2-kaua-frontend.md) e [frontend/README.md](frontend/README.md).
-
----
-
-# ✅ Fase 2 — Frente de API, Segurança e Infraestrutura
-
-Esta frente está concluída.
-
-## API e contratos
-
-Foram concluídos:
-
-- inventário dos endpoints existentes;
-- estabilização dos contratos REST;
-- revisão de DTOs;
-- respostas de erro padronizadas;
-- validações padronizadas;
+- documentação dos endpoints;
+- estabilização dos DTOs;
+- padronização das respostas de validação;
 - paginação;
 - filtros;
 - ordenação;
-- allowlist de campos de ordenação;
-- endpoints/respostas para dashboard;
-- atualização do Swagger/OpenAPI.
-
-O inventário atual possui:
-
-```text
-33 operações
-23 caminhos
-```
-
-A API utiliza o prefixo:
-
-```text
-/api/v1
-```
-
----
-
-## Paginação
-
-As principais listagens utilizam paginação no backend.
-
-Formato:
-
-```text
-?page=0&size=20
-```
-
-Envelope padrão:
-
-```json
-{
-  "itens": [],
-  "pagina": 0,
-  "tamanho": 20,
-  "total": 0,
-  "totalPaginas": 0
-}
-```
-
-O frontend não deve carregar toda a base apenas para implementar paginação visual.
-
----
-
-## Filtros
-
-Os filtros são executados pelo backend e respeitam obrigatoriamente a oficina autenticada.
-
-Foram implementados filtros para os recursos aplicáveis, incluindo ordens de serviço.
-
-Filtros opcionais não são enviados ao PostgreSQL como predicados nulos desnecessários.
-
-A listagem de ordens de serviço utiliza construção dinâmica da consulta no repositório.
-
----
-
-## Ordenação
-
-Campos enviados pelo cliente não são concatenados livremente na consulta.
-
-A ordenação utiliza uma **allowlist** de campos permitidos.
-
-Formato conceitual:
-
-```text
-?sort=numero,desc
-```
-
----
-
-# Correção importante da Fase 2
-
-Durante a validação foi identificado um erro no endpoint:
-
-```text
-GET /api/v1/ordens-servico
-```
-
-O PostgreSQL retornava:
-
-```text
-SQLState: 42P18
-ERROR: could not determine data type of parameter $22
-```
-
-O parâmetro `$22` correspondia ao filtro opcional:
-
-```text
-de
-```
-
-utilizado no recorte inferior de período por `criadoEm`.
-
-A implementação anterior utilizava:
-
-```text
-(:de IS NULL OR ...)
-```
-
-Quando `de` era `null`, o PostgreSQL não conseguia determinar o tipo do parâmetro temporal.
-
-A consulta foi corrigida para incluir o filtro somente quando o valor é informado.
-
-Cadeia atual:
-
-```text
-OsController
-  ↓
-OsService
-  ↓
-OrdemServicoRepositoryCustom
-  ↓
-OrdemServicoRepositoryImpl
-```
-
-Arquivos relacionados:
-
-```text
-backend/src/main/java/br/com/garagem/ordemservico/repository/OrdemServicoRepository.java
-backend/src/main/java/br/com/garagem/ordemservico/repository/OrdemServicoRepositoryCustom.java
-backend/src/main/java/br/com/garagem/ordemservico/repository/OrdemServicoRepositoryImpl.java
-backend/src/main/java/br/com/garagem/ordemservico/application/OsService.java
-```
-
-Não voltar para o padrão:
-
-```text
-(:param IS NULL OR ...)
-```
-
-para filtros temporais opcionais sem antes validar o comportamento no PostgreSQL.
-
----
-
-# Validação funcional
-
-Foram testados na Fase 2:
-
-- login;
+- respostas para dashboard;
+- Swagger/OpenAPI;
+- validação de login;
 - refresh token;
 - logout;
 - clientes;
@@ -309,38 +91,77 @@ Foram testados na Fase 2:
 - orçamentos;
 - aprovação pública;
 - timeline;
-- paginação;
-- filtros;
-- ordenação;
-- erros;
 - isolamento entre oficinas;
-- permissões.
+- permissões por papel;
+- expiração de tokens;
+- upload de arquivos;
+- CORS;
+- secrets;
+- logs;
+- health checks;
+- preparação de staging.
+
+> O ambiente de staging está preparado e documentado. O deploy em servidor externo é uma etapa separada.
+
+Documentação principal da Fase 2:
+
+```text
+docs/fase2-caua.md
+docs/api-v1.md
+docs/api-errors.md
+docs/permissoes.md
+docs/staging.md
+```
 
 ---
 
-# Segurança
+# 🚧 Fase 3 — Primeira integração
 
-## Multi-tenancy
+A Fase 3 está em andamento.
 
-O isolamento é sempre responsabilidade do backend.
+## ✅ Cauã — API e integração
 
-Cada usuário autenticado pertence a uma oficina.
+A frente de Cauã na Fase 3 foi concluída na branch:
 
-Uma oficina não pode:
+```text
+feature/fase3-api-integration
+```
 
-- consultar dados de outra;
-- alterar dados de outra;
-- associar recursos pertencentes a outra;
-- acessar fotos de outra;
-- utilizar usuários ou entidades pertencentes a outro tenant.
+Esta etapa teve como objetivo consolidar os contratos necessários para a primeira integração entre frontend e backend.
 
-Nunca confiar no frontend para definir `oficinaId`.
+### Contratos da primeira integração
 
-A oficina deve ser determinada pelo contexto autenticado.
+Foram auditados e preparados os contratos de:
+
+- login;
+- clientes;
+- veículos;
+- listagem de ordens de serviço;
+- detalhe de ordem de serviço;
+- alteração de status;
+- exemplos de requisição e resposta.
+
+A documentação de referência continua sendo:
+
+```text
+docs/api-v1.md
+```
+
+O Swagger/OpenAPI deve permanecer coerente com a implementação e com essa documentação.
 
 ---
 
-## Papéis
+## Validações da integração
+
+Durante esta frente foram considerados:
+
+- compatibilidade entre frontend e backend;
+- contratos REST;
+- autorização por papel;
+- isolamento por oficina;
+- conflitos de revisão;
+- erros de integração;
+- testes de regressão para problemas encontrados.
 
 Papéis atuais:
 
@@ -350,7 +171,7 @@ ATENDENTE
 MECANICO
 ```
 
-A matriz completa está em:
+As regras detalhadas estão em:
 
 ```text
 docs/permissoes.md
@@ -358,108 +179,170 @@ docs/permissoes.md
 
 ---
 
-## Autenticação
+# Situação das fases
 
-O backend possui:
+```text
+Fase 1
+✅ Concluída
 
-- login;
-- access token;
-- refresh token;
-- logout;
-- revogação;
-- expiração;
-- verificação de usuário ativo;
-- contexto de oficina;
-- autorização por papel.
+Fase 2
+✅ Concluída
 
-Tokens e credenciais nunca devem aparecer em logs ou no Git.
+Fase 3 — Cauã / API e primeira integração
+✅ Concluída
+
+Fase 3 geral
+🚧 Em andamento
+```
+
+A conclusão da frente do Cauã não significa automaticamente que toda a Fase 3 esteja concluída.
+
+As demais frentes devem ser finalizadas antes de marcar a Fase 3 geral como encerrada.
 
 ---
 
-## Uploads
+# Contratos da API
 
-Fotos são privadas.
-
-O backend valida o upload antes do armazenamento.
-
-Tipos de arquivo não suportados utilizam:
+A API utiliza:
 
 ```text
-415 Unsupported Media Type
+/api/v1
 ```
 
-Requests inválidos utilizam:
+A documentação principal está em:
 
 ```text
-400 Bad Request
+docs/api-v1.md
 ```
 
-Arquivos acima do limite devem utilizar:
+Com a aplicação em execução:
 
 ```text
-413 Payload Too Large
+Swagger:
+http://127.0.0.1:8080/swagger-ui.html
+
+OpenAPI:
+http://127.0.0.1:8080/v3/api-docs
 ```
 
-O MinIO não deve possuir acesso anônimo ao bucket privado.
+Antes de criar ou alterar chamadas no frontend:
+
+1. verificar `docs/api-v1.md`;
+2. conferir o Swagger/OpenAPI;
+3. conferir os tipos em `frontend/src/api`;
+4. não inventar contratos no frontend.
 
 ---
 
-## Respostas de erro
+# Regra importante de integração
 
-O backend utiliza resposta padronizada baseada em Problem Details / RFC 7807.
+O backend é a fonte de verdade para:
 
-Exemplo conceitual:
+- autenticação;
+- autorização;
+- multi-tenancy;
+- validações;
+- transições de status;
+- conflitos de revisão;
+- persistência;
+- regras de negócio.
 
-```json
-{
-  "type": "https://garagem.com.br/erros/validation_error",
-  "title": "Bad Request",
-  "status": 400,
-  "detail": "nome: não deve estar em branco",
-  "instance": "/api/v1/clientes",
-  "code": "VALIDATION_ERROR",
-  "timestamp": "2026-09-15T12:00:00Z",
-  "requestId": "..."
-}
+O frontend não deve duplicar regras de segurança nem decidir o `oficinaId`.
+
+A oficina é determinada pelo contexto autenticado.
+
+---
+
+# Paginação, filtros e ordenação
+
+Listagens que suportam paginação devem utilizar o backend.
+
+Formato conceitual:
+
+```text
+?page=0&size=20
 ```
 
-Erros de validação também podem possuir estrutura detalhada de campos.
+Filtros e ordenação devem utilizar exclusivamente os parâmetros suportados pela API.
 
-Documentação:
+Não carregar toda a base no frontend para depois filtrar ou paginar localmente quando a API já suporta essas operações.
+
+---
+
+# Ordens de serviço
+
+A listagem de ordens de serviço possui filtros implementados no backend.
+
+Na Fase 2 foi corrigido um problema específico do PostgreSQL envolvendo filtros temporais opcionais.
+
+Não reintroduzir consultas no formato:
+
+```text
+(:de IS NULL OR ...)
+```
+
+para parâmetros temporais opcionais sem validar o comportamento no PostgreSQL.
+
+A implementação atual utiliza construção dinâmica dos filtros.
+
+Arquivos principais:
+
+```text
+backend/src/main/java/br/com/garagem/ordemservico/repository/OrdemServicoRepository.java
+backend/src/main/java/br/com/garagem/ordemservico/repository/OrdemServicoRepositoryCustom.java
+backend/src/main/java/br/com/garagem/ordemservico/repository/OrdemServicoRepositoryImpl.java
+backend/src/main/java/br/com/garagem/ordemservico/application/OsService.java
+```
+
+---
+
+# Multi-tenancy
+
+Todo dado operacional pertence a uma oficina.
+
+Uma oficina não pode:
+
+- listar dados de outra;
+- consultar recursos de outra;
+- alterar recursos de outra;
+- vincular recursos pertencentes a outra;
+- acessar fotos privadas de outra;
+- atribuir usuários de outra oficina.
+
+Nunca utilizar um `oficinaId` enviado pelo frontend como autoridade de segurança.
+
+---
+
+# Erros da API
+
+O padrão de erros está documentado em:
 
 ```text
 docs/api-errors.md
 ```
 
-Nunca retornar ao cliente:
+Principais respostas:
 
 ```text
-stack trace
-SQL interno
-senha
-hash
-JWT secret
-access token
-refresh token
-credenciais de storage
-detalhes internos desnecessários
+400 — dados inválidos
+401 — não autenticado
+403 — sem permissão
+404 — recurso inexistente ou inacessível
+409 — conflito
+413 — arquivo maior que o permitido
+415 — tipo de arquivo não suportado
+500 — erro interno inesperado
 ```
 
----
+Não expor:
 
-# Dashboard
-
-Foi criada estrutura própria no backend para o dashboard.
-
-Arquivos:
-
-```text
-backend/src/main/java/br/com/garagem/dashboard/api/DashboardController.java
-backend/src/main/java/br/com/garagem/dashboard/api/DashboardDtos.java
-backend/src/main/java/br/com/garagem/dashboard/application/DashboardService.java
-```
-
-O frontend deve utilizar os contratos do dashboard em vez de carregar toda a base e calcular todos os indicadores localmente.
+- stack trace;
+- SQL;
+- senha;
+- tokens;
+- secrets;
+- credenciais;
+- detalhes internos sensíveis.
 
 ---
 
@@ -476,10 +359,10 @@ Spring Security
 Spring Data JPA
 Hibernate
 Bean Validation
-Spring Boot Actuator
 Flyway
+Actuator
 OpenAPI / Swagger
-JUnit 5
+JUnit
 Testcontainers
 ```
 
@@ -491,13 +374,15 @@ TypeScript
 Vite
 ```
 
-## Dados e infraestrutura
+## Infraestrutura
 
 ```text
 PostgreSQL 17
 MinIO / S3
 Docker
 Docker Compose
+Git
+GitHub
 GitHub Actions
 ```
 
@@ -505,41 +390,25 @@ GitHub Actions
 
 # Arquitetura
 
-O Garagem SaaS utiliza **monólito modular**.
-
-Não transformar o projeto em microserviços sem necessidade arquitetural concreta.
+O projeto utiliza **monólito modular**.
 
 Estrutura conceitual:
 
 ```text
 Controller
-  ↓
+    ↓
 DTO
-  ↓
+    ↓
 Service / Application
-  ↓
+    ↓
 Domain
-  ↓
+    ↓
 Repository
-  ↓
+    ↓
 PostgreSQL
 ```
 
-O backend é a fonte de verdade para:
-
-```text
-regras de negócio
-autenticação
-autorização
-multi-tenancy
-validação
-status
-conflitos
-versionamento
-persistência
-```
-
-O frontend deve consumir essas regras, não duplicá-las como regras de segurança.
+Não transformar o projeto em microserviços sem necessidade concreta.
 
 Mais detalhes:
 
@@ -549,254 +418,35 @@ docs/arquitetura.md
 
 ---
 
-# Fluxo da Ordem de Serviço
-
-Fluxo principal:
-
-```text
-RECEBIDO
-   ↓
-DIAGNOSTICO
-   ↓
-ORCAMENTO
-   ↓
-AGUARDANDO_APROVACAO
-   ↓
-EM_MANUTENCAO
-   ↓
-TESTE
-   ↓
-PRONTO
-```
-
-Recusa ou necessidade de revisão pode retornar a OS ao fluxo de orçamento conforme as regras existentes.
-
-Orçamentos são versionados e o histórico deve permanecer preservado.
-
----
-
-# Funcionalidades disponíveis
-
-## Clientes
-
-```text
-cadastro
-consulta
-edição
-busca
-paginação
-filtros
-ordenação
-```
-
-## Veículos
-
-```text
-cadastro
-consulta
-edição
-vínculo com cliente
-busca por placa
-paginação
-filtros
-ordenação
-```
-
-## Equipe
-
-```text
-listagem
-cadastro
-papéis
-atribuição de responsável
-controle de acesso
-```
-
-## Ordem de Serviço
-
-```text
-abertura
-consulta
-listagem
-responsável
-status
-paginação
-filtros
-ordenação
-controle de revisão
-timeline
-```
-
-## Checklist
-
-```text
-criação
-consulta
-vínculo com OS
-```
-
-## Diagnóstico
-
-```text
-registro
-classificação
-histórico
-```
-
-## Fotos
-
-```text
-upload real
-MinIO privado
-metadata no PostgreSQL
-download autenticado
-isolamento por oficina
-```
-
-## Orçamento
-
-```text
-versionamento
-itens
-cálculo no backend
-histórico imutável
-conflito de revisão
-```
-
-## Aprovação pública
-
-```text
-link público
-token
-expiração
-aprovação
-recusa
-proteção contra decisão duplicada
-```
-
-## Timeline
-
-```text
-eventos persistidos
-ordenação cronológica
-histórico da OS
-```
-
----
-
-# Documentação
-
-Antes de continuar o desenvolvimento, leia principalmente:
-
-| Documento | Conteúdo |
-|---|---|
-| [docs/fase3-caua.md](docs/fase3-caua.md) | Fase 3: contratos publicados, bugs da integração, divergências e pendências. |
-| [docs/fase2-caua.md](docs/fase2-caua.md) | Estado detalhado da frente da Fase 2 e o que já foi concluído. |
-| [docs/fase2-kaua-frontend.md](docs/fase2-kaua-frontend.md) | Checklist, validações e limites da entrega de frontend de Kauã. |
-| [frontend/README.md](frontend/README.md) | Execução, testes e organização do frontend. |
-| [docs/api-v1.md](docs/api-v1.md) | Contratos REST, endpoints, DTOs, filtros, paginação, ordenação e dashboard. **Comece pela seção "Contratos da primeira integração" para integrar o frontend.** |
-| [docs/api-errors.md](docs/api-errors.md) | Contrato de erros e códigos estáveis. |
-| [docs/permissoes.md](docs/permissoes.md) | Matriz de permissões por papel. |
-| [docs/staging.md](docs/staging.md) | Configuração, variáveis, health, logs e preparação de staging. |
-| [docs/arquitetura.md](docs/arquitetura.md) | Decisões arquiteturais. |
-| [docs/fase1-finalizacao.md](docs/fase1-finalizacao.md) | Evidências e validações da Fase 1. |
-| [docs/aceite-fase-1.md](docs/aceite-fase-1.md) | Critérios de aceite da Fase 1. |
-
-Com a aplicação no ar:
-
-```text
-http://127.0.0.1:8080/swagger-ui.html
-```
-
-OpenAPI:
-
-```text
-http://127.0.0.1:8080/v3/api-docs
-```
-
----
-
 # Executar localmente
 
-## 1. Atualize a main
-
-Antes de começar qualquer trabalho:
-
-```bash
-git switch main
-git pull origin main
-git status
-```
-
-O esperado é:
-
-```text
-nothing to commit, working tree clean
-```
-
-Nunca desenvolver diretamente na `main`.
-
-Depois crie uma nova branch:
-
-```bash
-git switch -c feature/nome-da-tarefa
-```
-
----
-
-## 2. Variáveis de ambiente
-
-Copie:
+Crie o `.env` utilizando:
 
 ```text
 .env.example
 ```
 
-para:
-
-```text
-.env
-```
-
-Linux/macOS:
-
-```bash
-cp .env.example .env
-```
-
-PowerShell:
+No PowerShell:
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-Preencha os valores marcados com:
+Preencha os valores:
 
 ```text
 CHANGE_ME
 ```
 
-Nunca versionar `.env`.
+Depois:
 
-Para staging existe:
-
-```text
-.env.staging.example
-```
-
----
-
-## 3. Subir backend e infraestrutura
-
-Na raiz:
-
-```bash
+```powershell
 docker compose --env-file .env up -d --build
 ```
 
 Verifique:
 
-```bash
+```powershell
 docker compose --env-file .env ps -a
 ```
 
@@ -805,34 +455,6 @@ Health:
 ```text
 http://127.0.0.1:8080/actuator/health
 ```
-
-Resposta esperada:
-
-```json
-{
-  "status": "UP"
-}
-```
-
----
-
-## 4. Bootstrap da primeira oficina
-
-Para criar a primeira oficina:
-
-```text
-APP_BOOTSTRAP_ENABLED=true
-```
-
-Defina também os dados da oficina e do OWNER.
-
-Depois da primeira criação, volte para:
-
-```text
-APP_BOOTSTRAP_ENABLED=false
-```
-
-Não deixar bootstrap permanentemente ativo em staging ou produção.
 
 ---
 
@@ -846,20 +468,18 @@ frontend/
 
 execute:
 
-```bash
+```powershell
 npm ci
 npm run dev
 ```
 
-O frontend utiliza o proxy do Vite no desenvolvimento local para acessar a API.
-
-Normalmente:
+Desenvolvimento local normalmente utiliza:
 
 ```text
 Frontend:
 http://127.0.0.1:5173
 
-API:
+Backend:
 http://127.0.0.1:8080
 ```
 
@@ -867,83 +487,38 @@ http://127.0.0.1:8080
 
 # Testes
 
-## Backend
+Backend:
 
-Com Docker disponível:
-
-```bash
+```powershell
 cd backend
-./mvnw verify
+.\mvnw.cmd verify
 ```
 
-No Windows também pode ser utilizado o Maven portátil configurado em `.tools`.
-
-A última validação completa da frente da Fase 2 terminou com:
+Também existe ambiente portátil em:
 
 ```text
-12 testes unitários
-39 testes de integração
-0 falhas
-BUILD SUCCESS
+.tools/
 ```
 
-A suíte específica:
+Os testes de integração utilizam PostgreSQL e MinIO por Testcontainers.
 
-```text
-Fase2IT
-```
+Frontend:
 
-possui:
-
-```text
-27 testes
-0 falhas
-```
-
-Os testes de integração utilizam PostgreSQL e MinIO via Testcontainers.
-
----
-
-## Frontend
-
-Dentro de `frontend`:
-
-```bash
+```powershell
+cd frontend
 npm run lint
 npm run typecheck
 npm test
 npm run build
 ```
 
-Antes de abrir PR, o código alterado deve passar pelas verificações aplicáveis.
-
----
-
-# Docker e infraestrutura
-
-Foram validados:
-
-```text
-PostgreSQL healthy
-MinIO ativo
-API healthy
-/actuator/health HTTP 200
-Swagger HTTP 200
-CORS permitido somente para origem configurada
-origens não permitidas retornando 403
-```
-
-A validação da Fase 2 foi feita em ambiente Docker isolado para não destruir volumes locais existentes.
-
-Não remover volumes locais de outro desenvolvedor apenas para executar testes.
+Execute apenas scripts realmente existentes no `package.json`.
 
 ---
 
 # Staging
 
-A configuração para staging está preparada e documentada.
-
-Arquivo:
+A preparação de staging está documentada em:
 
 ```text
 docs/staging.md
@@ -955,183 +530,89 @@ Template:
 .env.staging.example
 ```
 
-O deploy efetivo de staging **ainda não foi realizado**.
+O deploy externo de staging deve ser tratado separadamente.
 
-Isso depende de:
+Não considerar:
 
 ```text
-servidor
-domínio
-HTTPS
-credenciais
-storage
-banco
-autorização para publicação
+staging preparado
 ```
 
-Não interpretar "staging preparado" como "staging publicado".
-
----
-
-# CORS
-
-CORS é configurável por ambiente.
-
-Produção e staging devem utilizar apenas origens autorizadas explicitamente.
-
-Não utilizar:
+como:
 
 ```text
-*
-```
-
-indiscriminadamente em ambiente autenticado.
-
----
-
-# Secrets
-
-Nunca adicionar ao Git:
-
-```text
-.env
-senhas
-JWT secrets
-access tokens
-refresh tokens
-tokens públicos
-S3 secret keys
-credenciais do PostgreSQL
-credenciais reais de staging
-dados privados de clientes
-```
-
-Secrets devem entrar exclusivamente por configuração de ambiente.
-
----
-
-# Logs
-
-A aplicação possui identificação de requests e contexto operacional.
-
-Os logs devem ajudar no diagnóstico sem expor dados sensíveis.
-
-Não registrar:
-
-```text
-senha
-access token
-refresh token
-JWT secret
-credenciais S3
-conteúdo privado desnecessário
+staging publicado em produção/servidor externo
 ```
 
 ---
 
-# Health checks
+# Documentação
 
-Endpoint principal:
+Antes de continuar o desenvolvimento, leia:
 
-```text
-GET /actuator/health
-```
-
-Existe também verificação relacionada ao storage.
-
-Não expor endpoints administrativos adicionais do Actuator publicamente sem necessidade.
-
----
-
-# Git e colaboração
-
-A `main` é a base estável do projeto.
-
-Fluxo obrigatório:
-
-```text
-main atualizada
-    ↓
-branch própria
-    ↓
-desenvolvimento
-    ↓
-testes
-    ↓
-commit
-    ↓
-push
-    ↓
-Pull Request
-    ↓
-revisão pelo outro desenvolvedor
-    ↓
-merge
-    ↓
-main
-```
-
-Não trabalhar diretamente na `main`.
-
-Padrões de branch:
-
-```text
-feature/...
-fix/...
-test/...
-docs/...
-chore/...
-```
-
-Antes de iniciar uma nova tarefa:
-
-```bash
-git switch main
-git pull origin main
-git status
-git switch -c feature/nome-da-tarefa
-```
+| Documento | Conteúdo |
+|---|---|
+| [docs/api-v1.md](docs/api-v1.md) | Contratos REST utilizados pelo frontend e demais consumidores. |
+| [docs/api-errors.md](docs/api-errors.md) | Padrão e códigos de erro da API. |
+| [docs/permissoes.md](docs/permissoes.md) | Regras e permissões por papel. |
+| [docs/fase2-caua.md](docs/fase2-caua.md) | Entregas da frente de API, segurança e infraestrutura da Fase 2. |
+| [docs/staging.md](docs/staging.md) | Preparação e configuração de staging. |
+| [docs/arquitetura.md](docs/arquitetura.md) | Decisões arquiteturais. |
+| [docs/fase1-finalizacao.md](docs/fase1-finalizacao.md) | Finalização técnica da Fase 1. |
+| [docs/aceite-fase-1.md](docs/aceite-fase-1.md) | Critérios de aceite da Fase 1. |
 
 ---
 
-# Para quem continuar a Fase 2
+# Para continuar a Fase 3
 
-A frente de API, contratos, segurança, infraestrutura e frontend está implementada. Antes de declarar a Fase 2 homologada, execute o aceite integrado com backend, PostgreSQL e MinIO reais.
-
-**Não refazer essa implementação sem primeiro verificar o que já existe.**
-
-Antes de desenvolver a próxima parte:
+Antes de implementar algo novo:
 
 ```text
-1. Atualizar a main.
-2. Ler docs/fase2-caua.md.
-3. Ler docs/api-v1.md.
-4. Conferir docs/permissoes.md.
-5. Conferir o Swagger da API.
-6. Identificar exatamente qual frente ainda está pendente.
-7. Criar uma nova branch.
-8. Trabalhar somente nessa branch.
-9. Abrir PR para revisão.
+1. Ler este README.
+2. Ler docs/api-v1.md.
+3. Conferir docs/permissoes.md.
+4. Conferir Swagger/OpenAPI.
+5. Verificar o código já existente.
+6. Identificar a tarefa da própria frente.
+7. Não refazer funcionalidades já implementadas.
 ```
 
-O arquivo mais importante para entender o que foi entregue e o que ainda falta é:
+Especialmente na integração frontend/backend:
 
 ```text
-docs/fase2-caua.md
-docs/fase2-kaua-frontend.md
+não inventar campos
+não inventar endpoints
+não inventar status
+não inventar permissões
+não contornar regras do backend
 ```
+
+Quando houver divergência entre frontend e API, investigar o contrato antes de alterar qualquer lado.
 
 ---
 
-# O que não faz parte desta entrega
+# Atenção ao OrderDetail.tsx
 
-A conclusão da frente de Cauã **não significa que toda a Fase 2 acabou**.
+O arquivo:
 
-Ainda não considerar automaticamente implementados:
+```text
+frontend/src/OrderDetail.tsx
+```
+
+teve histórico de problema de encoding/mojibake durante fases anteriores.
+
+Sempre utilizar como referência a versão atual versionada no projeto.
+
+Não restaurar automaticamente versões antigas de stash ou branches antigas sobre esse arquivo.
+
+---
+
+# Escopo futuro
+
+Não implementar dentro da Fase 3 sem planejamento específico:
 
 ```text
 agenda avançada
-gestão de capacidade
 pátio
 estoque completo
 fornecedores avançados
@@ -1144,131 +625,48 @@ fiscal
 pagamentos
 marketplace
 app mobile nativo
-```
-
-Esses módulos devem ser tratados em etapas futuras ou conforme planejamento conjunto.
-
----
-
-# Escopo comercial
-
-O Garagem SaaS terá inicialmente **um único plano pago**.
-
-Não existe freemium definido para esta etapa.
-
-Ainda precisam ser fechados entre os responsáveis pelo produto:
-
-```text
-preço
-pacote comercial
-oficinas piloto
-responsáveis pelo piloto
-datas
-prazo do piloto
-critérios comerciais de sucesso
-```
-
----
-
-# Estado final desta entrega
-
-```text
-Fase 1
-✅ concluída
-
-Frontend + backend da Fase 1
-✅ integrados
-
-PostgreSQL
-✅ funcionando
-
-MinIO privado
-✅ funcionando
-
-API REST
-✅ funcionando
-
-Multi-tenancy
-✅ validado
-
-Permissões
-✅ validadas
-
-Paginação
-✅ implementada
-
-Filtros
-✅ implementados
-
-Ordenação
-✅ implementada
-
-Dashboard backend
-✅ implementado
-
-Contrato de erros
-✅ padronizado
-
-Swagger / OpenAPI
-✅ atualizado
-
-Testes Fase 2
-✅ 27/27
-
-Maven verify
-✅ BUILD SUCCESS
-
-Docker
-✅ validado
-
-CORS
-✅ validado
-
-Health
-✅ validado
-
-Documentação Fase 2
-✅ concluída
-
-PR da frente do Cauã
-✅ mergeado na main
-
-Staging configurado/documentado
-✅
-
-Deploy efetivo de staging
-⏳ pendente
-
-Fase 2 — implementação
-✅ API, segurança, infraestrutura e frontend concluídos
-
-Fase 2 — homologação integrada
-⏳ pendente de execução com PostgreSQL/MinIO reais
+microserviços
+Kafka
 ```
 
 ---
 
 # Resumo para o próximo desenvolvedor
 
-A `main` atual já contém a Fase 1 e as implementações de API/segurança/infraestrutura e frontend da Fase 2. A validação integrada ainda precisa ser executada.
-
-Não parta de branches antigas.
-
-Comece sempre por:
-
-```bash
-git switch main
-git pull origin main
-```
-
-Depois leia:
+O projeto já possui:
 
 ```text
-docs/fase2-caua.md
-docs/api-v1.md
-docs/permissoes.md
+Fase 1 concluída
+Fase 2 concluída
+API REST estabilizada
+autenticação
+multi-tenancy
+permissões
+PostgreSQL
+MinIO
+paginação
+filtros
+ordenação
+dashboard backend
+Swagger/OpenAPI
+contrato de erros
+contratos da primeira integração
 ```
 
-e crie uma branch nova para a próxima tarefa.
+A frente de API/integração do Cauã na Fase 3 foi concluída em:
 
-A `main` deve permanecer estável.
+```text
+feature/fase3-api-integration
+```
+
+Antes de continuar, leia principalmente:
+
+```text
+README.md
+docs/api-v1.md
+docs/api-errors.md
+docs/permissoes.md
+docs/fase2-caua.md
+```
+
+A Fase 3 geral permanece em andamento até a conclusão das demais frentes.
