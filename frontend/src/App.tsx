@@ -1,5 +1,5 @@
 import { TableRegion } from './TableRegion';
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Badge, Brand, Drawer, Empty, Field, Icon, Pager, Search } from "./ui";
 import { ClientForm, OrderForm, UserForm, VehicleForm } from "./forms";
 import OrderDetail from "./OrderDetail";
@@ -102,12 +102,12 @@ export default function App() {
   const vehicles = data.veiculos;
   const total = data.total;
   const order = data.ordens.find((o) => o.id === selected);
-  function updateOrder(o: Order) {
+  const updateOrder = useCallback((o: Order) => {
     setData((d) => ({
       ...d,
       ordens: d.ordens.map((item) => (item.id === o.id ? o : item)),
     }));
-  }
+  }, []);
   async function saveClient(c: Client) {
     const saved = await api<Client>(client ? `/clientes/${client.id}` : '/clientes', client ? 'PUT' : 'POST', { nome: c.nome, telefone: c.telefone, email: c.email || null, revisao: c.revisao });
     setData(d => ({ ...d, clientes: d.clientes.some(item => item.id === saved.id) ? d.clientes.map(item => item.id === saved.id ? saved : item) : [...d.clientes, saved] }));

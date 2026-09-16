@@ -1,5 +1,5 @@
 import { TableRegion } from './TableRegion';
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   date,
   money,
@@ -434,6 +434,38 @@ export default function OrderDetail({
     [error, setError] = useState("");
   const saving = useRef(false);
   const [busy, setBusy] = useState(false);
+  const [syncError, setSyncError] = useState('');
+  const [checkedAt, setCheckedAt] = useState(() => Date.now());
+  const linkExpired = Boolean(order.link && new Date(order.link.expiraEm).getTime() <= checkedAt);
+  // Pause background reads while a form or write is active. Never replace a draft.
+  useEffect(() => {
+    if (panel || busy) return;
+    let active = true;
+    let reading = false;
+    async function refresh() {
+      if (reading || saving.current || document.visibilityState !== 'visible') return;
+      reading = true;
+      try {
+        const fresh = await loadOrder(order.id);
+        if (!active || saving.current) return;
+        await update({ ...fresh, link: order.link });
+        setCheckedAt(Date.now());
+        setSyncError('');
+      } catch {
+        if (active) setSyncError('Não foi possível atualizar automaticamente. Os últimos dados continuam visíveis. Use Atualizar dados para tentar novamente.');
+      } finally { reading = false; }
+    }
+    const timer = window.setInterval(() => { setCheckedAt(Date.now()); void refresh(); }, 15_000);
+    const onVisible = () => { void refresh(); };
+    window.addEventListener('focus', onVisible);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      window.removeEventListener('focus', onVisible);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [order.id, order.link, panel, busy, update]);
   const latest = order.versoes.at(-1),
     version = order.versoes.find((v) => v.id === versionId) || latest;
   const editable = order.status !== "PRONTO",
@@ -497,6 +529,7 @@ export default function OrderDetail({
     <>
       {error && <p role="alert" className="error">{error}</p>}
       {busy && <p role="status">Salvando…</p>}
+      {syncError && <p role="status" className="notice">{syncError}</p>}
       <button className="back-link" onClick={back}>
         <Icon name="back" size={16} />
         Ordens de Serviço
@@ -519,6 +552,7 @@ export default function OrderDetail({
           </button>
         )}
       </div>
+      <p>{panel || busy ? 'Atualização automática pausada durante a edição.' : 'Esta OS é atualizada automaticamente a cada 15 segundos enquanto estiver aberta.'}</p>
       <section className="identity-strip">
         <div>
           <small>Cliente</small>
@@ -838,12 +872,14 @@ export default function OrderDetail({
                           ? "Disponibilize a versão atual para solicitar uma nova decisão."
                           : "O cliente visualiza os itens e decide sobre o valor integral."}
                       </p>
-                      {order.link?.ativo && (
+                      {order.link?.ativo && !linkExpired && (
                         <small>
                           Link disponível até{" "}
                           {date(order.link.expiraEm, true)}.
                         </small>
                       )}
+                      {linkExpired && <p className="notice">O link expirou. Gere um novo endereço para o cliente.</p>}
+                      {!order.link && <p>Copie o endereço após gerar. Ele fica disponível nesta sessão; recarregar a página exige gerar outro link. Links anteriores continuam válidos até expirar ou serem revogados.</p>}
                     </div>
                     <div className="button-stack">
                       {order.status === "ORCAMENTO" &&
@@ -856,7 +892,7 @@ export default function OrderDetail({
                             Disponibilizar orçamento
                           </button>
                         )}
-                      {!order.link?.ativo ? (
+                      {!order.link?.ativo || linkExpired ? (
 <button disabled={busy} onClick={createLink}>
   Gerar link do cliente
 </button>
@@ -864,6 +900,12 @@ export default function OrderDetail({
                         <>
                           <a href={order.link.url} target="_blank" rel="noreferrer">Visualizar como cliente</a>
                           <Field label="Link do cliente"><input readOnly value={order.link.url || ''} onFocus={e => e.target.select()} /></Field>
+                          <button onClick={async () => {
+                            try {
+                              await navigator.clipboard.writeText(order.link?.url ?? '');
+                              notify('Link copiado. Envie o endereço ao cliente.');
+                            } catch { setError('Não foi possível copiar automaticamente. Selecione e copie o endereço no campo Link do cliente.'); }
+                          }}>Copiar link</button>
                           <button
                             className="text-button danger"
                             onClick={() => setPanel("revogar")}

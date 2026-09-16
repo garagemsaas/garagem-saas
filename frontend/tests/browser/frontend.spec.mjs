@@ -123,6 +123,34 @@ async function status(page, value) {
   await saved(page);
 }
 
+test('atualização automática preserva rascunho e recupera falha sem apagar a OS', async ({ page, context }) => {
+  await page.clock.install();
+  const state = await fixture(context);
+  state.clients = [{ id: 'c', nome: 'Cliente', telefone: '11912345678', email: '', revisao: 0 }];
+  state.vehicles = [{ id: 'v', clienteId: 'c', placa: 'ABC1D23', marca: 'Fiat', modelo: 'Uno', ano: 2020, km: 100, cor: 'Prata', revisao: 0 }];
+  state.orders = [{ id: 'os-1', numero: 1, clienteId: 'c', veiculoId: 'v', status: 'DIAGNOSTICO', kmEntrada: 100, relato: 'Ruído', revisao: 0, criadoEm: new Date().toISOString() }];
+  await login(page); await nav(page, 'Ordens de Serviço');
+  await page.getByRole('button', { name: 'Ver detalhes da OS 1' }).click();
+  await page.getByRole('tab', { name: 'Diagnóstico', exact: true }).click();
+  await page.getByRole('button', { name: 'Adicionar item', exact: true }).click();
+  await page.getByLabel('Avaliação técnica *').fill('Rascunho preservado');
+  state.orders[0].status = 'ORCAMENTO';
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  await expect(page.getByLabel('Avaliação técnica *')).toHaveValue('Rascunho preservado');
+  page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('button', { name: 'Cancelar', exact: true }).click();
+  await expect(page.getByText('Esta OS é atualizada automaticamente', { exact: false })).toBeVisible();
+  await page.route('**/api/v1/ordens-servico/os-1', route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ detail: 'Indisponível' }) }));
+  await page.clock.fastForward(16_000);
+  await expect(page.getByRole('status').filter({ hasText: 'Não foi possível atualizar automaticamente' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /OS #1/ })).toBeVisible();
+  await page.unroute('**/api/v1/ordens-servico/os-1');
+  await page.clock.fastForward(16_000);
+  await expect(page.getByRole('heading', { name: /OS #1/ })).toContainText('Orçamento');
+  await expect(page.getByText('Não foi possível atualizar automaticamente.', { exact: false })).toHaveCount(0);
+  await noOverflow(page);
+});
+
 test('fluxo completo: cliente, veículo, OS, checklist, diagnóstico, orçamento, foto e aprovação pública', async ({ page, context }, info) => {
   const state = await fixture(context);
   const errors = []; page.on('pageerror', e => errors.push(e.message));
@@ -192,7 +220,9 @@ test('fluxo completo: cliente, veículo, OS, checklist, diagnóstico, orçamento
   await publicPage.getByRole('button', { name: 'Confirmar aprovação', exact: true }).click();
   await expect(publicPage.getByRole('status')).toContainText('Aprovação registrada');
   await noOverflow(publicPage); await accessible(publicPage);
-  await page.getByRole('button', { name: 'Atualizar dados', exact: true }).click();
+  // The workshop receives the public decision without a manual reload.
+  await page.bringToFront();
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   await expect(page.getByRole('heading', { name: /OS #1/ })).toContainText('Em manutenção');
   await status(page, 'TESTE'); await status(page, 'PRONTO');
   await expect(page.getByRole('button', { name: 'Atualizar status', exact: true })).toHaveCount(0);

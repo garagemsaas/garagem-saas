@@ -706,6 +706,11 @@ Antes de continuar o desenvolvimento, leia:
 
 # Para continuar a Fase 4
 
+Atualização da frente do Kauã: [entrega do frontend e limites de validação](docs/fase4-kaua-frontend.md).
+O detalhe agora acompanha decisões públicas automaticamente e melhora o compartilhamento
+de links. O encerramento geral depende da revisão, do aceite integrado e da decisão sobre
+gestão de links antigos, conforme o documento. As instruções de sincronização abaixo permanecem válidas.
+
 A parte do Cauã está concluída. O próximo desenvolvimento da Fase 4 deve continuar na mesma branch:
 
 ```text
