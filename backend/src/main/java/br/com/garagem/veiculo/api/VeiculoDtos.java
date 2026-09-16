@@ -1,12 +1,14 @@
 package br.com.garagem.veiculo.api;
 
 import br.com.garagem.veiculo.domain.Veiculo;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.*;
 import java.util.UUID;
 
 public final class VeiculoDtos {
   private VeiculoDtos() {}
 
+  @Schema(name = "VeiculoEntrada")
   public record Entrada(
       @NotNull UUID clienteId,
       @NotBlank @Pattern(regexp = "[A-Za-z]{3}[- ]?[0-9][A-Za-z0-9][0-9]{2}") String placa,
@@ -17,6 +19,7 @@ public final class VeiculoDtos {
       @NotBlank @Size(max = 60) String cor,
       @PositiveOrZero long revisao) {}
 
+  @Schema(name = "VeiculoSaida")
   public record Saida(
       UUID id,
       UUID clienteId,

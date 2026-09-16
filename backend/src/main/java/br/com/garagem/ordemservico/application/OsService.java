@@ -102,6 +102,7 @@ public class OsService {
             .filtrar(
                 TenantContext.current(),
                 Filtros.like(filtro.busca()),
+                buscaPorPlaca(filtro.busca()),
                 filtro.numero(),
                 filtro.status(),
                 filtro.clienteId(),
@@ -116,6 +117,18 @@ public class OsService {
 
   private static String placaNormalizada(String placa) {
     return placa == null ? null : placa.replace("-", "").replace(" ", "");
+  }
+
+  /**
+   * Forma do campo único de pesquisa usada só contra a placa, que é gravada sem separadores. Sem
+   * isso "ABC-1234" digitado na busca não encontrava a OS, embora o filtro dedicado {@code placa}
+   * já normalizasse. Nome do cliente e número continuam comparados com o texto original. Quando a
+   * pesquisa só tem separadores a forma normalizada fica vazia e vale o texto original, para os
+   * dois parâmetros nunca chegarem nulos separadamente.
+   */
+  private static String buscaPorPlaca(String busca) {
+    String normalizada = Filtros.like(placaNormalizada(busca));
+    return normalizada == null ? Filtros.like(busca) : normalizada;
   }
 
   @Transactional(readOnly = true)

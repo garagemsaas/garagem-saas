@@ -21,6 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 @Transactional
 public class FotoService {
+  @io.swagger.v3.oas.annotations.media.Schema(name = "FotoSaida")
   public record Saida(
       UUID id,
       String finalidade,

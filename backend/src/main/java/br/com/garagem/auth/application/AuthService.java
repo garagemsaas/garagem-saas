@@ -6,6 +6,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -111,11 +112,14 @@ public class AuthService {
         encoder
             .encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(), claims))
             .getTokenValue();
-    LoggerFactory.getLogger(AuthService.class)
-        .atInfo()
-        .addKeyValue("oficina_id", account.oficinaId())
-        .addKeyValue("usuario_id", account.id())
-        .log("sessao_emitida");
+    // Os dois identificadores vão para o MDC, não como key-value do evento: o filtro de acesso já
+    // publica `oficina_id` e `usuario_id` no contexto de toda requisição, e repetir esses nomes no
+    // evento faz o escritor de log estruturado recusar a linha inteira ("has already been
+    // written"). Pelo MDC o `sessao_emitida` é gravado, e o `request_concluido` da sessão que
+    // acabou de nascer deixa de sair como "anonimo".
+    MDC.put("oficina_id", account.oficinaId().toString());
+    MDC.put("usuario_id", account.id().toString());
+    LoggerFactory.getLogger(AuthService.class).atInfo().log("sessao_emitida");
     return new Sessao(
         access,
         refresh,

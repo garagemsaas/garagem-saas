@@ -13,14 +13,17 @@ public interface OrdemServicoRepositoryCustom {
   /**
    * Busca as OS da oficina. Todo filtro é opcional: os que chegarem nulos não entram na consulta.
    *
-   * @param busca texto único, já normalizado como padrão {@code like}, que casa com placa, nome do
-   *     cliente ou número da OS
+   * @param busca texto único, já normalizado como padrão {@code like}, que casa com nome do cliente
+   *     ou número da OS
+   * @param buscaPlaca o mesmo texto único, porém sem hífen nem espaço, para casar com a placa como
+   *     ela é gravada. Chega nulo junto com {@code busca}
    * @param de recorte inferior sobre a data de abertura, inclusivo
    * @param ate recorte superior sobre a data de abertura, inclusivo
    */
   Page<OrdemServico> filtrar(
       UUID oficinaId,
       String busca,
+      String buscaPlaca,
       Long numero,
       StatusOs status,
       UUID clienteId,

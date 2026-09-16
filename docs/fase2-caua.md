@@ -71,7 +71,7 @@ Evidências citadas como `Fase2IT#metodo` estão em
 
 | Área | Item | Observação |
 |---|---|---|
-| Frontend | Consumir `GET /api/v1/dashboard` | O contrato e o cliente tipado (`api.getDashboard()`) estão prontos. Trocar o cálculo local em `Dashboard.tsx` pelos números do backend é trabalho de produto, do outro desenvolvedor. |
+| Frontend | Consumir `GET /api/v1/dashboard` | O contrato está pronto e o tipo `Dashboard` existe em `frontend/src/api/types.ts`. **Não existe método `api.getDashboard()`** — a linha anterior desta tabela afirmava o contrário; corrigido na Fase 3. O cliente HTTP é a função genérica `api<T>(path)`, então a chamada é `api<Dashboard>('/dashboard')`. Trocar o cálculo local de `dashboard-model.ts` pelos números do backend é trabalho de produto, do outro desenvolvedor. |
 | Frontend | Usar filtros e ordenação novos | Os parâmetros existem e estão documentados; as telas ainda usam só `busca`. |
 | Frontend | Usar `errors[]` para marcar campos | Hoje a tela exibe `detail`. O campo novo permite destacar cada input. |
 | Staging | Subida efetiva | Depende de servidor e autorização. Nenhum deploy externo foi feito, conforme a instrução. |

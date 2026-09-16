@@ -18,6 +18,7 @@ Spring (`type`, `title`, `status`, `detail`) ganhou três campos do projeto: `co
   "title": "Bad Request",
   "status": 400,
   "detail": "email: deve ser um endereço de e-mail bem formado; nome: não deve estar em branco",
+  "instance": "/api/v1/clientes",
   "code": "VALIDATION_ERROR",
   "timestamp": "2026-09-15T19:31:16.745Z",
   "requestId": "48eb85c4-15eb-457d-89c7-d726a6ec4ef1",
@@ -37,6 +38,8 @@ Spring (`type`, `title`, `status`, `detail`) ganhou três campos do projeto: `co
 - **`errors` marca campo a campo** no formulário. `field` é o nome do campo do DTO de entrada.
 - **`requestId`** é o mesmo valor do cabeçalho `X-Request-Id` da resposta e aparece no log do
   servidor. Peça esse número ao usuário quando for investigar um erro.
+- **`instance`** é o caminho que produziu o erro. Vem do corpo padrão do Spring; é útil no log, não
+  na tela.
 
 ## Códigos
 
@@ -68,6 +71,11 @@ Spring (`type`, `title`, `status`, `detail`) ganhou três campos do projeto: `co
 - **401 de login não diz o que falhou.** Oficina inexistente, e-mail desconhecido, senha errada e
   usuário inativo devolvem exatamente o mesmo corpo. O login ainda compara a senha contra um hash
   descartável quando a conta não existe, para o tempo de resposta não denunciar a diferença.
+- **Texto sempre em português, em qualquer ambiente.** As mensagens do Bean Validation eram
+  resolvidas pelo locale da requisição: no contêiner, sem locale definido, `detail` saía "must not
+  be blank", e um navegador com `Accept-Language: en-US` recebia inglês mesmo em servidor pt-BR.
+  Como a tela mostra esse texto ao usuário final, o locale passou a ser fixo em `pt_BR`
+  (`spring.web.locale` e `locale-resolver: fixed`) e não é negociado por cabeçalho.
 - **Formato único, inclusive fora do Spring MVC.** Os 401/403 escritos pelo filtro de segurança e os
   404 do filtro de tenancy usam `ProblemJson`, que produz o mesmo corpo do `@RestControllerAdvice`.
   Não existe resposta de erro em outro formato na API.

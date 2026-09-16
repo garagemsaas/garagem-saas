@@ -41,7 +41,8 @@ public class VeiculoService {
     return Pagina.de(
         repo.filtrar(
                 TenantContext.current(),
-                Filtros.like(normalizarBusca(busca)),
+                Filtros.like(busca),
+                buscaPorPlaca(busca),
                 Filtros.like(normalizarBusca(placa)),
                 Filtros.like(marca),
                 Filtros.like(modelo),
@@ -53,6 +54,17 @@ public class VeiculoService {
   /** A placa é gravada sem separadores; o filtro remove hífen e espaço antes de comparar. */
   private static String normalizarBusca(String s) {
     return s == null ? null : normalizar(s);
+  }
+
+  /**
+   * Forma do campo único de pesquisa usada só contra a placa. Marca e modelo continuam comparados
+   * com o texto original: normalizá-los faria "Fiat Uno" e "CR-V" não encontrarem nada. Quando a
+   * pesquisa só tem separadores a forma normalizada fica vazia, e aí vale o texto original, para
+   * que os dois parâmetros nunca cheguem nulos separadamente e anulem o predicado.
+   */
+  private static String buscaPorPlaca(String busca) {
+    String normalizada = Filtros.like(normalizarBusca(busca));
+    return normalizada == null ? Filtros.like(busca) : normalizada;
   }
 
   @Transactional(readOnly = true)

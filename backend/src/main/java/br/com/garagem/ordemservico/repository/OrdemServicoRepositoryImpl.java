@@ -46,6 +46,7 @@ class OrdemServicoRepositoryImpl implements OrdemServicoRepositoryCustom {
   public Page<OrdemServico> filtrar(
       UUID oficinaId,
       String busca,
+      String buscaPlaca,
       Long numero,
       StatusOs status,
       UUID clienteId,
@@ -63,11 +64,12 @@ class OrdemServicoRepositoryImpl implements OrdemServicoRepositoryCustom {
     if (busca != null) {
       predicados.append(
           """
-           and (lower(v.placa) like :busca escape '!'
+           and (lower(v.placa) like :buscaPlaca escape '!'
                 or lower(c.nome) like :busca escape '!'
                 or cast(o.numero as string) like :busca escape '!')\
           """);
       parametros.put("busca", busca);
+      parametros.put("buscaPlaca", buscaPlaca);
     }
     adicionar(predicados, parametros, "numero", "o.numero = :numero", numero);
     adicionar(predicados, parametros, "status", "o.status = :status", status);

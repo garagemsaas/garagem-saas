@@ -15,6 +15,13 @@ spring:
     multipart:
       max-file-size: 10MB
       max-request-size: 11MB
+  web:
+    # O texto de `detail` e de `errors[].message` vem do Bean Validation, que resolve a mensagem
+    # pelo locale da requisição. Sem fixar, o contêiner (sem locale definido) devolvia "must not be
+    # blank" e um navegador com Accept-Language: en-US recebia inglês mesmo em servidor pt-BR — e a
+    # tela mostra esse texto ao usuário final. A API é pt-BR; o locale não é negociável.
+    locale: pt_BR
+    locale-resolver: fixed
   flyway:
     enabled: true
 server:

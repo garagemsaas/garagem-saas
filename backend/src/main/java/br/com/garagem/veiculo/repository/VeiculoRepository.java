@@ -11,12 +11,17 @@ public interface VeiculoRepository extends TenantRepository<Veiculo> {
   /**
    * Filtro combinado da oficina atual. {@code clienteId} também é confrontado com a oficina, de
    * modo que um cliente de outra oficina devolve página vazia em vez de dados alheios.
+   *
+   * <p>O campo único de pesquisa chega em duas formas: {@code buscaPlaca} já sem hífen nem espaço,
+   * para casar com a placa como ela é gravada, e {@code busca} com o texto original, para casar com
+   * marca e modelo. Comparar marca e modelo contra a forma normalizada faria "Fiat Uno" e "CR-V"
+   * não encontrarem nada. Os dois chegam nulos juntos quando a pesquisa está vazia.
    */
   @Query(
       """
       select v from Veiculo v
        where v.oficinaId = :oficinaId
-         and (:busca is null or lower(v.placa) like :busca escape '!'
+         and (:busca is null or lower(v.placa) like :buscaPlaca escape '!'
               or lower(v.marca) like :busca escape '!'
               or lower(v.modelo) like :busca escape '!')
          and (:placa is null or lower(v.placa) like :placa escape '!')
@@ -27,6 +32,7 @@ public interface VeiculoRepository extends TenantRepository<Veiculo> {
   Page<Veiculo> filtrar(
       UUID oficinaId,
       String busca,
+      String buscaPlaca,
       String placa,
       String marca,
       String modelo,

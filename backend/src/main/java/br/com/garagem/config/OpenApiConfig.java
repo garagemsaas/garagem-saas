@@ -71,15 +71,17 @@ public class OpenApiConfig {
                             operacao -> {
                               var respostas = operacao.getResponses();
                               referenciar(respostas, "400", "Invalido");
+                              if (caminho.startsWith("/api/v1/auth")) {
+                                // Sessão não endereça recurso: 404 e 409 não têm como acontecer
+                                // aqui, e declará-los faria o Swagger contradizer api-v1.md.
+                                referenciar(respostas, "401", "NaoAutenticado");
+                                return;
+                              }
                               referenciar(respostas, "404", "NaoEncontrado");
                               referenciar(respostas, "409", "Conflito");
-                              if (!caminho.startsWith("/api/v1/publico")
-                                  && !caminho.startsWith("/api/v1/auth")) {
+                              if (!caminho.startsWith("/api/v1/publico")) {
                                 referenciar(respostas, "401", "NaoAutenticado");
                                 referenciar(respostas, "403", "SemPermissao");
-                              }
-                              if (caminho.startsWith("/api/v1/auth")) {
-                                referenciar(respostas, "401", "NaoAutenticado");
                               }
                             }));
   }
