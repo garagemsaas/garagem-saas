@@ -8,6 +8,7 @@ import Workspace from "./Workspace";
 import { labels } from "./navigation";
 import type { Page } from "./navigation";
 import Recovery from './Recovery';
+import Subscription from './Subscription';
 import { date, number, roles } from "./model";
 import type { Client, Order, Vehicle } from "./model";
 import { allPages, api, currentSession, emptyData, loadData, loadOrder, setApiSession } from "./api";
@@ -281,7 +282,8 @@ export default function App() {
       openOrder={openOrder}
       openClient={(c) => { navigate("clients"); setClient(c); setPanel("view-client"); }}
       openVehicle={(v) => { navigate("vehicles"); setVehicle(v); setPanel("view-vehicle"); }}
-      openRecovery={() => setPanel("recovery")}>
+      openRecovery={() => setPanel("recovery")}
+      openSubscription={() => setPanel("subscription")}>
           <button className="text-button" disabled={dataLoading || detailLoading} onClick={() => { setDataError(''); if (selected) { setDetailLoading(true); setDetailAttempt(n => n + 1); } else setReload(n => n + 1); }}>{dataLoading ? 'Atualizando…' : 'Atualizar dados'}</button>
           {dataLoading && !query ? <PageState state="loading" title="Carregando dados da oficina" /> : detailLoading ? <PageState state="loading" title="Carregando ordem de serviço" /> : dataError ? <PageState state="error" title="Não foi possível carregar os dados" retry={() => { setDataError(''); if (selected) { setDetailLoading(true); setDetailAttempt(n => n + 1); } else setReload(n => n + 1); }}>{dataError}</PageState> : page === "overview" ? <Suspense fallback={<PageState state="loading" title="Preparando sua visão geral" />}><Dashboard summary={data.dashboard} orders={data.ordens} clients={data.clientes} vehicles={data.veiculos}
             today={today} canWrite={canWrite} openOrder={openOrder}
@@ -721,6 +723,9 @@ export default function App() {
       )}
       {panel === "recovery" && canWrite && <Drawer title="Dinheiro Esquecido" close={() => setPanel("")} wide>
         <Recovery openOrder={openOrder} />
+      </Drawer>}
+      {panel === "subscription" && canWrite && <Drawer title="Plano e assinatura" close={() => setPanel("")} wide>
+        <Subscription role={session.role} />
       </Drawer>}
     </Workspace>
   );

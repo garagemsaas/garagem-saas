@@ -1,0 +1,36 @@
+.subscription-page { color: var(--ink, #263d34); }
+.subscription-page p { overflow-wrap: anywhere; }
+.subscription-status { border: 1px solid #dce2db; border-radius: 12px; padding: 20px; background: #fff; margin-bottom: 24px; }
+.subscription-status h3 { margin: 0 0 4px; }
+.subscription-status .subscription-plan { font-size: 1.25rem; font-weight: 600; }
+.subscription-status dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; margin: 16px 0 0; }
+.subscription-status dt { font-size: 0.82rem; color: #5d6d66; }
+.subscription-status dd { margin: 2px 0 0; font-weight: 600; overflow-wrap: anywhere; }
+.subscription-alert { border-left: 4px solid #b2543d; background: #fdf3f0; padding: 12px 16px; border-radius: 8px; margin: 16px 0; }
+.subscription-alert.is-warning { border-left-color: #b8862f; background: #fdf8ec; }
+
+.subscription-usage { list-style: none; margin: 0 0 24px; padding: 0; }
+.subscription-usage li { border: 1px solid #dce2db; border-radius: 12px; padding: 16px 20px; background: #fff; margin-block: 12px; }
+.subscription-usage header { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: baseline; }
+.subscription-usage strong { font-size: 0.95rem; }
+.subscription-usage span { font-variant-numeric: tabular-nums; }
+.subscription-bar { height: 8px; border-radius: 999px; background: #e7ece6; margin-top: 10px; overflow: hidden; }
+.subscription-bar div { height: 100%; border-radius: 999px; background: #3f7d62; transition: width 160ms ease; }
+.subscription-bar.is-near div { background: #b8862f; }
+.subscription-bar.is-full div { background: #b2543d; }
+
+.subscription-plans { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.subscription-plans li { border: 1px solid #dce2db; border-radius: 12px; padding: 20px; background: #fff; display: flex; flex-direction: column; gap: 8px; }
+.subscription-plans li[aria-current="true"] { border-color: #3f7d62; box-shadow: 0 0 0 1px #3f7d62; }
+.subscription-plans h4 { margin: 0; }
+.subscription-plans ul { list-style: disc; padding-left: 20px; margin: 4px 0; font-size: 0.88rem; color: #4a5b54; }
+.subscription-plans button { margin-top: auto; }
+.subscription-price { font-size: 1.15rem; font-weight: 600; }
+
+.subscription-events { list-style: none; margin: 16px 0 0; padding: 0; }
+.subscription-events li { border-bottom: 1px solid #dce2db; padding: 12px 0; }
+.subscription-events time { display: block; font-size: 0.8rem; color: #5d6d66; }
+
+@media (max-width: 720px) {
+  .subscription-plans, .subscription-status dl { grid-template-columns: minmax(0, 1fr); }
+}

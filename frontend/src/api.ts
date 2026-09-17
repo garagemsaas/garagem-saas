@@ -61,6 +61,7 @@ async function request(path: string, method = 'GET', body?: unknown, retry = tru
     const problem = await response.json().catch(() => ({})) as ApiProblem;
     const fallback: Record<number, string> = {
       401: path === '/auth/login' ? 'Confira a oficina, o e-mail e a senha.' : 'Sua sessão expirou. Entre novamente.',
+      402: 'O limite do seu plano foi atingido. Consulte Configurações › Plano e assinatura.',
       403: 'Seu papel não permite esta ação.',
       404: 'Este registro não está disponível. Atualize os dados.',
       409: 'O registro mudou. Atualize os dados antes de tentar novamente.',
