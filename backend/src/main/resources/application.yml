@@ -5,6 +5,9 @@ spring:
     url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/garagem}
     username: ${DATABASE_USER:garagem}
     password: ${DATABASE_PASSWORD}
+    hikari:
+      connection-timeout: ${DATABASE_CONNECTION_TIMEOUT_MS:5000}
+      validation-timeout: 2000
   jpa:
     open-in-view: false
     hibernate:
@@ -54,6 +57,9 @@ management:
       show-details: never
       probes:
         enabled: true
+      group:
+        readiness:
+          include: readinessState,db,storage
   health:
     db:
       enabled: true
@@ -64,6 +70,8 @@ springdoc:
     tags-sorter: alpha
     display-request-duration: true
 app:
+  observability:
+    slow-request-ms: ${SLOW_REQUEST_MS:1000}
   jwt:
     secret: ${JWT_SECRET}
     issuer: garagem-api

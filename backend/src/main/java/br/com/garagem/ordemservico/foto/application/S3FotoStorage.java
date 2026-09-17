@@ -29,6 +29,10 @@ public class S3FotoStorage implements FotoStorage {
             .credentialsProvider(
                 StaticCredentialsProvider.create(AwsBasicCredentials.create(access, secret)))
             .forcePathStyle(true)
+            .overrideConfiguration(
+                c ->
+                    c.apiCallTimeout(java.time.Duration.ofSeconds(10))
+                        .apiCallAttemptTimeout(java.time.Duration.ofSeconds(3)))
             .build();
   }
 

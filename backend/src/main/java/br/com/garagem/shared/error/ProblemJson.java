@@ -16,6 +16,7 @@ public final class ProblemJson {
 
   public static void write(HttpServletResponse response, int status, String code, String detail)
       throws IOException {
+    MDC.put("erro_code", code);
     response.setStatus(status);
     response.setCharacterEncoding(StandardCharsets.UTF_8.name());
     response.setContentType("application/problem+json");

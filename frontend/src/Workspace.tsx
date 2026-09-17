@@ -7,10 +7,11 @@ import type { Client, Order, Role, Vehicle } from "./model";
 import { getDashboard } from "./dashboard-model";
 import { listPage } from './api';
 import { PageState } from './PageState';
+import GettingStarted from './GettingStarted';
 
 import { labels } from "./navigation";
 import type { Page } from "./navigation";
-type Panel = "menu" | "search" | "notifications" | "profile" | "settings" | "calendar" | "parking" | "parts" | null;
+type Panel = "menu" | "search" | "notifications" | "profile" | "settings" | "calendar" | "parking" | "parts" | "help" | null;
 const upcoming: { id: "calendar" | "parking" | "parts"; name: string; description: string }[] = [
   { id: "calendar", name: "Agenda", description: "As entradas previstas e a capacidade diária serão exibidas quando os agendamentos estiverem disponíveis. Consulte os recebimentos já registrados na visão geral." },
   { id: "parking", name: "Pátio", description: "A ocupação depende do cadastro de vagas e da localização dos veículos. A quantidade de OS abertas não é uma medida de ocupação." },
@@ -83,6 +84,7 @@ export default function Workspace(props: WorkspaceProps) {
     {role !== 'MECANICO' && <nav aria-label="Crescimento"><button className="recovery-nav" onClick={() => { setPanel(null); openRecovery(); }}><Icon name="recovery" /><span>Dinheiro Esquecido</span></button></nav>}
     <div className="navigation-bottom"><nav aria-label="Administração">
       {role === "OWNER" && navButton("team")}
+      <button onClick={() => setPanel("help")}><Icon name="info" /><span>Primeiros passos</span></button>
       <button onClick={() => setPanel("settings")}><Icon name="settings" /><span>Configurações</span></button>
     </nav><button className="sidebar-profile" onClick={() => setPanel("profile")}><span className="avatar">{initials}</span><span><strong>{name}</strong><small>{roles[role]}</small></span><Icon name="arrow" size={16} /></button></div>
   </>;
@@ -118,7 +120,7 @@ export default function Workspace(props: WorkspaceProps) {
     </Drawer>}
     {panel === "notifications" && <Drawer title="Notificações" close={() => setPanel(null)}>
       <p>Os avisos em tempo real ainda não estão disponíveis. Estas são as pendências identificadas nas OS carregadas.</p>
-      {dashboard.priorities.length === 0 ? <Empty title="Nenhuma pendência">Tudo em ordem nas OS atuais.</Empty> : <ul className="global-results">{dashboard.priorities.map(({ order, reason }) => <li key={order.id}><button onClick={() => { setPanel(null); openOrder(order.id); }}><Icon name="clock" /><span><strong>OS #{order.numero}</strong><small>{reason}</small></span><Icon name="arrow" size={16} /></button></li>)}</ul>}
+      {dashboard.priorities.length === 0 ? <Empty title="Nenhuma pendência nas OS carregadas">Consulte a listagem de ordens de serviço para verificar os demais registros da oficina.</Empty> : <ul className="global-results">{dashboard.priorities.map(({ order, reason }) => <li key={order.id}><button onClick={() => { setPanel(null); openOrder(order.id); }}><Icon name="clock" /><span><strong>OS #{order.numero}</strong><small>{reason}</small></span><Icon name="arrow" size={16} /></button></li>)}</ul>}
     </Drawer>}
     {(panel === "profile" || panel === "settings") && <Drawer title={panel === "profile" ? "Seu perfil" : "Configurações"} close={() => setPanel(null)}>
       <div className="profile-summary"><span className="avatar">{initials}</span><h3>{name}</h3><p>{roles[role]} · {workshop}</p></div>
@@ -127,5 +129,6 @@ export default function Workspace(props: WorkspaceProps) {
       <button className="session-logout" onClick={logout}><Icon name="logout" size={18} />Sair da oficina</button>
     </Drawer>}
     {module && <Drawer title={module.name} close={() => setPanel(null)}><Empty title="Em preparação">{module.description}</Empty><button onClick={() => move(module.id === "parts" ? "orders" : "overview")}>Ir para {module.id === "parts" ? "ordens de serviço" : "visão geral"}<Icon name="forward" size={18} /></button></Drawer>}
+    {panel === 'help' && <GettingStarted role={role} close={() => setPanel(null)} navigate={move} recovery={() => { setPanel(null); openRecovery(); }} />}
   </div>;
 }

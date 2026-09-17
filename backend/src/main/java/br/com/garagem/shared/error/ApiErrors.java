@@ -91,6 +91,7 @@ public class ApiErrors {
 
   @ExceptionHandler(AccessDeniedException.class)
   ResponseEntity<ProblemDetail> denied(Exception e) {
+    MDC.put("auth_falha", "PAPEL_NAO_AUTORIZADO");
     return problem(
         HttpStatus.FORBIDDEN, ErrorCodes.FORBIDDEN, "Seu papel não permite esta ação.", null);
   }
@@ -164,6 +165,7 @@ public class ApiErrors {
   /** Monta o corpo canônico usado também pelos filtros de segurança e tenancy. */
   public static ProblemDetail corpo(
       HttpStatus status, String code, String detail, List<CampoInvalido> errors) {
+    if (MDC.get("request_id") != null) MDC.put("erro_code", code);
     var problem = ProblemDetail.forStatusAndDetail(status, detail);
     problem.setType(URI.create("https://garagem.com.br/erros/" + code.toLowerCase(Locale.ROOT)));
     problem.setTitle(status.getReasonPhrase());

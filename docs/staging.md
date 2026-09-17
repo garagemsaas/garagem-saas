@@ -68,7 +68,7 @@ O Flyway roda na subida da aplicação e é a única forma de alterar o schema. 
 `validate`: se o schema divergir das entidades, a aplicação **não sobe**, em vez de corrigir sozinha.
 
 - Migrations ficam em `backend/src/main/resources/db/migration`.
-- Nunca edite uma migration já aplicada. Crie a próxima (`V3__...`).
+- Nunca edite uma migration já aplicada. Crie a próxima (`V4__...`).
 - O volume `postgres-data` guarda os dados. **A senha do Postgres é gravada na criação do volume**:
   trocar `DATABASE_PASSWORD` depois não muda a senha do banco existente e a API falha a
   autenticação. Para trocar de verdade, altere a senha dentro do Postgres (`ALTER ROLE`) ou recrie o
@@ -143,9 +143,9 @@ transições de status de uma vez.
 
 - `GET /actuator/health` agrega **banco** (indicador padrão do Spring) e **storage** (indicador
   próprio, que apenas confirma a existência do bucket). Fica `DOWN` com 503 se qualquer um falhar.
-- `show-details: never`: o corpo traz só o status. Nenhum nome de componente, versão, host ou
+- `show-details: never`: o corpo traz status e, no health agregado, nomes dos grupos de sondas. Nenhum nome de componente, versão, host ou
   caminho vaza.
-- Sondas `/actuator/health/liveness` e `/readiness` disponíveis para orquestrador.
+- Readiness inclui banco e storage; liveness verifica somente a aplicação.
 - O `HEALTHCHECK` da imagem e o healthcheck do Compose consultam `/actuator/health` a cada 10s, com
   60s de carência na subida.
 - Nenhum outro endpoint do Actuator está exposto.
@@ -155,7 +155,7 @@ transições de status de uma vez.
 Saída JSON estruturada (formato logstash) no stdout do contêiner, coletada pelo driver de log do
 Docker. Não há plataforma externa de observabilidade neste estágio.
 
-Cada linha traz `request_id`, `oficina_id` e `usuario_id`, e cada resposta HTTP devolve o mesmo id no
+Cada evento de request traz `request_id`, `oficina_id` e `usuario_id`, e cada resposta HTTP devolve o mesmo id no
 cabeçalho `X-Request-Id`. Para investigar um erro relatado por um usuário, peça esse número:
 
 ```bash
@@ -172,26 +172,24 @@ Ajuste de verbosidade sem rebuild, via variável de ambiente no serviço `api`:
 LOGGING_LEVEL_BR_COM_GARAGEM=DEBUG
 ```
 
-## Backup
+Requests concluídos têm `metodo`, `caminho` (template sem IDs/tokens), `status`,
+`duracao_ms`, `erro_code` e `request_lento`. 5xx recebem ERROR; duração >=
+`SLOW_REQUEST_MS` (padrão 1000 ms) recebe WARN; demais recebem INFO.
+`auth_falha` registra categorias seguras. Para diagnóstico em PowerShell:
 
-O essencial é o banco; as fotos são recuperáveis apenas pelo volume do MinIO.
-
-```bash
-# Banco — diário, guardando 7 dias
-docker compose exec -T postgres pg_dump -U garagem garagem \
-  | gzip > backup-$(date +%F).sql.gz
-
-# Fotos — volume do MinIO
-docker run --rm -v garagem-saas_fotos-data:/data -v "$PWD":/backup alpine \
-  tar czf /backup/fotos-$(date +%F).tar.gz -C /data .
-
-# Restauração do banco, em base vazia
-gunzip -c backup-AAAA-MM-DD.sql.gz \
-  | docker compose exec -T postgres psql -U garagem garagem
+```powershell
+docker compose logs --no-log-prefix api | Select-String -SimpleMatch '<requestId>'
 ```
 
-Guarde os backups **fora do servidor** e teste a restauração pelo menos uma vez: backup não testado
-não é backup. Não versione dumps.
+## Backup
+
+Use o procedimento validado da Fase 6 em [backup-piloto.md](backup-piloto.md).
+Ele pausa API e MinIO, gera dump custom do PostgreSQL e cópia fria do storage,
+registra checksums e restaura somente em projeto novo com volumes próprios.
+Não copie o volume MinIO enquanto houver escritores ativos.
+
+Backups reais pré/pós-piloto continuam pendentes; os ensaios locais estão
+registrados em [fase6-caua.md](fase6-caua.md).
 
 ## Atualização
 

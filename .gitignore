@@ -4,5 +4,8 @@
 **/node_modules/
 **/dist/
 *.log
+backups/
+*.dump
+garagem-piloto-*/
 .idea/
 .vscode/

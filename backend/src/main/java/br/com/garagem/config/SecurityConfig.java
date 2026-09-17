@@ -114,7 +114,11 @@ public class SecurityConfig {
                     .accessDeniedHandler((req, res, error) -> failure(res, 403)))
         .oauth2ResourceServer(
             o ->
-                o.authenticationEntryPoint((req, res, error) -> failure(res, 401))
+                o.authenticationEntryPoint(
+                        (req, res, error) -> {
+                          org.slf4j.MDC.put("auth_falha", "BEARER_INVALIDO_OU_EXPIRADO");
+                          failure(res, 401);
+                        })
                     .jwt(j -> j.jwtAuthenticationConverter(converter)))
         .addFilterAfter(new TenantRequestFilter(jdbc), BearerTokenAuthenticationFilter.class)
         .headers(
@@ -132,10 +136,13 @@ public class SecurityConfig {
   private static void failure(jakarta.servlet.http.HttpServletResponse response, int code)
       throws java.io.IOException {
     if (code == 401) {
+      if (org.slf4j.MDC.get("auth_falha") == null)
+        org.slf4j.MDC.put("auth_falha", "SESSAO_AUSENTE");
       response.setHeader("WWW-Authenticate", "Bearer");
       ProblemJson.write(
           response, 401, ErrorCodes.UNAUTHORIZED, "Autenticação necessária ou sessão expirada.");
     } else {
+      org.slf4j.MDC.put("auth_falha", "PAPEL_NAO_AUTORIZADO");
       ProblemJson.write(response, 403, ErrorCodes.FORBIDDEN, "Seu papel não permite esta ação.");
     }
   }
