@@ -23,11 +23,11 @@ interface WorkspaceProps {
   role: Role; name: string; workshop: string; logout: () => void;
   orders: Order[]; clients: Client[]; vehicles: Vehicle[]; today: Date;
   openOrder: (id: string) => void; openClient: (client: Client) => void;
-  openVehicle: (vehicle: Vehicle) => void; openRecovery: () => void;
+  openVehicle: (vehicle: Vehicle) => void; openRecovery: () => void; openSubscription: () => void;
 }
 
 export default function Workspace(props: WorkspaceProps) {
-  const { page, navigate, children, role, name, workshop, logout, orders, clients, today, openOrder, openClient, openVehicle, openRecovery } = props;
+  const { page, navigate, children, role, name, workshop, logout, orders, clients, today, openOrder, openClient, openVehicle, openRecovery, openSubscription } = props;
   const [panel, setPanel] = useState<Panel>(null);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState({ orders: [] as Order[], clients: [] as Client[], vehicles: [] as Vehicle[], total: 0 });
@@ -125,6 +125,7 @@ export default function Workspace(props: WorkspaceProps) {
     {(panel === "profile" || panel === "settings") && <Drawer title={panel === "profile" ? "Seu perfil" : "Configurações"} close={() => setPanel(null)}>
       <div className="profile-summary"><span className="avatar">{initials}</span><h3>{name}</h3><p>{roles[role]} · {workshop}</p></div>
       <p>Sua sessão está vinculada à oficina informada. Preferências da oficina ainda não estão disponíveis.</p>
+      {role !== "MECANICO" && <button onClick={() => { setPanel(null); openSubscription(); }}><Icon name="security" />Plano e assinatura</button>}
       {role === "OWNER" && <button onClick={() => move("team")}><Icon name="team" />Gerenciar equipe</button>}
       <button className="session-logout" onClick={logout}><Icon name="logout" size={18} />Sair da oficina</button>
     </Drawer>}

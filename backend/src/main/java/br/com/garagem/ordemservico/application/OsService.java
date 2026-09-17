@@ -58,6 +58,8 @@ public class OsService {
   private final String publicBase;
   private final java.time.Duration linkTtl;
 
+  private final br.com.garagem.assinatura.application.PlanoLimiteService limites;
+
   public OsService(
       OrdemServicoRepository ordens,
       VeiculoRepository veiculos,
@@ -72,6 +74,7 @@ public class OsService {
       AprovacaoOrcamentoRepository aprovacoes,
       EventoOrdemServicoRepository eventos,
       JdbcTemplate jdbc,
+      br.com.garagem.assinatura.application.PlanoLimiteService limites,
       @Value("${app.public-base-url}") String publicBase,
       @Value("${app.public-link.ttl}") java.time.Duration linkTtl) {
     this.ordens = ordens;
@@ -87,6 +90,7 @@ public class OsService {
     this.aprovacoes = aprovacoes;
     this.eventos = eventos;
     this.jdbc = jdbc;
+    this.limites = limites;
     this.publicBase = publicBase.replaceAll("/$", "");
     this.linkTtl = linkTtl;
   }
@@ -137,6 +141,8 @@ public class OsService {
   }
 
   public OsSaida criar(NovaOs input) {
+    // Abrir OS é a operação que mais consome a oficina; passa pelo plano antes de tocar em dado.
+    limites.garantirNovaOrdemServico();
     var v =
         veiculos
             .findByIdAndOficinaId(input.veiculoId(), TenantContext.current())

@@ -45,6 +45,8 @@ public class BootstrapOficina implements ApplicationRunner {
             id,
             nome,
             slug);
+    // A assinatura de avaliação é criada pelo gatilho `assinatura_da_oficina` (V4), junto com a
+    // oficina: o invariante vale para qualquer origem de cadastro, não só para este bootstrap.
     if (created == 1)
       jdbc.update(
           "insert into usuario(id,oficina_id,nome,email,senha_hash,papel) values(?,?,?,?,?,'OWNER')",
