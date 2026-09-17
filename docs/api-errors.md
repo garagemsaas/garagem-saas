@@ -54,12 +54,22 @@ Spring (`type`, `title`, `status`, `detail`) ganhou três campos do projeto: `co
 | 409 | `CONFLICT`               | Conflito de estado: revisão desatualizada, transição de status não permitida, checklist já registrado, decisão já tomada, OS concluída. |
 | 409 | `DUPLICATE`              | Violação de unicidade no banco (e-mail repetido na oficina, placa repetida na oficina). |
 | 409 | `STALE_REVISION`         | Conflito detectado pelo controle de concorrência do JPA, não pela comparação explícita de revisão. |
+| 402 | `PLAN_LIMIT_REACHED`     | Limite do plano contratado atingido: usuários ativos, veículos ou ordens de serviço no mês. Também na tentativa de reduzir para um plano menor que o uso atual, aí com 409. |
+| 402 | `STORAGE_LIMIT_REACHED`  | Armazenamento do plano esgotado. O arquivo não é gravado. |
+| 402 | `SUBSCRIPTION_INACTIVE`  | Assinatura suspensa por inadimplência ou cancelada. Bloqueia apenas criação; leitura, exportação e área financeira seguem liberadas. |
 | 413 | `PAYLOAD_TOO_LARGE`      | Upload acima do limite do multipart (10 MB). |
 | 415 | `UNSUPPORTED_MEDIA_TYPE` | Conteúdo enviado não é PNG/JPEG válido, ou JSON enviado a endpoint multipart. |
 | 500 | `INTERNAL_ERROR`         | Falha não prevista. Mensagem genérica. |
 | 503 | `STORAGE_UNAVAILABLE`    | MinIO/S3 fora do ar durante upload ou leitura de foto. |
 
 \* O valor literal da constante é `METHOD_NOT_ALLOWED`; veja `ErrorCodes`.
+
+### Por que limite de plano é 402 e não 403
+
+403 significa "seu papel não permite". Limite de plano é outra coisa: o papel está correto — muitas
+vezes é o próprio proprietário da oficina — e o que falta é capacidade contratada. Misturar os dois
+faria a tela dizer "seu papel não permite" para quem é dono da conta. Os três códigos de 402 são
+distintos porque pedem ações diferentes: mudar de plano, liberar espaço ou regularizar o pagamento.
 
 ## Garantias
 

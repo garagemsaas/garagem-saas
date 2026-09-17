@@ -128,3 +128,39 @@ com auditoria, sem reabrir nem alterar sua execução. Resultados e contatos imu
 A matriz nova e os dois tenants são exercitados em `Fase5IT`, incluindo todos os
 métodos para MECANICO e ausência de sessão, operações permitidas ao ATENDENTE,
 atribuição incompatível/inativa, referências cruzadas e relatórios isolados.
+
+## Fase 7 — Assinatura, planos e cobrança
+
+Leitura da área financeira para OWNER e ATENDENTE; decisões contratuais só para OWNER.
+MECANICO não acessa o módulo. A oficina vem sempre do contexto autenticado.
+
+| Operação | OWNER | ATENDENTE | MECANICO |
+|---|:--:|:--:|:--:|
+| Consultar assinatura, consumo e planos | ✅ | ✅ | ❌ |
+| Consultar histórico de cobrança | ✅ | ✅ | ❌ |
+| Mudar de plano | ✅ | ❌ | ❌ |
+| Cancelar assinatura | ✅ | ❌ | ❌ |
+| Reativar assinatura | ✅ | ❌ | ❌ |
+
+Atendente lê para poder responder ao cliente e acompanhar o consumo do plano, mas não decide
+contrato: cancelar ou trocar plano é ato do dono da conta.
+
+`POST /api/v1/webhooks/pagamento` não tem papel: é o gateway, sem sessão. A autenticidade vem da
+assinatura HMAC do corpo, conferida antes de qualquer efeito, e sem segredo configurado nenhum
+evento é aceito.
+
+### Efeito da assinatura sobre as permissões existentes
+
+Papel continua sendo a primeira porta; a assinatura é uma segunda, e só sobre **criação**:
+
+| Estado da assinatura | Criar usuário, veículo, OS e enviar foto | Ler, exportar, área financeira |
+|---|:--:|:--:|
+| TRIAL, ATIVA, INADIMPLENTE | ✅ | ✅ |
+| SUSPENSA, CANCELADA | ❌ 402 | ✅ |
+
+Inadimplência não bloqueia: é o período de tolerância. Suspensão bloqueia criação e **nunca** remove
+dado, oculta registro ou impede login. Quem tinha permissão de leitura continua com ela integral.
+
+A matriz nova e os dois tenants são exercitados em `Fase7IT`, incluindo todos os métodos para
+MECANICO, ausência de sessão, leitura permitida ao ATENDENTE com escrita recusada, e isolamento de
+assinatura, consumo e eventos entre oficinas.
