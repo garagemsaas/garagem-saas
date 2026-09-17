@@ -867,6 +867,7 @@ export default function OrderDetail({
                   <div className="approval-box">
                     <div>
                       <h3>Aprovação do cliente</h3>
+                      <p>O envio é manual: disponibilize o orçamento, gere o link e compartilhe com o cliente. Nenhuma mensagem é enviada automaticamente.</p>
                       <p>
                         {order.status === "ORCAMENTO"
                           ? "Disponibilize a versão atual para solicitar uma nova decisão."

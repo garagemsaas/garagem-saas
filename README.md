@@ -624,6 +624,14 @@ Não restaurar automaticamente versões antigas de stash ou branches antigas sob
 
 ---
 
+# Fase 6 — preparação do piloto
+
+O guia **Primeiros passos** está disponível na navegação da oficina. Consulte
+[o roteiro de duas oficinas, tempos e feedback](docs/fase6-piloto.md) e
+[a entrega de frontend e seus limites](docs/fase6-kaua-frontend.md).
+As sessões reais e a aprovação comercial permanecem pendentes; testes automatizados
+não representam resultados de usuários.
+
 # Escopo futuro
 
 Fora da Fase 5 V1: WhatsApp API, envio automático de mensagens, IA/scoring, CRM
