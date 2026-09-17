@@ -100,6 +100,9 @@ public class SecurityConfig {
                 a.requestMatchers(
                         "/api/v1/auth/**",
                         "/api/v1/publico/**",
+                        // O gateway não tem sessão: a autenticidade vem da assinatura HMAC do
+                        // corpo, conferida em WebhookPagamentoController antes de qualquer efeito.
+                        "/api/v1/webhooks/pagamento",
                         "/v3/api-docs/**",
                         "/swagger-ui/**",
                         "/swagger-ui.html",
