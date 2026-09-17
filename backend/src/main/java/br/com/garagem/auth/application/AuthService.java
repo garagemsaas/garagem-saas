@@ -56,8 +56,10 @@ public class AuthService {
             input.oficina().trim().toLowerCase(Locale.ROOT),
             input.email().trim().toLowerCase(Locale.ROOT));
     String hash = accounts.isEmpty() ? dummy : accounts.getFirst().senha();
-    if (!passwords.matches(input.senha(), hash) || accounts.isEmpty())
+    if (!passwords.matches(input.senha(), hash) || accounts.isEmpty()) {
+      MDC.put("auth_falha", "LOGIN_RECUSADO");
       throw ApiException.unauthorized();
+    }
     return issue(accounts.getFirst());
   }
 
@@ -75,7 +77,10 @@ public class AuthService {
                     rs.getString(5)),
             input.oficinaId(),
             Tokens.hash(input.refreshToken()));
-    if (accounts.isEmpty()) throw ApiException.unauthorized();
+    if (accounts.isEmpty()) {
+      MDC.put("auth_falha", "REFRESH_RECUSADO");
+      throw ApiException.unauthorized();
+    }
     revoke(input);
     return issue(accounts.getFirst());
   }

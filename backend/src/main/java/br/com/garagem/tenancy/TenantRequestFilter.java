@@ -84,6 +84,9 @@ public class TenantRequestFilter extends OncePerRequestFilter {
    * link não consegue distinguir os casos nem descobrir se uma OS existe.
    */
   private void reject(HttpServletResponse response, int code) throws IOException {
+    MDC.put(
+        "auth_falha",
+        code == 401 ? "SESSAO_DESATUALIZADA_OU_INATIVA" : "LINK_PUBLICO_INVALIDO_OU_EXPIRADO");
     ProblemJson.write(
         response,
         code,
