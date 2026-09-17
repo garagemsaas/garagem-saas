@@ -7,9 +7,10 @@ import "./index.css";
 import App from "./App.tsx";
 import { PublicRoute } from './PublicOrder';
 import { AppBoundary } from "./PageState";
+import Marketing from './Marketing';
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <AppBoundary>{window.location.pathname === '/acompanhar' ? <PublicRoute /> : <App />}</AppBoundary>
+    <AppBoundary>{window.location.pathname === '/acompanhar' ? <PublicRoute /> : ['/institucional', '/ajuda'].includes(window.location.pathname) ? <Marketing helpPage={window.location.pathname === '/ajuda'} /> : <App />}</AppBoundary>
   </StrictMode>,
 );

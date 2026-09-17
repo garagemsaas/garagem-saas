@@ -192,6 +192,7 @@ export default function App() {
             <span className="demo-label">GARAGEM · ACESSO DA OFICINA</span>
             <h2>Entre na sua oficina</h2>
             <p>Seu espaço de trabalho começa aqui.</p>
+            <p><a href="/institucional">Conhecer o Garagem</a> · <a href="/ajuda">Ajuda para começar</a></p>
             <form
               onSubmit={async (e) => {
                 e.preventDefault();

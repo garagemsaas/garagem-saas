@@ -2,6 +2,14 @@
 
 SaaS para oficinas mecânicas.
 
+## Fase 7 — materiais comerciais e primeiros passos
+
+Página pública em `/institucional`, ajuda em `/ajuda` e preparação inicial no menu
+**Primeiros passos** da oficina. O login permanece em `/`.
+Consulte o [kit comercial](docs/comercial/README.md) para apresentação, vídeo legendado,
+roteiro de venda, onboarding e textos da oferta. Preços, limites e contato comercial
+oficial dependem de aprovação dos sócios. Nenhum deploy externo foi realizado nesta entrega.
+
 O Garagem SaaS organiza a operação da oficina desde o cadastro do cliente e do veículo até o diagnóstico, orçamento, aprovação, execução e conclusão da ordem de serviço.
 
 O projeto utiliza arquitetura de **\*\*monólito modular\*\***, API REST, frontend React e isolamento **\*\*multi-tenant por oficina\*\***.

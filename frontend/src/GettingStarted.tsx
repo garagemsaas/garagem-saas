@@ -2,6 +2,7 @@ import { Drawer, Icon } from './ui';
 import type { Page } from './navigation';
 import type { Role } from './model';
 import './GettingStarted.css';
+import InitialSetup from './InitialSetup';
 
 export default function GettingStarted({ role, close, navigate, recovery }: {
   role: Role; close: () => void; navigate: (page: Page) => void; recovery: () => void;
@@ -9,6 +10,7 @@ export default function GettingStarted({ role, close, navigate, recovery }: {
   const canWrite = role !== 'MECANICO';
   return <Drawer title="Primeiros passos" close={close}>
     <p>Um guia da rotina da oficina em que você está conectado. Nenhum cadastro é criado ao abrir este guia.</p>
+    {canWrite && <InitialSetup role={role} navigate={navigate} />}
     <ol className="getting-started">
       {canWrite && <>
         <li><h3>Cadastre o cliente</h3><p>Em Clientes, busque primeiro pelo nome para evitar duplicidades. Se não encontrar, cadastre o contato.</p><button onClick={() => navigate('clients')}><Icon name="clients" />Abrir clientes</button></li>
@@ -22,6 +24,7 @@ export default function GettingStarted({ role, close, navigate, recovery }: {
       </>}
     </ol>
     <section className="getting-started-note" aria-label="Limites da versão">
+      <p><a href="/ajuda" target="_blank" rel="noreferrer">Abrir materiais de ajuda em outra aba</a></p>
       <h3>O que ainda está em preparação</h3>
       <p>Agenda, pátio, catálogo de peças e notificações em tempo real ainda não estão disponíveis. Os itens “Em breve” não representam funções contratadas.</p>
       <p>Se uma ação falhar, leia o aviso antes de repetir. Se houver conflito, atualize os dados e confira o que já foi salvo.</p>
