@@ -20,10 +20,15 @@ import org.springframework.web.bind.annotation.*;
 public class UsuarioController {
   private final UsuarioRepository repo;
   private final PasswordEncoder encoder;
+  private final br.com.garagem.assinatura.application.PlanoLimiteService limites;
 
-  public UsuarioController(UsuarioRepository repo, PasswordEncoder encoder) {
+  public UsuarioController(
+      UsuarioRepository repo,
+      PasswordEncoder encoder,
+      br.com.garagem.assinatura.application.PlanoLimiteService limites) {
     this.repo = repo;
     this.encoder = encoder;
+    this.limites = limites;
   }
 
   @io.swagger.v3.oas.annotations.media.Schema(name = "UsuarioEntrada")
@@ -77,6 +82,9 @@ public class UsuarioController {
   @ResponseStatus(org.springframework.http.HttpStatus.CREATED)
   @Operation(summary = "Cadastrar usuário na oficina atual")
   public Saida criar(@Valid @RequestBody Entrada input) {
+    // Limite do plano antes de qualquer trabalho: desativar, editar e excluir seguem livres, só a
+    // criação consome vaga. A contagem é de usuários ativos, feita no banco.
+    limites.garantirNovoUsuario();
     if (input.senha().getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 72)
       throw ApiException.invalid("Senha excede 72 bytes.");
     Usuario u = new Usuario();

@@ -350,6 +350,40 @@ Relatório e limitações em [docs/fase6-caua.md]\(docs/fase6-caua.md); operaç�
 
 continuam pendentes. A validação da interface da Fase 6 cabe ao Kauã.
 
+**# 🚧 Fase 7 — Preparação para vendas**
+
+Parte do Cauã concluída localmente: planos com limites centralizados em tabela, assinatura por
+
+oficina, aplicação dos limites no backend, cobrança recorrente com gateway abstraído, webhook
+
+assinado e idempotente, inadimplência com tolerância, suspensão não destrutiva, reativação
+
+automática, métricas de uso e trilha financeira imutável. \`mvn verify\`: **\*\*15 unitários + 122 de
+
+integração, zero falhas\*\***.
+
+Arquitetura e operação em [docs/fase7-caua.md]\(docs/fase7-caua.md). Documentos jurídicos e
+
+comerciais em [docs/termos-de-uso.md]\(docs/termos-de-uso.md),
+
+[docs/politica-privacidade.md]\(docs/politica-privacidade.md),
+
+[docs/contrato-comercial.md]\(docs/contrato-comercial.md), [docs/sla.md]\(docs/sla.md),
+
+[docs/canais-suporte.md]\(docs/canais-suporte.md),
+
+[docs/politica-cancelamento.md]\(docs/politica-cancelamento.md),
+
+[docs/processo-atendimento.md]\(docs/processo-atendimento.md) e a revisão técnica em
+
+[docs/revisao-lgpd.md]\(docs/revisao-lgpd.md).
+
+Nenhum dado societário foi inventado: razão social, CNPJ, endereço, contatos, foro e preços estão
+
+como marcadores para a empresa preencher. Nenhum gateway de pagamento foi contratado — o provedor
+
+manual atende o fluxo completo até a contratação. A frente do Kauã da Fase 7 continua pendente.
+
 **# Situação das fases**
 
 \| Fase | Estado |
@@ -371,6 +405,10 @@ continuam pendentes. A validação da interface da Fase 6 cabe ao Kauã.
 \| 6 | Em andamento — piloto e frente do Kauã pendentes |
 
 \| 6 / Cauã | Concluída localmente |
+
+\| 7 | Em andamento — frente do Kauã pendente |
+
+\| 7 / Cauã | Concluída localmente |
 
 **---**
 
@@ -873,6 +911,24 @@ Antes de continuar o desenvolvimento, leia:
 \| [docs/fase6-caua.md]\(docs/fase6-caua.md) | Evidências de observabilidade, integridade, testes e restores da Fase 6. |
 
 \| [docs/backup-piloto.md]\(docs/backup-piloto.md) | Procedimentos PowerShell de backup pré/pós e restore isolado. |
+
+\| [docs/fase7-caua.md]\(docs/fase7-caua.md) | Arquitetura de planos, assinatura, cobrança, webhooks e limites da Fase 7. |
+
+\| [docs/termos-de-uso.md]\(docs/termos-de-uso.md) | Termos de Uso do SaaS — minuta para revisão jurídica. |
+
+\| [docs/politica-privacidade.md]\(docs/politica-privacidade.md) | Política de Privacidade com o inventário real de dados coletados. |
+
+\| [docs/revisao-lgpd.md]\(docs/revisao-lgpd.md) | Revisão técnica de LGPD, isolamento entre oficinas e controle de acesso. |
+
+\| [docs/contrato-comercial.md]\(docs/contrato-comercial.md) | Minuta de contrato de prestação de serviço. |
+
+\| [docs/sla.md]\(docs/sla.md) | Proposta de SLA, com números pendentes de aprovação. |
+
+\| [docs/canais-suporte.md]\(docs/canais-suporte.md) | Canais oficiais, horários, prioridades e escalonamento. |
+
+\| [docs/politica-cancelamento.md]\(docs/politica-cancelamento.md) | Cancelamento, retenção, exportação e reativação. |
+
+\| [docs/processo-atendimento.md]\(docs/processo-atendimento.md) | Fluxo interno de atendimento e registro mínimo de chamado. |
 
 \| [docs/staging.md]\(docs/staging.md) | Preparação e configuração de staging. |
 
