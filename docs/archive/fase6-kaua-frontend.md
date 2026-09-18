@@ -18,7 +18,7 @@ Nenhum contrato, regra de negócio, autenticação, migration ou backend foi alt
 - Proposta de escopo pago, exclusões e critérios de liberação, sem inventar aprovação dos sócios.
 - Testes do guia por perfil, navegação, teclado, acessibilidade automática e três tamanhos de tela.
 
-Roteiro operacional e formulários: [fase6-piloto.md](fase6-piloto.md).
+Roteiro operacional e formulários: [fase6-piloto.md](../archive/fase6-piloto.md).
 O guia não grava progresso, não coleta telemetria e não envia feedback ao servidor.
 Os registros do piloto são manuais; não adicionar dados de participantes ao repositório.
 

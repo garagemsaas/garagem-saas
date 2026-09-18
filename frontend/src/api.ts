@@ -117,14 +117,16 @@ export async function loadData(page: Page = 'overview', pagina = 0, busca = '') 
   if (page === 'overview') data.dashboard = await api<Dashboard>('/dashboard');
   if (page === 'orders' || page === 'overview') data.usuarios = await allPages<User>('/usuarios');
   const { clientes, veiculos, ordens: orders } = data;
-  // Relations may have been created by another user between paginated reads.
-  for (const o of orders) {
-    if (!veiculos.some(v => v.id === o.veiculoId)) veiculos.push(await api<Vehicle>(`/veiculos/${o.veiculoId}`));
-    if (!clientes.some(c => c.id === o.clienteId)) clientes.push(await api<Client>(`/clientes/${o.clienteId}`));
-  }
-  for (const v of veiculos) {
-    if (!clientes.some(c => c.id === v.clienteId)) clientes.push(await api<Client>(`/clientes/${v.clienteId}`));
-  }
+  // Relações podem ter sido criadas por outro usuário entre leituras paginadas, então ainda é
+  // preciso buscá-las. O que mudou é que as buscas vão juntas: antes era um `await` dentro do
+  // laço, e uma página com dez OS custava até vinte idas e voltas em sequência.
+  const faltandoVeiculo = [...new Set(orders.map(o => o.veiculoId).filter(id => !veiculos.some(v => v.id === id)))];
+  const buscados = await Promise.all(faltandoVeiculo.map(id => api<Vehicle>(`/veiculos/${id}`)));
+  veiculos.push(...buscados);
+  // Clientes só depois dos veículos: um veículo recém-buscado pode trazer um cliente novo.
+  const idsDeCliente = [...orders.map(o => o.clienteId), ...veiculos.map(v => v.clienteId)];
+  const faltandoCliente = [...new Set(idsDeCliente.filter(id => !clientes.some(c => c.id === id)))];
+  clientes.push(...await Promise.all(faltandoCliente.map(id => api<Client>(`/clientes/${id}`))));
   return data;
 }
 export async function loadOrder(id: string): Promise<Order> {

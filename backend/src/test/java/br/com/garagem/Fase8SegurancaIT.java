@@ -12,12 +12,9 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.*;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
-import org.testcontainers.containers.PostgreSQLContainer;
 
 /**
  * Regressão das correções e das garantias verificadas na auditoria de segurança
@@ -26,41 +23,21 @@ import org.testcontainers.containers.PostgreSQLContainer;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 @AutoConfigureMockMvc
-class Fase8SegurancaIT {
-  static PostgreSQLContainer<?> postgres;
+class Fase8SegurancaIT extends br.com.garagem.suporte.IntegracaoBase {
+
+  /** Propriedades específicas desta suíte; a origem de dados vem da base. */
+  @org.springframework.test.context.DynamicPropertySource
+  static void propriedadesDaSuite(org.springframework.test.context.DynamicPropertyRegistry r) {
+    r.add("app.seguranca.rate-limit.habilitado", () -> true);
+    r.add("app.seguranca.rate-limit.login", () -> 5);
+    r.add("spring.datasource.hikari.maximum-pool-size", () -> 8);
+  }
 
   /**
    * Cada login usa uma origem distinta para não consumir o teto de outro cenário; só o teste de
    * força bruta reaproveita a mesma, de propósito.
    */
   static final AtomicInteger ORIGENS = new AtomicInteger(1);
-
-  @DynamicPropertySource
-  static void config(DynamicPropertyRegistry r) {
-    String local = System.getenv("TEST_DATABASE_URL");
-    if (local == null) {
-      postgres = new PostgreSQLContainer<>("postgres:17.11-alpine");
-      postgres.start();
-      r.add("spring.datasource.url", postgres::getJdbcUrl);
-      r.add("spring.datasource.username", postgres::getUsername);
-      r.add("spring.datasource.password", postgres::getPassword);
-    } else {
-      r.add("spring.datasource.url", () -> local);
-      r.add("spring.datasource.username", () -> System.getenv("TEST_DATABASE_USER"));
-      r.add("spring.datasource.password", () -> System.getenv("TEST_DATABASE_PASSWORD"));
-    }
-    r.add("app.jwt.secret", () -> "test-only-secret-at-least-thirty-two-bytes-long");
-    r.add("app.storage.access-key", () -> "test-user");
-    r.add("app.storage.secret-key", () -> "test-only-storage-password");
-    r.add("app.seguranca.rate-limit.habilitado", () -> true);
-    r.add("app.seguranca.rate-limit.login", () -> 5);
-    r.add("spring.datasource.hikari.maximum-pool-size", () -> 8);
-  }
-
-  @AfterAll
-  static void close() {
-    if (postgres != null) postgres.stop();
-  }
 
   @Autowired MockMvc mvc;
   @Autowired ObjectMapper json;

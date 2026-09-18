@@ -26,9 +26,6 @@ public interface PagamentoProvider {
 
   void mudarPlano(Assinatura assinatura, Plano destino);
 
-  /** Situação remota, para conciliação manual. Vazio quando o provedor não souber responder. */
-  java.util.Optional<String> consultarAssinatura(Assinatura assinatura);
-
   /**
    * Confere a autenticidade do recebimento. Recebe o corpo cru, porque qualquer reserialização
    * invalidaria a assinatura HMAC.

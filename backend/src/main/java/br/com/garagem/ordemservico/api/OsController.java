@@ -1,5 +1,6 @@
 package br.com.garagem.ordemservico.api;
 
+import br.com.garagem.ordemservico.acessopublico.application.AcessoPublicoService;
 import br.com.garagem.ordemservico.api.OsDtos.*;
 import br.com.garagem.ordemservico.application.OsService;
 import br.com.garagem.ordemservico.domain.StatusOs;
@@ -18,9 +19,11 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/ordens-servico")
 public class OsController {
   private final OsService service;
+  private final AcessoPublicoService acessoPublico;
 
-  public OsController(OsService service) {
+  public OsController(OsService service, AcessoPublicoService acessoPublico) {
     this.service = service;
+    this.acessoPublico = acessoPublico;
   }
 
   @GetMapping
@@ -167,7 +170,7 @@ public class OsController {
       description =
           "OWNER ou ATENDENTE. Escopo: uma OS; validade PUBLIC_LINK_TTL (padrão sete dias). URL com token no fragmento. Somente o hash é persistido. O cliente decide informando a versão que visualizou.")
   public LinkSaida link(@PathVariable UUID id) {
-    return service.criarLink(id);
+    return acessoPublico.criarLink(id);
   }
 
   @DeleteMapping("/{id}/links/{linkId}")
@@ -178,6 +181,6 @@ public class OsController {
       description =
           "OWNER ou ATENDENTE. 204 inclusive se já revogado, preservando a primeira data e evento. Link ou OS inacessível: 404.")
   public void revogar(@PathVariable UUID id, @PathVariable UUID linkId) {
-    service.revogarLink(id, linkId);
+    acessoPublico.revogarLink(id, linkId);
   }
 }

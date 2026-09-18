@@ -327,4 +327,4 @@ Os filtros de segurança usam forma menor, sem prometer `type/title/instance`:
 
 Demais códigos: 403 papel insuficiente; 404 registro ausente; 405 método inexistente; 413 multipart excessivo; 503 storage temporariamente indisponível. 500 usa `Não foi possível concluir a operação.`. Validação 400 lista nomes de campos e restrições, sem valores submetidos. SQL, stacktrace, senha e tokens não são incluídos. Não presumir um único shape de erro; usar `status` e `detail` quando presentes.
 
-Evidências de execução e limites de aceite: [finalização](fase1-finalizacao.md) e [aceite](aceite-fase-1.md).
+Evidências de execução e limites de aceite: [finalização](../archive/fase1-finalizacao.md) e [aceite](../archive/aceite-fase-1.md).

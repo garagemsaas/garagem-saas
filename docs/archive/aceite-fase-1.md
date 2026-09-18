@@ -1,6 +1,6 @@
 # Aceite e verificações — atualizado em 15/09/2026
 
-**FASE 1 TECNICAMENTE CONCLUÍDA: SIM**, conforme a validação final local descrita ao fim deste documento e em [fase1-finalizacao.md](fase1-finalizacao.md). Frontend integrado à API, PostgreSQL e MinIO; decisões comerciais/pilotos seguem pendentes de Kauã e Cauã.
+**FASE 1 TECNICAMENTE CONCLUÍDA: SIM**, conforme a validação final local descrita ao fim deste documento e em [fase1-finalizacao.md](../archive/fase1-finalizacao.md). Frontend integrado à API, PostgreSQL e MinIO; decisões comerciais/pilotos seguem pendentes de Kauã e Cauã.
 
 As seções anteriores ao status final abaixo registram a validação histórica, realizada antes da integração. Onde houver divergência de quantidade de testes ou pendências, o **STATUS FINAL DA FASE 1** é o registro vigente.
 
@@ -60,7 +60,7 @@ O bootstrap automático do wrapper oficial falhou ao renomear o diretório tempo
 
 ## Pendências de aceite
 
-- Aprovar o [protótipo da interface](proposta-interface.md) antes da implementação definitiva e da integração com a API real, conforme o fluxo humano de aprovação solicitado.
+- Aprovar o [protótipo da interface](../archive/proposta-interface.md) antes da implementação definitiva e da integração com a API real, conforme o fluxo humano de aprovação solicitado.
 - Executar o CI com PostgreSQL e MinIO via Testcontainers e o build Docker.
 - Definir destino e política de staging antes de implementar/publicar deploy.
 - Criar o fluxo de revisão no GitHub; esta entrega permaneceu local, sem push, PR ou merge.
@@ -75,7 +75,7 @@ Validação de 15/09/2026 na branch `chore/finalize-fase-1`. **FASE 1 TECNICAMEN
 ### CONCLUÍDO
 
 - Integração real do frontend aprovado: login/refresh/logout, equipe, clientes, veículos, OS, responsável/status, checklist, diagnóstico, fotos privadas, orçamento/versões, links e decisão pública.
-- Inventário dos **32 endpoints** confirmado no OpenAPI em execução, exemplos JSON, permissões, filtros/paginação e conflitos em [api-contracts.md](api-contracts.md).
+- Inventário dos **32 endpoints** confirmado no OpenAPI em execução, exemplos JSON, permissões, filtros/paginação e conflitos em [api-contracts-fase1.md](api-contracts-fase1.md).
 - Maven verify/Spotless: **5 testes unitários e 12 de integração**, sem falhas, erros ou ignorados; PostgreSQL e MinIO reais via Testcontainers; Flyway V1/V2 e Hibernate validate aprovados.
 - Duas oficinas com dados próprios: leitura/escrita cruzadas bloqueadas; repository/JPQL e FK composta testados. Concorrência de status: 200/409; aprovações iguais simultâneas: 200/200 com uma decisão.
 - Fluxo por HTTP real e pelo navegador sem mocks até PRONTO. Persistência SQL da OS do navegador: concluída, uma foto e 13 eventos; novo login recuperou dados e foto.

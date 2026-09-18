@@ -3,17 +3,12 @@ package br.com.garagem.dinheiroesquecido.application;
 import br.com.garagem.dinheiroesquecido.api.RecuperacaoDtos.*;
 import br.com.garagem.dinheiroesquecido.domain.*;
 import br.com.garagem.dinheiroesquecido.repository.*;
-import br.com.garagem.ordemservico.acessopublico.aprovacao.repository.AprovacaoOrcamentoRepository;
-import br.com.garagem.ordemservico.application.OsService;
-import br.com.garagem.ordemservico.domain.StatusOs;
-import br.com.garagem.ordemservico.orcamento.repository.OrcamentoRepository;
-import br.com.garagem.ordemservico.orcamento.versao.repository.OrcamentoVersaoRepository;
-import br.com.garagem.ordemservico.repository.OrdemServicoRepository;
+import br.com.garagem.ordemservico.port.OrdemServicoPort;
 import br.com.garagem.shared.error.ApiException;
 import br.com.garagem.shared.persistence.Pagina;
+import br.com.garagem.shared.seguranca.UsuarioAutenticado;
 import br.com.garagem.tenancy.TenantContext;
-import br.com.garagem.usuario.domain.Papel;
-import br.com.garagem.usuario.repository.UsuarioRepository;
+import br.com.garagem.usuario.port.UsuarioPort;
 import jakarta.persistence.EntityManager;
 import java.time.*;
 import java.util.*;
@@ -29,12 +24,8 @@ public class RecuperacaoService {
   private final EventoOportunidadeRepository eventos;
   private final AcompanhamentoOrcamentoRepository acompanhamentos;
   private final ConsultaRecuperacao consultas;
-  private final OrdemServicoRepository ordens;
-  private final OrcamentoVersaoRepository versoes;
-  private final OrcamentoRepository orcamentos;
-  private final AprovacaoOrcamentoRepository decisoes;
-  private final UsuarioRepository usuarios;
-  private final OsService osService;
+  private final OrdemServicoPort ordemServico;
+  private final UsuarioPort usuarios;
   private final EntityManager em;
   private final Clock clock;
 
@@ -45,12 +36,8 @@ public class RecuperacaoService {
       EventoOportunidadeRepository eventos,
       AcompanhamentoOrcamentoRepository acompanhamentos,
       ConsultaRecuperacao consultas,
-      OrdemServicoRepository ordens,
-      OrcamentoVersaoRepository versoes,
-      OrcamentoRepository orcamentos,
-      AprovacaoOrcamentoRepository decisoes,
-      UsuarioRepository usuarios,
-      OsService osService,
+      OrdemServicoPort ordemServico,
+      UsuarioPort usuarios,
       EntityManager em,
       Clock clock) {
     this.oportunidades = oportunidades;
@@ -59,12 +46,8 @@ public class RecuperacaoService {
     this.eventos = eventos;
     this.acompanhamentos = acompanhamentos;
     this.consultas = consultas;
-    this.ordens = ordens;
-    this.versoes = versoes;
-    this.orcamentos = orcamentos;
-    this.decisoes = decisoes;
+    this.ordemServico = ordemServico;
     this.usuarios = usuarios;
-    this.osService = osService;
     this.em = em;
     this.clock = clock;
   }
@@ -134,7 +117,7 @@ public class RecuperacaoService {
       OportunidadeRecuperacao o, String tipo, Object anterior, Object novo, String obs) {
     var e = new EventoOportunidade();
     e.oportunidadeId = o.id;
-    e.usuarioId = OsService.autor();
+    e.usuarioId = UsuarioAutenticado.id();
     e.tipo = tipo;
     e.anterior = anterior == null ? null : anterior.toString();
     e.novo = novo == null ? null : novo.toString();
@@ -173,7 +156,7 @@ public class RecuperacaoService {
       throw ApiException.invalid("Informe a data do próximo contato para agendar.");
     var c = new ContatoOportunidade();
     c.oportunidadeId = id;
-    c.usuarioId = OsService.autor();
+    c.usuarioId = UsuarioAutenticado.id();
     c.criadoEm = clock.instant();
     c.canal = input.canal();
     c.resultado = input.resultado();
@@ -195,12 +178,10 @@ public class RecuperacaoService {
   public OportunidadeSaida resultado(UUID id, ResultadoEntrada input) {
     var o = bloquear(id, input.revisao());
     if (input.ordemServicoId() != null)
-      ordens
-          .findByIdAndOficinaId(input.ordemServicoId(), TenantContext.current())
-          .orElseThrow(ApiException::missing);
+      ordemServico.resumo(input.ordemServicoId()).orElseThrow(ApiException::missing);
     var r = new ResultadoOportunidade();
     r.oportunidadeId = id;
-    r.usuarioId = OsService.autor();
+    r.usuarioId = UsuarioAutenticado.id();
     r.criadoEm = clock.instant();
     r.valorRecuperado = input.valorRecuperado().setScale(2);
     r.ordemServicoId = input.ordemServicoId();
@@ -232,11 +213,9 @@ public class RecuperacaoService {
   public OportunidadeSaida responsavel(UUID id, ResponsavelEntrada input) {
     var o = bloquear(id, input.revisao());
     if (input.responsavelId() != null) {
-      var u =
-          usuarios
-              .findByIdAndOficinaId(input.responsavelId(), TenantContext.current())
-              .orElseThrow(ApiException::missing);
-      if (!u.ativo || (u.papel != Papel.OWNER && u.papel != Papel.ATENDENTE))
+      // Mesma distinção do restante da API: outra oficina é 404; papel incompatível é 400.
+      if (!usuarios.existe(input.responsavelId())) throw ApiException.missing();
+      if (!usuarios.ehComercialAtivo(input.responsavelId()))
         throw ApiException.invalid("Responsável deve ser OWNER ou ATENDENTE ativo.");
     }
     if (!Objects.equals(o.responsavelId, input.responsavelId())) {
@@ -257,7 +236,7 @@ public class RecuperacaoService {
 
   /** Uma transação por OS; mesmo lock usado por publicação, versão e decisão. */
   public IdentificacaoSaida reconciliar(UUID os, Instant agora) {
-    ordens.lock(os, TenantContext.current()).orElseThrow(ApiException::missing);
+    ordemServico.bloquear(os);
     var fontes = consultas.origens(os, agora);
     var existentes = oportunidades.findByOrdemServicoIdAndOficinaId(os, TenantContext.current());
     long criadas = 0, descartadas = 0;
@@ -299,47 +278,36 @@ public class RecuperacaoService {
 
   @Transactional(readOnly = true)
   public ProgramacaoSaida revisao(UUID id) {
-    var os =
-        ordens.findByIdAndOficinaId(id, TenantContext.current()).orElseThrow(ApiException::missing);
-    return new ProgramacaoSaida(os.proximaRevisaoEm, os.revisao);
+    var os = ordemServico.resumo(id).orElseThrow(ApiException::missing);
+    return new ProgramacaoSaida(os.proximaRevisaoEm(), os.revisao());
   }
 
   public ProgramacaoSaida revisao(UUID id, ProgramacaoEntrada input) {
-    var os = ordens.lock(id, TenantContext.current()).orElseThrow(ApiException::missing);
-    if (os.revisao != input.revisao())
+    var os = ordemServico.bloquear(id);
+    if (os.revisao() != input.revisao())
       throw ApiException.conflict("A OS mudou. Atualize a página.");
-    if (os.status != StatusOs.PRONTO)
+    if (os.status() != OrdemServicoPort.StatusPublico.PRONTO)
       throw ApiException.conflict("Programe a próxima revisão após concluir a OS.");
     if (input.data() != null
         && input
             .data()
-            .isBefore(os.concluidaEm.atZone(ZoneId.of("America/Sao_Paulo")).toLocalDate()))
+            .isBefore(os.concluidaEm().atZone(ZoneId.of("America/Sao_Paulo")).toLocalDate()))
       throw ApiException.invalid("Revisão não pode anteceder a conclusão da OS.");
-    if (Objects.equals(os.proximaRevisaoEm, input.data()))
-      return new ProgramacaoSaida(os.proximaRevisaoEm, os.revisao);
+    if (Objects.equals(os.proximaRevisaoEm(), input.data()))
+      return new ProgramacaoSaida(os.proximaRevisaoEm(), os.revisao());
     if (oportunidades.findByOrdemServicoIdAndOficinaId(id, TenantContext.current()).stream()
         .anyMatch(o -> o.tipo == TipoOportunidade.REVISAO_ATRASADA))
       throw ApiException.conflict(
           "Esta programação já originou uma oportunidade. Registre o novo ciclo em outra OS.");
-    osService.evento(
-        id,
-        "PROXIMA_REVISAO_ALTERADA",
-        os.proximaRevisaoEm + " → " + input.data(),
-        OsService.autor());
-    os.proximaRevisaoEm = input.data();
+    // A escrita na OS acontece do lado do dono do dado: aqui não se mexe em entidade alheia.
+    ordemServico.programarProximaRevisao(id, input.data(), os.revisao());
     em.flush();
-    return new ProgramacaoSaida(os.proximaRevisaoEm, os.revisao);
+    var atualizada = ordemServico.resumo(id).orElseThrow(ApiException::missing);
+    return new ProgramacaoSaida(atualizada.proximaRevisaoEm(), atualizada.revisao());
   }
 
   private UUID osDaVersao(UUID id) {
-    var v =
-        versoes
-            .findByIdAndOficinaId(id, TenantContext.current())
-            .orElseThrow(ApiException::missing);
-    return orcamentos
-        .findByIdAndOficinaId(v.orcamentoId, TenantContext.current())
-        .orElseThrow(ApiException::missing)
-        .ordemServicoId;
+    return ordemServico.ordemServicoDaVersao(id).orElseThrow(ApiException::missing);
   }
 
   @Transactional(readOnly = true)
@@ -353,12 +321,12 @@ public class RecuperacaoService {
 
   public ProgramacaoSaida reavaliacao(UUID id, ProgramacaoEntrada input) {
     UUID os = osDaVersao(id);
-    ordens.lock(os, TenantContext.current()).orElseThrow(ApiException::missing);
+    ordemServico.bloquear(os);
     var d =
-        decisoes
-            .findByOrcamentoVersaoIdAndOficinaId(id, TenantContext.current())
+        ordemServico
+            .decisaoDaVersao(id)
             .orElseThrow(() -> ApiException.conflict("Orçamento ainda não foi recusado."));
-    if (d.aprovado) throw ApiException.conflict("Orçamento aprovado não pode ser reavaliado.");
+    if (d.aprovado()) throw ApiException.conflict("Orçamento aprovado não pode ser reavaliado.");
     if (oportunidades.findByOrdemServicoIdAndOficinaId(os, TenantContext.current()).stream()
         .anyMatch(
             o -> o.tipo == TipoOportunidade.REAVALIACAO_PENDENTE && id.equals(o.orcamentoVersaoId)))
@@ -376,13 +344,10 @@ public class RecuperacaoService {
     if (a.revisao != input.revisao())
       throw ApiException.conflict("A programação mudou. Atualize a página.");
     if (input.data() != null
-        && input.data().isBefore(d.criadoEm.atZone(ZoneId.of("America/Sao_Paulo")).toLocalDate()))
+        && input.data().isBefore(d.tomadaEm().atZone(ZoneId.of("America/Sao_Paulo")).toLocalDate()))
       throw ApiException.invalid("Reavaliação não pode anteceder a recusa.");
-    osService.evento(
-        os,
-        "REAVALIACAO_ALTERADA",
-        id + ": " + a.reavaliarEm + " → " + input.data(),
-        OsService.autor());
+    ordemServico.registrarEvento(
+        os, "REAVALIACAO_ALTERADA", id + ": " + a.reavaliarEm + " → " + input.data());
     a.reavaliarEm = input.data();
     a = acompanhamentos.save(a);
     em.flush();

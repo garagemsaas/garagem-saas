@@ -155,7 +155,7 @@ foram parados; `garagem-saas` e `garagem-fase4` não foram alterados.
 ## 16–20. Backups e restauração
 
 Procedimentos pré/pós, comandos, manutenção, variáveis, armazenamento restrito e
-aceitação estão em [backup-piloto.md](backup-piloto.md). Os scripts usam dump custom
+aceitação estão em [backup-piloto.md](../operations/backup-piloto.md). Os scripts usam dump custom
 PostgreSQL e cópia fria completa MinIO, manifest e checksums. Preservam pré/pós,
 não sobrescrevem pastas e recusam origem/destino ocupado/volume existente/arquivos
 corrompidos. Testes negativos executados: origem, destino ocupado e dump alterado,

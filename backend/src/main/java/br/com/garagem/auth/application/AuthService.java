@@ -2,6 +2,7 @@ package br.com.garagem.auth.application;
 
 import br.com.garagem.auth.api.AuthDtos.*;
 import br.com.garagem.shared.error.ApiException;
+import br.com.garagem.shared.seguranca.Tokens;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;

@@ -20,7 +20,7 @@ Evidências citadas como `Fase3IT#metodo` estão em
 ## O que foi publicado
 
 Os seis contratos da primeira integração estão em
-[api-v1.md § Contratos da primeira integração](api-v1.md#contratos-da-primeira-integração), cada um
+[api-v1.md § Contratos da primeira integração](../api/api-v1.md#contratos-da-primeira-integração), cada um
 com método, endpoint, finalidade, autenticação, papéis, headers, parâmetros, paginação, filtros,
 ordenação, DTOs de entrada e saída com campos obrigatórios e opcionais, códigos HTTP, códigos
 estáveis de erro, conflitos possíveis, comportamento multi-tenant e exemplos de requisição e

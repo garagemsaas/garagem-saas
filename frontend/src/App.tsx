@@ -9,9 +9,11 @@ import { labels } from "./navigation";
 import type { Page } from "./navigation";
 import Recovery from './Recovery';
 import Subscription from './Subscription';
+import './Login.css';
 import { date, number, roles } from "./model";
 import type { Client, Order, Vehicle } from "./model";
 import { allPages, api, currentSession, emptyData, loadData, loadOrder, setApiSession } from "./api";
+import { useSession, useToast, useToday } from "./hooks";
 import type { Session } from "./api";
 import "./App.css";
 import "./design-system.css";
@@ -28,7 +30,6 @@ const subtitles: Record<Page, string> = {
 export default function App() {
   const [data, setData] = useState(emptyData);
   const [options, setOptions] = useState(emptyData);
-  const [session, setSession] = useState<(Session & { role: Session['papel']; oficina: string }) | null>(null);
   const [busy, setBusy] = useState(false);
   const [dataError, setDataError] = useState('');
   const [detailLoading, setDetailLoading] = useState(false);
@@ -36,33 +37,23 @@ export default function App() {
   const [detailAttempt, setDetailAttempt] = useState(0);
   const loadSequence = useRef(0);
   const [reload, setReload] = useState(0);
-  const [today, setToday] = useState(() => new Date());
-  useEffect(() => {
-    const timer = window.setInterval(() => setToday(new Date()), 60_000);
-    return () => window.clearInterval(timer);
-  }, []);
+  const today = useToday();
   const [page, setPage] = useState<Page>("overview"),
     [selected, setSelectedId] = useState(""),
     [query, setQuery] = useState(""),
     [pagination, setPagination] = useState(0);
   const [panel, setPanel] = useState(""),
     [client, setClient] = useState<Client>(),
-    [vehicle, setVehicle] = useState<Vehicle>(),
-    [toast, setToast] = useState("");
+    [vehicle, setVehicle] = useState<Vehicle>();
+  const [toast, setToast] = useToast();
   const [showPassword, setShowPassword] = useState(false),
     [loginError, setLoginError] = useState("");
-  useEffect(() => {
-    if (!toast) return;
-    const timer = setTimeout(() => setToast(""), 4500);
-    return () => clearTimeout(timer);
-  }, [toast]);
-  useEffect(() => {
-    const expired = () => { setSession(null); setData(emptyData()); setOptions(emptyData()); setClient(undefined); setVehicle(undefined); setToast(''); setSelectedId(''); setDetailLoading(false); setDataError(''); setPanel(''); setLoginError('Sessão expirada. Entre novamente.'); };
-    const renewed = () => { const value = currentSession(); if (value) setSession(previous => previous ? { ...value, role: value.papel, oficina: previous.oficina } : null); };
-    window.addEventListener('session-expired', expired);
-    window.addEventListener('session-updated', renewed);
-    return () => { window.removeEventListener('session-expired', expired); window.removeEventListener('session-updated', renewed); };
-  }, []);
+  const limparSessao = useCallback(() => {
+    setData(emptyData()); setOptions(emptyData()); setClient(undefined); setVehicle(undefined);
+    setToast(''); setSelectedId(''); setDetailLoading(false); setDataError(''); setPanel('');
+    setLoginError('Sessão expirada. Entre novamente.');
+  }, [setToast]);
+  const [session, setSession] = useSession(limparSessao);
   function setSelected(value: string) {
     setSelectedId(value);
     if (value !== selected) setDetailLoading(Boolean(value));

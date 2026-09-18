@@ -14,12 +14,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.*;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
-import org.testcontainers.containers.PostgreSQLContainer;
 
 /**
  * Integração da Fase 7 contra PostgreSQL real: limites por plano, assinatura, webhook assinado,
@@ -28,7 +25,16 @@ import org.testcontainers.containers.PostgreSQLContainer;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 @AutoConfigureMockMvc
 @org.springframework.context.annotation.Import(Fase7IT.RelogioConfig.class)
-class Fase7IT {
+class Fase7IT extends br.com.garagem.suporte.IntegracaoBase {
+
+  /** Propriedades específicas desta suíte; a origem de dados vem da base. */
+  @org.springframework.test.context.DynamicPropertySource
+  static void propriedadesDaSuite(org.springframework.test.context.DynamicPropertyRegistry r) {
+    r.add("app.pagamento.webhook-secret", () -> SEGREDO);
+    r.add("app.pagamento.tolerancia", () -> "P7D");
+    r.add("spring.datasource.hikari.maximum-pool-size", () -> 8);
+  }
+
   static final String BASE = "/api/v1/assinatura";
   static final String WEBHOOK = "/api/v1/webhooks/pagamento";
   static final String SEGREDO = "segredo-de-teste-do-webhook-com-mais-de-32-bytes";
@@ -57,35 +63,6 @@ class Fase7IT {
     java.time.Clock relogioTeste() {
       return RELOGIO;
     }
-  }
-
-  static PostgreSQLContainer<?> postgres;
-
-  @DynamicPropertySource
-  static void config(DynamicPropertyRegistry r) {
-    String local = System.getenv("TEST_DATABASE_URL");
-    if (local == null) {
-      postgres = new PostgreSQLContainer<>("postgres:17.11-alpine");
-      postgres.start();
-      r.add("spring.datasource.url", postgres::getJdbcUrl);
-      r.add("spring.datasource.username", postgres::getUsername);
-      r.add("spring.datasource.password", postgres::getPassword);
-    } else {
-      r.add("spring.datasource.url", () -> local);
-      r.add("spring.datasource.username", () -> System.getenv("TEST_DATABASE_USER"));
-      r.add("spring.datasource.password", () -> System.getenv("TEST_DATABASE_PASSWORD"));
-    }
-    r.add("app.jwt.secret", () -> "test-only-secret-at-least-thirty-two-bytes-long");
-    r.add("app.storage.access-key", () -> "test-user");
-    r.add("app.storage.secret-key", () -> "test-only-storage-password");
-    r.add("app.pagamento.webhook-secret", () -> SEGREDO);
-    r.add("app.pagamento.tolerancia", () -> "P7D");
-    r.add("spring.datasource.hikari.maximum-pool-size", () -> 8);
-  }
-
-  @AfterAll
-  static void close() {
-    if (postgres != null) postgres.stop();
   }
 
   @Autowired MockMvc mvc;
@@ -298,23 +275,34 @@ class Fase7IT {
     return hex.toString();
   }
 
+  /** Lê o identificador que a aplicação gravou. Falha explicitamente se o vínculo não existe. */
   String assinaturaExterna(UUID oficina) {
-    return jdbc.queryForObject(
-        "select provider_subscription_id from assinatura where oficina_id=?",
-        String.class,
-        oficina);
+    String externo =
+        jdbc.queryForObject(
+            "select provider_subscription_id from assinatura where oficina_id=?",
+            String.class,
+            oficina);
+    assertThat(externo)
+        .as("a aplicação precisa ter vinculado a assinatura ao provedor antes do webhook")
+        .isNotNull();
+    return externo;
   }
 
-  /** Garante identificador remoto: o gatilho cria a assinatura sem passar pelo provedor. */
-  void comAssinaturaExterna(UUID oficina) {
-    jdbc.update(
-        "update assinatura set provider_subscription_id=? where oficina_id=? and provider_subscription_id is null",
-        "manual:" + oficina,
-        oficina);
+  /**
+   * Faz a aplicação estabelecer o vínculo com o provedor pelo caminho real — uma leitura da área
+   * financeira basta. Antes o teste gravava provider_subscription_id por SQL, e era exatamente isso
+   * que escondia o defeito: no fluxo real o campo ficava nulo e nenhum webhook achava a oficina.
+   */
+  void contratarPeloFluxoReal(String token) throws Exception {
+    get(BASE, token, 200);
   }
 
+  /**
+   * Um gateway real só emite evento de uma assinatura que já existe do lado dele. Por isso o teste
+   * contrata primeiro, pelo caminho da aplicação, em vez de forjar o vínculo no banco.
+   */
   JsonNode enviarWebhook(String id, String tipo, UUID oficina, int esperado) throws Exception {
-    comAssinaturaExterna(oficina);
+    contratarPeloFluxoReal(oficina.equals(oficinaA) ? tokenOwnerA : tokenOwnerB);
     var corpo =
         json.writeValueAsString(
             Map.of("id", id, "tipo", tipo, "assinaturaExterna", assinaturaExterna(oficina)));
@@ -705,7 +693,7 @@ class Fase7IT {
 
   @Test
   void webhookNaoDeixaOPayloadEscolherAOficinaAlvo() throws Exception {
-    comAssinaturaExterna(oficinaA);
+    contratarPeloFluxoReal(tokenOwnerA);
     // Assinatura externa inexistente: o evento é registrado, não aplicado, e ninguém é ativado.
     var corpo =
         json.writeValueAsString(

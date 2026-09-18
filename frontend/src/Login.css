@@ -1,0 +1,60 @@
+/* Tela de entrada. Saiu do App.css global seguindo o padrão já usado por Recovery.css e
+   Subscription.css: estilo junto da tela que ele veste. Regras idênticas às anteriores. */
+.login-page {
+  display: grid;
+  grid-template-columns: 45% 55%;
+  min-height: 100vh;
+}
+.login-story {
+  background: #203229;
+  color: #f3f5ec;
+  padding: 48px 60px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 70px;
+}
+.login-story .eyebrow {
+  color: #b1c49a;
+  font-size: 10px;
+}
+.login-story h1 {
+  font-size: 49px;
+  line-height: 1.22;
+  letter-spacing: -2px;
+  font-weight: 500;
+  margin: 24px 0;
+}
+.login-story p {
+  color: #adbfac;
+  max-width: 340px;
+  font-size: 14px;
+  line-height: 1.9;
+}
+.login-story > small {
+  color: #869c87;
+  font-size: 11px;
+}
+.login-process {
+  border-top: 1px solid #465b44;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 390px;
+  margin-top: 40px;
+  padding-top: 18px;
+  font-size: 10px;
+  color: #afc49f;
+}
+.login-main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 45px 35px;
+  background: #fafbf7;
+}
+.login-form {
+  width: 100%;
+  max-width: 365px;
+}

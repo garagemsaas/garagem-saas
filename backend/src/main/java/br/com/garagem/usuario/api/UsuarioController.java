@@ -2,6 +2,7 @@ package br.com.garagem.usuario.api;
 
 import br.com.garagem.shared.error.ApiException;
 import br.com.garagem.shared.persistence.Pagina;
+import br.com.garagem.shared.seguranca.UsuarioAutenticado;
 import br.com.garagem.tenancy.TenantContext;
 import br.com.garagem.usuario.domain.*;
 import br.com.garagem.usuario.repository.UsuarioRepository;
@@ -129,7 +130,7 @@ public class UsuarioController {
     if (!input.ativo()) {
       // Desativar a si mesmo tranca o próprio dono para fora da oficina, e ninguém mais poderia
       // reativá-lo pela aplicação: seria preciso mexer no banco.
-      if (alvo.id.equals(br.com.garagem.ordemservico.application.OsService.autor()))
+      if (alvo.id.equals(UsuarioAutenticado.id()))
         throw ApiException.conflict("Você não pode desativar o próprio acesso.");
       if (alvo.papel == Papel.OWNER && ownersAtivos() <= 1)
         throw ApiException.conflict(

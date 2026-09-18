@@ -4,10 +4,10 @@ import static org.assertj.core.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-import br.com.garagem.auth.application.Tokens;
 import br.com.garagem.cliente.domain.Cliente;
 import br.com.garagem.cliente.repository.ClienteRepository;
 import br.com.garagem.ordemservico.foto.application.FotoStorage;
+import br.com.garagem.shared.seguranca.Tokens;
 import br.com.garagem.tenancy.TenantContext;
 import com.fasterxml.jackson.databind.*;
 import jakarta.persistence.EntityManager;
@@ -26,71 +26,51 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.*;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.testcontainers.containers.PostgreSQLContainer;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
 @Import(Fase1IT.StorageConfig.class)
-class Fase1IT {
-  static PostgreSQLContainer<?> postgres;
+class Fase1IT extends br.com.garagem.suporte.IntegracaoBase {
   static org.testcontainers.containers.GenericContainer<?> minio;
 
-  @DynamicPropertySource
-  static void config(DynamicPropertyRegistry r) {
-    String local = System.getenv("TEST_DATABASE_URL");
-    if (local == null) {
-      postgres = new PostgreSQLContainer<>("postgres:17.11-alpine");
-      postgres.start();
-      minio =
-          new org.testcontainers.containers.GenericContainer<>(
-                  "quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z.hotfix.7aa24e772")
-              .withExposedPorts(9000)
-              .withEnv("MINIO_ROOT_USER", "test-user")
-              .withEnv("MINIO_ROOT_PASSWORD", "test-only-storage-password")
-              .withCommand("server", "/data")
-              .waitingFor(
-                  org.testcontainers.containers.wait.strategy.Wait.forHttp("/minio/health/ready")
-                      .forPort(9000));
-      minio.start();
-      String endpoint = "http://" + minio.getHost() + ":" + minio.getMappedPort(9000);
-      r.add("app.storage.endpoint", () -> endpoint);
-      try (var s3 =
-          software.amazon.awssdk.services.s3.S3Client.builder()
-              .endpointOverride(java.net.URI.create(endpoint))
-              .region(software.amazon.awssdk.regions.Region.US_EAST_1)
-              .forcePathStyle(true)
-              .credentialsProvider(
-                  software.amazon.awssdk.auth.credentials.StaticCredentialsProvider.create(
-                      software.amazon.awssdk.auth.credentials.AwsBasicCredentials.create(
-                          "test-user", "test-only-storage-password")))
-              .build()) {
-        s3.createBucket(
-            software.amazon.awssdk.services.s3.model.CreateBucketRequest.builder()
-                .bucket("garagem-fotos")
-                .build());
-      }
-      r.add("spring.datasource.url", postgres::getJdbcUrl);
-      r.add("spring.datasource.username", postgres::getUsername);
-      r.add("spring.datasource.password", postgres::getPassword);
-    } else {
-      r.add("spring.datasource.url", () -> local);
-      r.add("spring.datasource.username", () -> System.getenv("TEST_DATABASE_USER"));
-      r.add("spring.datasource.password", () -> System.getenv("TEST_DATABASE_PASSWORD"));
-    }
-    r.add("app.jwt.secret", () -> "test-only-secret-at-least-thirty-two-bytes-long");
-    r.add("app.storage.access-key", () -> "test-user");
-    r.add("app.storage.secret-key", () -> "test-only-storage-password");
+  /**
+   * Armazenamento real para esta suíte: é a única que exercita upload e leitura de foto. O
+   * PostgreSQL vem da base compartilhada; o MinIO sobe aqui porque só aqui é necessário.
+   */
+  @org.springframework.test.context.DynamicPropertySource
+  static void armazenamentoDaSuite(org.springframework.test.context.DynamicPropertyRegistry r) {
+    if (System.getenv("TEST_DATABASE_URL") != null) return;
+    minio =
+        new org.testcontainers.containers.GenericContainer<>(
+                "quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z.hotfix.7aa24e772")
+            .withExposedPorts(9000)
+            .withEnv("MINIO_ROOT_USER", "test-user")
+            .withEnv("MINIO_ROOT_PASSWORD", "test-only-storage-password")
+            .withCommand("server", "/data")
+            .waitingFor(
+                org.testcontainers.containers.wait.strategy.Wait.forHttp("/minio/health/ready")
+                    .forPort(9000));
+    minio.start();
+    String endpoint = "http://" + minio.getHost() + ":" + minio.getMappedPort(9000);
+    r.add("app.storage.endpoint", () -> endpoint);
     r.add("spring.datasource.hikari.maximum-pool-size", () -> 8);
-  }
-
-  @AfterAll
-  static void close() {
-    if (postgres != null) postgres.stop();
-    if (minio != null) minio.stop();
+    try (var s3 =
+        software.amazon.awssdk.services.s3.S3Client.builder()
+            .endpointOverride(java.net.URI.create(endpoint))
+            .region(software.amazon.awssdk.regions.Region.US_EAST_1)
+            .forcePathStyle(true)
+            .credentialsProvider(
+                software.amazon.awssdk.auth.credentials.StaticCredentialsProvider.create(
+                    software.amazon.awssdk.auth.credentials.AwsBasicCredentials.create(
+                        "test-user", "test-only-storage-password")))
+            .build()) {
+      s3.createBucket(
+          software.amazon.awssdk.services.s3.model.CreateBucketRequest.builder()
+              .bucket("garagem-fotos")
+              .build());
+    }
   }
 
   @TestConfiguration

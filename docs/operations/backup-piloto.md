@@ -1,7 +1,7 @@
 # Backup e recuperação do piloto
 
 Procedimento da Fase 6, validado em Docker local com dados sintéticos. **Não houve
-backup pré/pós de piloto real.** Evidências em [fase6-caua.md](fase6-caua.md).
+backup pré/pós de piloto real.** Evidências em [fase6-caua.md](../archive/fase6-caua.md).
 
 ## Preparação
 

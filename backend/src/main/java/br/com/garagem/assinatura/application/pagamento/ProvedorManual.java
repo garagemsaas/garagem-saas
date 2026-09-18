@@ -64,11 +64,6 @@ public class ProvedorManual implements PagamentoProvider {
   @Override
   public void mudarPlano(Assinatura a, Plano destino) {}
 
-  @Override
-  public Optional<String> consultarAssinatura(Assinatura a) {
-    return Optional.ofNullable(a.providerSubscriptionId);
-  }
-
   /**
    * HMAC-SHA256 do corpo cru com o segredo do ambiente, comparado em tempo constante. Sem segredo
    * configurado nenhum webhook é aceito: falhar fechado evita que um ambiente mal configurado ative

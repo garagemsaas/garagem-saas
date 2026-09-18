@@ -8,6 +8,7 @@ import br.com.garagem.ordemservico.foto.domain.FotoVeiculo;
 import br.com.garagem.ordemservico.foto.repository.FotoVeiculoRepository;
 import br.com.garagem.shared.error.ApiException;
 import br.com.garagem.shared.error.ErrorCodes;
+import br.com.garagem.shared.seguranca.UsuarioAutenticado;
 import br.com.garagem.tenancy.TenantContext;
 import java.io.*;
 import java.util.*;
@@ -122,7 +123,7 @@ public class FotoService {
     limites.garantirArmazenamento(bytes.length);
     FotoVeiculo f = new FotoVeiculo();
     f.ordemServicoId = osId;
-    f.autorId = OsService.autor();
+    f.autorId = UsuarioAutenticado.id();
     f.finalidade = finalidade;
     f.descricao = descricao;
     f.checklistItemId = checklistId;
@@ -155,7 +156,8 @@ public class FotoService {
           }
         });
     fotos.save(f);
-    os.evento(osId, "FOTO_ADICIONADA", "Foto de " + finalidade + " adicionada.", OsService.autor());
+    os.evento(
+        osId, "FOTO_ADICIONADA", "Foto de " + finalidade + " adicionada.", UsuarioAutenticado.id());
     return saida(f);
   }
 
