@@ -1,1011 +1,565 @@
-**# Garagem SaaS**
+<div align="center">
 
-SaaS para oficinas mecânicas.
+# Automotive Operations SaaS
 
-## Fase 7 — materiais comerciais e primeiros passos
+### Plataforma SaaS para gestão de oficinas, serviços automotivos e operações comerciais
 
-Página pública em `/institucional`, ajuda em `/ajuda` e preparação inicial no menu
-**Primeiros passos** da oficina. O login permanece em `/`.
-Consulte o [kit comercial](docs/comercial/README.md) para apresentação, vídeo legendado,
-roteiro de venda, onboarding e textos da oferta. Preços, limites e contato comercial
-oficial dependem de aprovação dos sócios. Nenhum deploy externo foi realizado nesta entrega.
+Sistema web desenvolvido para centralizar operações automotivas, conectar equipes, organizar processos e transformar dados operacionais em oportunidades de negócio.
 
-O Garagem SaaS organiza a operação da oficina desde o cadastro do cliente e do veículo até o diagnóstico, orçamento, aprovação, execução e conclusão da ordem de serviço.
+![Java](https://img.shields.io/badge/Java-25-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.5-6DB33F?style=for-the-badge&logo=springboot&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
+![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
 
-O projeto utiliza arquitetura de **\*\*monólito modular\*\***, API REST, frontend React e isolamento **\*\*multi-tenant por oficina\*\***.
+</div>
 
-**---**
+---
 
-**# Estado atual**
+## Sobre o projeto
 
-**## ✅ Fase 1 — Concluída**
+Este projeto é uma plataforma SaaS multi-tenant desenvolvida para digitalizar e organizar operações do setor automotivo.
 
-A Fase 1 foi concluída e integrada.
+A aplicação centraliza o ciclo completo de atendimento, desde o cadastro do cliente e do veículo até diagnóstico, orçamento, aprovação, execução do serviço, acompanhamento e conclusão.
 
-O núcleo operacional está funcional com:
+Além da operação tradicional, a plataforma possui recursos voltados para recuperação de oportunidades comerciais, gestão de assinaturas, controle de planos e acompanhamento operacional.
 
-\- autenticação;
+O sistema foi desenvolvido utilizando uma arquitetura de **monólito modular**, priorizando segurança, separação de responsabilidades, escalabilidade gradual e facilidade de manutenção.
 
-\- clientes;
+---
 
-\- veículos;
+## Principais funcionalidades
 
-\- ordens de serviço;
+### Gestão operacional
 
-\- responsáveis;
+- Cadastro de clientes
+- Cadastro e histórico de veículos
+- Ordens de serviço
+- Responsáveis e mecânicos
+- Checklist técnico
+- Diagnósticos
+- Registro fotográfico
+- Timeline completa da OS
+- Controle de status
+- Histórico operacional
 
-\- checklist;
+### Orçamentos
 
-\- diagnóstico;
+- Criação de orçamentos
+- Versionamento imutável
+- Histórico de alterações
+- Aprovação pública por link
+- Rejeição de orçamento
+- Controle de validade
+- Auditoria das decisões
 
-\- fotos privadas;
+### Oportunidades comerciais
 
-\- orçamento;
+Módulo destinado à identificação automática de oportunidades que podem representar faturamento perdido.
 
-\- aprovação pública;
+Entre os cenários monitorados:
 
-\- timeline;
+- orçamentos sem resposta;
+- revisões atrasadas;
+- clientes que precisam de nova abordagem;
+- serviços pendentes de reavaliação;
+- oportunidades recuperadas;
+- valores potenciais e efetivamente recuperados.
 
-\- PostgreSQL;
+O objetivo é transformar dados operacionais em ações comerciais.
 
-\- MinIO;
+---
 
-\- frontend integrado à API real;
+## Dashboard
 
-\- isolamento entre oficinas.
+O dashboard consolida indicadores importantes para a operação:
 
-Fluxo principal:
+- ordens de serviço;
+- clientes;
+- veículos;
+- serviços em andamento;
+- oportunidades abertas;
+- valores potenciais;
+- valores recuperados;
+- indicadores comerciais.
 
-\`\`\`text
+---
 
-Login
+## Multi-tenancy
 
-  ↓
+A aplicação foi projetada para atender múltiplas empresas utilizando a mesma infraestrutura.
 
-Cliente
+Cada empresa possui seu próprio contexto isolado.
 
-  ↓
-
-Veículo
-
-  ↓
-
-Ordem de Serviço
-
-  ↓
-
-Checklist
-
-  ↓
-
-Diagnóstico
-
-  ↓
-
-Fotos
-
-  ↓
-
-Orçamento
-
-  ↓
-
-Aprovação
-
-  ↓
-
-Execução / Status
-
-  ↓
-
-Timeline
-
-  ↓
-
-Conclusão
-
-\`\`\`
-
-**---**
-
-**## ✅ Fase 2 — Concluída**
-
-As duas frentes da Fase 2 foram concluídas.
-
-API, contratos, segurança e infraestrutura
-
-Concluído:
-
-\- documentação dos endpoints;
-
-\- estabilização dos DTOs;
-
-\- padronização das respostas de validação;
-
-\- paginação;
-
-\- filtros;
-
-\- ordenação;
-
-\- respostas para dashboard;
-
-\- Swagger/OpenAPI;
-
-\- validação de login;
-
-\- refresh token;
-
-\- logout;
-
-\- clientes;
-
-\- veículos;
-
-\- ordens de serviço;
-
-\- responsáveis;
-
-\- checklist;
-
-\- diagnóstico;
-
-\- fotos;
-
-\- orçamentos;
-
-\- aprovação pública;
-
-\- timeline;
-
-\- isolamento entre oficinas;
-
-\- permissões por papel;
-
-\- expiração de tokens;
-
-\- upload de arquivos;
-
-\- CORS;
-
-\- secrets;
-
-\- logs;
-
-\- health checks;
-
-\- preparação de staging.
-
-\> O ambiente de staging está preparado e documentado. O deploy em servidor externo é uma etapa separada.
-
-Documentação principal da Fase 2:
-
-\`\`\`text
-
-docs/fase2-caua.md
-
-docs/api-v1.md
-
-docs/api-errors.md
-
-docs/permissoes.md
-
-docs/staging.md
-
-\`\`\`
-
-**---**
-
-**# ✅ Fase 3 — Primeira integração**
-
-A Fase 3 está concluída. A branch da Fase 4 contém as entregas de Cauã e Kauã.
-
-**### Kauã — frontend**
-
-Implementação entregue nesta branch: login e sessão reais, clientes, veículos,
-
-ordens de serviço e alterações de status; paginação e busca no servidor,
-
-indicadores via \`/dashboard\`, erros e carregamentos. Não há dados fictícios nas
-
-telas de produção. A validação histórica desta entrega está documentada abaixo;
-
-a auditoria da Fase 4 acrescentou testes HTTP com PostgreSQL/MinIO e smoke de navegador
-
-com API real, registrados em [docs/fase4-caua.md]\(docs/fase4-caua.md).
-
-Checklist e validações da entrega original em
-
-[docs/fase3-kaua-frontend.md]\(docs/fase3-kaua-frontend.md).
-
-**## API e integração**
-
-A Fase 3 foi concluída na branch:
-
-\`\`\`text
-
-feature/fase3-api-integration
-
-\`\`\`
-
-Esta etapa teve como objetivo consolidar os contratos necessários para a primeira integração entre frontend e backend.
-
-**### Contratos da primeira integração**
-
-Foram auditados e preparados os contratos de:
-
-\- login;
-
-\- clientes;
-
-\- veículos;
-
-\- listagem de ordens de serviço;
-
-\- detalhe de ordem de serviço;
-
-\- alteração de status;
-
-\- exemplos de requisição e resposta.
-
-A documentação de referência continua sendo:
-
-\`\`\`text
-
-docs/api-v1.md
-
-\`\`\`
-
-O Swagger/OpenAPI deve permanecer coerente com a implementação e com essa documentação.
-
-**---**
-
-**## Validações da integração**
-
-Durante esta frente foram considerados:
-
-\- compatibilidade entre frontend e backend;
-
-\- contratos REST;
-
-\- autorização por papel;
-
-\- isolamento por oficina;
-
-\- conflitos de revisão;
-
-\- erros de integração;
-
-\- testes de regressão para problemas encontrados.
-
-Papéis atuais:
-
-\`\`\`text
-
-OWNER
-
-ATENDENTE
-
-MECANICO
-
-\`\`\`
-
-As regras detalhadas estão em:
-
-\`\`\`text
-
-docs/permissoes.md
-
-\`\`\`
-
-**---**
-
-**# ✅ Fase 4 — OS completa e acompanhamento público**
-
-Fase 4 concluída pelas frentes de Cauã e Kauã, conforme encerramento informado pelo time.
-
-A branch atual contém ambas as entregas, até \`fabe67f\`.
-
-Evidências e limites das validações anteriores permanecem em
-
-[docs/fase4-caua.md]\(docs/fase4-caua.md) e
-
-[docs/fase4-kaua-frontend.md]\(docs/fase4-kaua-frontend.md).
-
-**# ✅ Fase 5 — Dinheiro Esquecido**
-
-Concluída na base da branch \`feature/fase6-observabilidade-piloto\`, criada a partir
-
-de \`feature/fase5-dinheiro-esquecido\`. As entregas de Cauã e Kauã estão incorporadas,
-
-conforme confirmação do responsável pelo projeto.
-
-A frente de backend acrescenta identificação de oportunidades, contatos manuais,
-
-recuperações, auditoria e relatórios, apoiados no domínio existente.
-
-Estado da validação, decisões e pendências de frontend em
-
-[docs/fase5-caua.md]\(docs/fase5-caua.md).
-
-A parte do Cauã está concluída e validada: \`mvn verify\` com BUILD SUCCESS, 12 testes
-
-unitários e 90 de integração (26 novos), stack Docker isolada com PostgreSQL e MinIO,
-
-API UP, Swagger acessível e os 13 endpoints exercitados por HTTP. O relatório da
-
-Fase 5 registra o momento da entrega do backend; a pendência de frontend ali é histórica.
-
-**# 🚧 Fase 6 — Observabilidade, integridade e preparação para piloto**
-
-Parte do Cauã concluída localmente: logs correlacionados, classificação de lentidão,
-
-diagnóstico seguro de autenticação, persistência após reinícios e backups com restore
-
-isolado. \`mvn verify\`: **\*\*15 unitários + 95 de integração, zero falhas\*\***.
-
-Relatório e limitações em [docs/fase6-caua.md]\(docs/fase6-caua.md); operação em
-
-[docs/backup-piloto.md]\(docs/backup-piloto.md). O piloto real e seus backups pré/pós
-
-continuam pendentes. A validação da interface da Fase 6 cabe ao Kauã.
-
-**# 🚧 Fase 7 — Preparação para vendas**
-
-Parte do Cauã concluída localmente: planos com limites centralizados em tabela, assinatura por
-
-oficina, aplicação dos limites no backend, cobrança recorrente com gateway abstraído, webhook
-
-assinado e idempotente, inadimplência com tolerância, suspensão não destrutiva, reativação
-
-automática, métricas de uso e trilha financeira imutável. \`mvn verify\`: **\*\*15 unitários + 122 de
-
-integração, zero falhas\*\***.
-
-Arquitetura e operação em [docs/fase7-caua.md]\(docs/fase7-caua.md). Documentos jurídicos e
-
-comerciais em [docs/termos-de-uso.md]\(docs/termos-de-uso.md),
-
-[docs/politica-privacidade.md]\(docs/politica-privacidade.md),
-
-[docs/contrato-comercial.md]\(docs/contrato-comercial.md), [docs/sla.md]\(docs/sla.md),
-
-[docs/canais-suporte.md]\(docs/canais-suporte.md),
-
-[docs/politica-cancelamento.md]\(docs/politica-cancelamento.md),
-
-[docs/processo-atendimento.md]\(docs/processo-atendimento.md) e a revisão técnica em
-
-[docs/revisao-lgpd.md]\(docs/revisao-lgpd.md).
-
-Nenhum dado societário foi inventado: razão social, CNPJ, endereço, contatos, foro e preços estão
-
-como marcadores para a empresa preencher. Nenhum gateway de pagamento foi contratado — o provedor
-
-manual atende o fluxo completo até a contratação. A frente do Kauã da Fase 7 continua pendente.
-
-**# Situação das fases**
-
-\| Fase | Estado |
-
-\|---|---|
-
-\| 1 | Concluída |
-
-\| 2 | Concluída |
-
-\| 3 | Concluída |
-
-\| 4 | Concluída |
-
-\| 5 | Concluída |
-
-\| 5 / Cauã | Concluída |
-
-\| 6 | Em andamento — piloto e frente do Kauã pendentes |
-
-\| 6 / Cauã | Concluída localmente |
-
-\| 7 | Em andamento — frente do Kauã pendente |
-
-\| 7 / Cauã | Concluída localmente |
-
-**---**
-
-**# Contratos da API**
-
-A API utiliza:
-
-\`\`\`text
-
-/api/v1
-
-\`\`\`
-
-A documentação principal está em:
-
-\`\`\`text
-
-docs/api-v1.md
-
-\`\`\`
-
-Com a aplicação em execução:
-
-\`\`\`text
-
-Swagger:
-
-http\://127.0.0.1:8080/swagger-ui.html
-
-OpenAPI:
-
-http\://127.0.0.1:8080/v3/api-docs
-
-\`\`\`
-
-Antes de criar ou alterar chamadas no frontend:
-
-1\. verificar \`docs/api-v1.md\`;
-
-2\. conferir o Swagger/OpenAPI;
-
-3\. conferir os tipos em \`frontend/src/api\`;
-
-4\. não inventar contratos no frontend.
-
-**---**
-
-**# Regra importante de integração**
-
-O backend é a fonte de verdade para:
-
-\- autenticação;
-
-\- autorização;
-
-\- multi-tenancy;
-
-\- validações;
-
-\- transições de status;
-
-\- conflitos de revisão;
-
-\- persistência;
-
-\- regras de negócio.
-
-O frontend não deve duplicar regras de segurança nem decidir o \`oficinaId\`.
-
-A oficina é determinada pelo contexto autenticado.
-
-**---**
-
-**# Paginação, filtros e ordenação**
-
-Listagens que suportam paginação devem utilizar o backend.
-
-Formato conceitual:
-
-\`\`\`text
-
-?page=0&size=20
-
-\`\`\`
-
-Filtros e ordenação devem utilizar exclusivamente os parâmetros suportados pela API.
-
-Não carregar toda a base no frontend para depois filtrar ou paginar localmente quando a API já suporta essas operações.
-
-**---**
-
-**# Ordens de serviço**
-
-A listagem de ordens de serviço possui filtros implementados no backend.
-
-Na Fase 2 foi corrigido um problema específico do PostgreSQL envolvendo filtros temporais opcionais.
-
-Não reintroduzir consultas no formato:
-
-\`\`\`text
-
-(\:de IS NULL OR ...)
-
-\`\`\`
-
-para parâmetros temporais opcionais sem validar o comportamento no PostgreSQL.
-
-A implementação atual utiliza construção dinâmica dos filtros.
-
-Arquivos principais:
-
-\`\`\`text
-
-backend/src/main/java/br/com/garagem/ordemservico/repository/OrdemServicoRepository.java
-
-backend/src/main/java/br/com/garagem/ordemservico/repository/OrdemServicoRepositoryCustom.java
-
-backend/src/main/java/br/com/garagem/ordemservico/repository/OrdemServicoRepositoryImpl.java
-
-backend/src/main/java/br/com/garagem/ordemservico/application/OsService.java
-
-\`\`\`
-
-**---**
-
-**# Multi-tenancy**
-
-Todo dado operacional pertence a uma oficina.
-
-Uma oficina não pode:
-
-\- listar dados de outra;
-
-\- consultar recursos de outra;
-
-\- alterar recursos de outra;
-
-\- vincular recursos pertencentes a outra;
-
-\- acessar fotos privadas de outra;
-
-\- atribuir usuários de outra oficina.
-
-Nunca utilizar um \`oficinaId\` enviado pelo frontend como autoridade de segurança.
-
-**---**
-
-**# Erros da API**
-
-O padrão de erros está documentado em:
-
-\`\`\`text
-
-docs/api-errors.md
-
-\`\`\`
-
-Principais respostas:
-
-\`\`\`text
-
-400 — dados inválidos
-
-401 — não autenticado
-
-403 — sem permissão
-
-404 — recurso inexistente ou inacessível
-
-409 — conflito
-
-413 — arquivo maior que o permitido
-
-415 — tipo de arquivo não suportado
-
-500 — erro interno inesperado
-
-\`\`\`
-
-Não expor:
-
-\- stack trace;
-
-\- SQL;
-
-\- senha;
-
-\- tokens;
-
-\- secrets;
-
-\- credenciais;
-
-\- detalhes internos sensíveis.
-
-**---**
-
-**# Stack**
-
-**## Backend**
-
-\`\`\`text
-
-Java 25
-
-Spring Boot 3.5.x
-
-Maven
-
-Spring Web
-
-Spring Security
-
-Spring Data JPA
-
-Hibernate
-
-Bean Validation
-
-Flyway
-
-Actuator
-
-OpenAPI / Swagger
-
-JUnit
-
-Testcontainers
-
-\`\`\`
-
-**## Frontend**
-
-\`\`\`text
-
-React
-
-TypeScript
-
-Vite
-
-\`\`\`
-
-**## Infraestrutura**
-
-\`\`\`text
-
-PostgreSQL 17
-
-MinIO / S3
-
-Docker
-
-Docker Compose
-
-Git
-
-GitHub
-
-GitHub Actions
-
-\`\`\`
-
-**---**
-
-**# Arquitetura**
-
-O projeto utiliza **\*\*monólito modular\*\***.
-
-Estrutura conceitual:
-
-\`\`\`text
-
-Controller
-
-    ↓
-
-DTO
-
-    ↓
-
-Service / Application
-
-    ↓
-
+```text
+Empresa A
+├── usuários
+├── clientes
+├── veículos
+├── ordens
+├── fotos
+├── orçamentos
+└── oportunidades
+
+Empresa B
+├── usuários
+├── clientes
+├── veículos
+├── ordens
+├── fotos
+├── orçamentos
+└── oportunidades
+```
+
+O backend é responsável pela determinação do tenant.
+
+O frontend nunca é considerado autoridade para definir a empresa proprietária de um recurso.
+
+---
+
+## Controle de acesso
+
+Atualmente existem três níveis principais de acesso:
+
+| Papel | Responsabilidade |
+|---|---|
+| `OWNER` | Administração da empresa e acesso completo |
+| `ATENDENTE` | Atendimento e operação administrativa |
+| `MECANICO` | Operação técnica relacionada aos serviços |
+
+As permissões são validadas no backend através do Spring Security.
+
+---
+
+## Planos e assinaturas
+
+A plataforma possui infraestrutura própria para comercialização como SaaS.
+
+Recursos implementados:
+
+- planos;
+- assinaturas;
+- limites por plano;
+- quantidade de usuários;
+- quantidade de veículos;
+- ordens de serviço;
+- armazenamento;
+- cobrança;
+- webhooks;
+- inadimplência;
+- suspensão;
+- reativação;
+- métricas de utilização;
+- histórico de cobrança.
+
+---
+
+## Segurança
+
+A aplicação possui mecanismos de segurança implementados em diferentes camadas.
+
+Entre eles:
+
+- autenticação baseada em tokens;
+- access token e refresh token;
+- rotação e revogação de refresh tokens;
+- isolamento multi-tenant;
+- autorização baseada em papéis;
+- rate limiting;
+- proteção contra brute force;
+- validação backend;
+- queries parametrizadas por JPA/Hibernate;
+- controle de uploads;
+- armazenamento privado de imagens;
+- headers de segurança;
+- Content Security Policy;
+- CORS configurável;
+- logs correlacionados por request ID;
+- proteção de endpoints administrativos;
+- tratamento padronizado de erros.
+
+A aplicação também possui testes específicos para:
+
+- IDOR/BOLA;
+- isolamento entre tenants;
+- autorização;
+- SQL Injection;
+- uploads;
+- JWT;
+- webhooks;
+- concorrência;
+- duplicidade de operações.
+
+---
+
+## Arquitetura
+
+A aplicação utiliza **monólito modular**.
+
+```text
+Frontend
+   │
+   │ REST / JSON
+   ▼
+Controllers
+   │
+   ▼
+Application / Services
+   │
+   ▼
 Domain
-
-    ↓
-
-Repository
-
-    ↓
-
+   │
+   ▼
+Repositories
+   │
+   ▼
 PostgreSQL
+```
 
-\`\`\`
+Integrações de armazenamento utilizam:
 
-Não transformar o projeto em microserviços sem necessidade concreta.
+```text
+API
+ │
+ └── MinIO / S3
+```
 
-Mais detalhes:
+Essa abordagem mantém o deploy simples sem abrir mão da separação entre os módulos da aplicação.
 
-\`\`\`text
+---
 
-docs/arquitetura.md
+## Tecnologias
 
-\`\`\`
+### Backend
 
-**---**
+- Java 25
+- Spring Boot 3.5
+- Spring Web
+- Spring Security
+- Spring Data JPA
+- Hibernate
+- Bean Validation
+- Flyway
+- Spring Actuator
+- OpenAPI / Swagger
+- Maven
 
-**# Executar localmente**
+### Frontend
 
-Crie o \`.env\` utilizando:
+- React 19
+- TypeScript
+- Vite
+- CSS
+- Playwright
 
-\`\`\`text
+### Banco de dados
 
-.env.example
+- PostgreSQL 17
 
-\`\`\`
+### Storage
 
-No PowerShell:
+- MinIO
+- API compatível com S3
 
-\`\`\`powershell
+### Infraestrutura
 
-Copy-Item .env.example .env
+- Docker
+- Docker Compose
+- Git
+- GitHub
+- GitHub Actions
 
-\`\`\`
+### Testes
 
-Preencha os valores:
+- JUnit
+- Mockito
+- Testcontainers
+- Playwright
+- axe-core
 
-\`\`\`text
+---
 
-CHANGE\_ME
+## Estrutura do projeto
 
-\`\`\`
+```text
+.
+├── backend/
+│   ├── src/main/java/
+│   ├── src/main/resources/
+│   │   └── db/migration/
+│   └── src/test/
+│
+├── frontend/
+│   ├── src/
+│   ├── public/
+│   ├── scripts/
+│   └── tests/
+│
+├── docs/
+│
+├── scripts/
+│
+├── compose.yml
+│
+└── README.md
+```
 
-Depois:
+---
 
-\`\`\`powershell
+## Banco de dados
 
+O PostgreSQL é utilizado como banco principal.
+
+Alterações de schema são controladas exclusivamente através do Flyway.
+
+```text
+V1 → núcleo operacional
+V2 → integridade de orçamento
+V3 → oportunidades comerciais
+V4 → planos e assinaturas
+V5 → segurança e ciclo de tokens
+...
+```
+
+Isso permite que a evolução do banco seja reproduzível e versionada junto ao código.
+
+---
+
+## Armazenamento de arquivos
+
+Fotos relacionadas às operações são armazenadas fora do banco.
+
+A aplicação utiliza MinIO/S3 para armazenamento privado.
+
+O banco mantém apenas os metadados necessários para relacionar o objeto ao:
+
+- tenant;
+- veículo;
+- ordem de serviço;
+- usuário responsável.
+
+---
+
+## Observabilidade
+
+A aplicação registra informações importantes para diagnóstico:
+
+- request ID;
+- endpoint;
+- método HTTP;
+- status;
+- duração;
+- contexto autenticado;
+- falhas de autenticação;
+- erros inesperados.
+
+Também possui:
+
+```text
+/actuator/health
+```
+
+para monitoramento de disponibilidade.
+
+---
+
+## API
+
+A API segue o prefixo:
+
+```text
+/api/v1
+```
+
+Durante o desenvolvimento, a documentação OpenAPI pode ser acessada através do Swagger.
+
+```text
+/swagger-ui.html
+```
+
+Em ambiente de produção, sua exposição pode ser desabilitada por configuração.
+
+---
+
+## Executando localmente
+
+### Requisitos
+
+- Java 25
+- Docker
+- Docker Compose
+- Node.js
+- npm
+
+Clone o projeto:
+
+```bash
+git clone <repository-url>
+cd <repository>
+```
+
+Crie o arquivo de configuração:
+
+```bash
+cp .env.example .env
+```
+
+Configure as variáveis necessárias e execute:
+
+```bash
 docker compose --env-file .env up -d --build
+```
 
-\`\`\`
+---
 
-Verifique:
+## Frontend
 
-\`\`\`powershell
-
-docker compose --env-file .env ps -a
-
-\`\`\`
-
-Health:
-
-\`\`\`text
-
-http\://127.0.0.1:8080/actuator/health
-
-\`\`\`
-
-**---**
-
-**# Frontend**
-
-Dentro de:
-
-\`\`\`text
-
-frontend/
-
-\`\`\`
-
-execute:
-
-\`\`\`powershell
-
-npm ci
-
+```bash
+cd frontend
+npm install
 npm run dev
+```
 
-\`\`\`
+Aplicação local:
 
-Desenvolvimento local normalmente utiliza:
+```text
+http://localhost:5173
+```
 
-\`\`\`text
+API:
 
-Frontend:
+```text
+http://localhost:8080
+```
 
-http\://127.0.0.1:5173
+---
 
-Backend:
+## Testes
 
-http\://127.0.0.1:8080
+### Backend
 
-\`\`\`
-
-**---**
-
-**# Testes**
-
-Backend:
-
-\`\`\`powershell
-
+```bash
 cd backend
+./mvnw verify
+```
 
-.\mvnw\.cmd verify
+Os testes de integração utilizam ambientes reais através do Testcontainers.
 
-\`\`\`
+### Frontend
 
-Também existe ambiente portátil em:
-
-\`\`\`text
-
-.tools/
-
-\`\`\`
-
-Os testes de integração utilizam PostgreSQL e MinIO por Testcontainers.
-
-Frontend:
-
-\`\`\`powershell
-
+```bash
 cd frontend
 
-npm run lint
-
 npm run typecheck
-
+npm run lint
 npm test
-
 npm run build
+```
+
+---
+
+## Qualidade e engenharia
+
+O projeto segue princípios como:
+
+- separação de responsabilidades;
+- arquitetura modular;
+- APIs versionadas;
+- DTOs;
+- migrations versionadas;
+- validação no backend;
+- testes automatizados;
+- isolamento multi-tenant;
+- segurança por padrão;
+- revisão de código;
+- Conventional Commits;
+- desenvolvimento orientado por branches;
+- documentação técnica.
+
+---
+
+## Evolução do produto
+
+A arquitetura foi construída para permitir expansão progressiva para outras operações do setor automotivo.
+
+Entre as possibilidades futuras:
+
+- gestão de estoque de veículos;
+- leads comerciais;
+- propostas;
+- reservas;
+- vendas;
+- veículos recebidos em troca;
+- preparação de veículos;
+- pós-venda;
+- integrações com marketplaces;
+- automações comerciais;
+- inteligência aplicada aos dados operacionais.
+
+Sem necessidade de migrar prematuramente para microserviços.
+
+---
+
+## Status
+
+```text
+Core operacional                 ✅
+Frontend integrado               ✅
+Multi-tenancy                    ✅
+Autenticação e autorização       ✅
+Orçamento e aprovação pública    ✅
+Oportunidades comerciais         ✅
+Planos e assinaturas             ✅
+Cobrança e webhooks              ✅
+Observabilidade                  ✅
+Auditoria de segurança           ✅
+Testes automatizados             ✅
+
+Piloto real                      🚧
+Infraestrutura de produção       🚧
+```
+
+---
+
+## Objetivo técnico
+
+Mais do que implementar funcionalidades, este projeto também representa a construção de uma aplicação SaaS completa utilizando conceitos encontrados em sistemas reais:
+
+- arquitetura;
+- backend;
+- frontend;
+- segurança;
+- banco de dados;
+- autenticação;
+- multi-tenancy;
+- armazenamento de arquivos;
+- billing;
+- observabilidade;
+- testes;
+- infraestrutura.
+
+---
+
+## Desenvolvedores
+
+<table>
+  <tr>
+    <td align="center">
+      <strong>Cauã Souza</strong><br/>
+      Backend · Software Development · Databases
+    </td>
+    <td align="center">
+      <strong>Kauã Orcia</strong><br/>
+      Frontend · Software Development · Product
+    </td>
+  </tr>
+</table>
+
+---
 
-\`\`\`
+<div align="center">
 
-Execute apenas scripts realmente existentes no \`package.json\`.
+Desenvolvido por **Cauã Souza** & **Kauã Orcia**
 
-**---**
-
-**# Staging**
-
-A preparação de staging está documentada em:
-
-\`\`\`text
-
-docs/staging.md
-
-\`\`\`
-
-Template:
-
-\`\`\`text
-
-.env.staging.example
-
-\`\`\`
-
-O deploy externo de staging deve ser tratado separadamente.
-
-Não considerar:
-
-\`\`\`text
-
-staging preparado
-
-\`\`\`
-
-como:
-
-\`\`\`text
-
-staging publicado em produção/servidor externo
-
-\`\`\`
-
-**---**
-
-**# Documentação**
-
-Antes de continuar o desenvolvimento, leia:
-
-\| Documento | Conteúdo |
-
-\|---|---|
-
-\| [docs/api-v1.md]\(docs/api-v1.md) | Contratos REST utilizados pelo frontend e demais consumidores. |
-
-\| [docs/api-errors.md]\(docs/api-errors.md) | Padrão e códigos de erro da API. |
-
-\| [docs/permissoes.md]\(docs/permissoes.md) | Regras e permissões por papel. |
-
-\| [docs/fase2-caua.md]\(docs/fase2-caua.md) | Entregas da frente de API, segurança e infraestrutura da Fase 2. |
-
-\| [docs/fase3-kaua-frontend.md]\(docs/fase3-kaua-frontend.md) | Entrega e validações do frontend conectado à API na Fase 3. |
-
-\| [docs/fase4-caua.md]\(docs/fase4-caua.md) | Auditoria, correções, testes e evidências da parte do Cauã na Fase 4. |
-
-\| [docs/fase5-caua.md]\(docs/fase5-caua.md) | Regras, persistência, validação e pendências da parte do Cauã na Fase 5. |
-
-\| [docs/fase6-caua.md]\(docs/fase6-caua.md) | Evidências de observabilidade, integridade, testes e restores da Fase 6. |
-
-\| [docs/backup-piloto.md]\(docs/backup-piloto.md) | Procedimentos PowerShell de backup pré/pós e restore isolado. |
-
-\| [docs/fase7-caua.md]\(docs/fase7-caua.md) | Arquitetura de planos, assinatura, cobrança, webhooks e limites da Fase 7. |
-
-\| [docs/termos-de-uso.md]\(docs/termos-de-uso.md) | Termos de Uso do SaaS — minuta para revisão jurídica. |
-
-\| [docs/politica-privacidade.md]\(docs/politica-privacidade.md) | Política de Privacidade com o inventário real de dados coletados. |
-
-\| [docs/revisao-lgpd.md]\(docs/revisao-lgpd.md) | Revisão técnica de LGPD, isolamento entre oficinas e controle de acesso. |
-
-\| [docs/contrato-comercial.md]\(docs/contrato-comercial.md) | Minuta de contrato de prestação de serviço. |
-
-\| [docs/sla.md]\(docs/sla.md) | Proposta de SLA, com números pendentes de aprovação. |
-
-\| [docs/canais-suporte.md]\(docs/canais-suporte.md) | Canais oficiais, horários, prioridades e escalonamento. |
-
-\| [docs/politica-cancelamento.md]\(docs/politica-cancelamento.md) | Cancelamento, retenção, exportação e reativação. |
-
-\| [docs/processo-atendimento.md]\(docs/processo-atendimento.md) | Fluxo interno de atendimento e registro mínimo de chamado. |
-
-\| [docs/staging.md]\(docs/staging.md) | Preparação e configuração de staging. |
-
-\| [docs/arquitetura.md]\(docs/arquitetura.md) | Decisões arquiteturais. |
-
-\| [docs/fase1-finalizacao.md]\(docs/fase1-finalizacao.md) | Finalização técnica da Fase 1. |
-
-\| [docs/aceite-fase-1.md]\(docs/aceite-fase-1.md) | Critérios de aceite da Fase 1. |
-
-**---**
-
-**# Para continuar a Fase 6**
-
-A entrega de frontend da Fase 5 feita pelo Kauã já está incorporada e documentada em:
-
-[carteira, contatos, recuperação e validação]\(docs/fase5-kaua-frontend.md).
-
-Esse documento distingue a entrega atual das funções adicionais disponíveis na API
-e do aceite integrado antes do piloto.
-
-Para continuar a Fase 6, leia:
-
-- [docs/fase5-caua.md]\(docs/fase5-caua.md);
-- [docs/fase6-caua.md]\(docs/fase6-caua.md);
-- [docs/backup-piloto.md]\(docs/backup-piloto.md);
-- os contratos da API;
-- a matriz de permissões.
-
-Confira a branch antes de alterar arquivos. A branch desta fase deve ser:
-
-\`feature/fase6-observabilidade-piloto\`
-
-Não crie nem troque de branch automaticamente.
-
-A interface da Fase 6 é a frente do Kauã. Preserve o frontend já integrado e valide
-mensagens de erro, sessão, persistência e fluxo real conforme o relatório desta fase.
-
-Os backups reais pré-piloto e pós-piloto só devem ser marcados como executados quando
-o piloto real acontecer. Até lá, permanecem válidos apenas os procedimentos, scripts
-e restores testados em ambiente isolado.
-
-**---**
-
-**# Atenção ao OrderDetail.tsx**
-
-O arquivo:
-
-\`\`\`text
-
-frontend/src/OrderDetail.tsx
-
-\`\`\`
-
-teve histórico de problema de encoding/mojibake durante fases anteriores.
-
-Sempre utilizar como referência a versão atual versionada no projeto.
-
-Não restaurar automaticamente versões antigas de stash ou branches antigas sobre esse arquivo.
-
-**---**
-
-**# Fase 6 — preparação do piloto**
-
-O guia **\*\*Primeiros passos\*\*** está disponível na navegação da oficina. Consulte
-
-[o roteiro de duas oficinas, tempos e feedback]\(docs/fase6-piloto.md) e
-
-[a entrega de frontend e seus limites]\(docs/fase6-kaua-frontend.md).
-
-As sessões reais e a aprovação comercial permanecem pendentes; testes automatizados
-
-não representam resultados de usuários.
-
-**# Escopo futuro**
-
-Fora da Fase 5 V1: WhatsApp API, envio automático de mensagens, IA/scoring, CRM
-
-completo, estoque, financeiro/fiscal/pagamentos, agenda avançada, marketplace,
-
-microserviços e Kafka. Staging externo continua uma etapa separada.
+</div>
