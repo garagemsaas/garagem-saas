@@ -142,7 +142,7 @@ da ação. Apenas programação de revisão/reavaliação usa a timeline da OS, 
 
 ## Endpoints e relatórios
 
-Contratos completos, exemplos, filtros e erros em [api-v1.md](api-v1.md#fase-5--dinheiro-esquecido).
+Contratos completos, exemplos, filtros e erros em [api-v1.md](../api/api-v1.md#fase-5--dinheiro-esquecido).
 Base do módulo: `/api/v1/dinheiro-esquecido`.
 
 | Método | Caminho | Resposta |

@@ -16,11 +16,8 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.*;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-import org.testcontainers.containers.PostgreSQLContainer;
 
 /**
  * Cobertura da Fase 3 — primeira integração. Exercita exatamente os seis contratos que o frontend
@@ -34,34 +31,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 @AutoConfigureMockMvc
-class Fase3IT {
-  static PostgreSQLContainer<?> postgres;
-
-  @DynamicPropertySource
-  static void config(DynamicPropertyRegistry r) {
-    String local = System.getenv("TEST_DATABASE_URL");
-    if (local == null) {
-      postgres = new PostgreSQLContainer<>("postgres:17.11-alpine");
-      postgres.start();
-      r.add("spring.datasource.url", postgres::getJdbcUrl);
-      r.add("spring.datasource.username", postgres::getUsername);
-      r.add("spring.datasource.password", postgres::getPassword);
-    } else {
-      r.add("spring.datasource.url", () -> local);
-      r.add("spring.datasource.username", () -> System.getenv("TEST_DATABASE_USER"));
-      r.add("spring.datasource.password", () -> System.getenv("TEST_DATABASE_PASSWORD"));
-    }
-    r.add("app.jwt.secret", () -> "test-only-secret-at-least-thirty-two-bytes-long");
-    r.add("app.storage.access-key", () -> "test-user");
-    r.add("app.storage.secret-key", () -> "test-only-storage-password");
-    r.add("spring.datasource.hikari.maximum-pool-size", () -> 8);
-  }
-
-  @AfterAll
-  static void close() {
-    if (postgres != null) postgres.stop();
-  }
-
+class Fase3IT extends br.com.garagem.suporte.IntegracaoBase {
   @Autowired MockMvc mvc;
   @Autowired ObjectMapper json;
   @Autowired JdbcTemplate jdbc;

@@ -53,12 +53,28 @@ public class CobrancaService {
       String mensagem,
       UUID usuarioId,
       Map<String, ?> metadados) {
+    return registrar(assinatura, tipo, mensagem, usuarioId, metadados, null);
+  }
+
+  /**
+   * Grava um fato financeiro. Todos os campos são definidos <b>antes</b> de salvar: a tabela é
+   * imutável por gatilho, então qualquer alteração depois do insert seria recusada pelo banco — e,
+   * enquanto {@code save()} caía em {@code merge()}, era pior ainda: silenciosamente perdida.
+   */
+  public EventoCobranca registrar(
+      Assinatura assinatura,
+      TipoEventoCobranca tipo,
+      String mensagem,
+      UUID usuarioId,
+      Map<String, ?> metadados,
+      String eventoExternoId) {
     var e = new EventoCobranca();
     e.criadoEm = clock.instant();
     e.assinaturaId = assinatura == null ? null : assinatura.id;
     e.usuarioId = usuarioId;
     e.tipo = tipo;
     e.provedor = assinatura == null ? null : assinatura.provedor;
+    e.providerEventId = eventoExternoId;
     e.mensagem = mensagem;
     e.metadados = higienizar(metadados);
     eventos.save(e);
@@ -70,10 +86,9 @@ public class CobrancaService {
     return e;
   }
 
-  public void registrarWebhook(
+  public EventoCobranca registrarWebhook(
       Assinatura assinatura, TipoEventoCobranca tipo, String eventoExternoId, String mensagem) {
-    var e = registrar(assinatura, tipo, mensagem, null, null);
-    e.providerEventId = eventoExternoId;
+    return registrar(assinatura, tipo, mensagem, null, null, eventoExternoId);
   }
 
   @Transactional(readOnly = true)

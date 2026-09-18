@@ -1,6 +1,6 @@
 package br.com.garagem.veiculo.application;
 
-import br.com.garagem.cliente.repository.ClienteRepository;
+import br.com.garagem.cliente.port.ClientePort;
 import br.com.garagem.shared.error.ApiException;
 import br.com.garagem.shared.persistence.Filtros;
 import br.com.garagem.shared.persistence.Pagina;
@@ -17,12 +17,12 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class VeiculoService {
   private final VeiculoRepository repo;
-  private final ClienteRepository clientes;
+  private final ClientePort clientes;
   private final br.com.garagem.assinatura.application.PlanoLimiteService limites;
 
   public VeiculoService(
       VeiculoRepository repo,
-      ClienteRepository clientes,
+      ClientePort clientes,
       br.com.garagem.assinatura.application.PlanoLimiteService limites) {
     this.repo = repo;
     this.clientes = clientes;
@@ -101,9 +101,7 @@ public class VeiculoService {
   }
 
   private void preencher(Veiculo v, Entrada i) {
-    clientes
-        .findByIdAndOficinaId(i.clienteId(), TenantContext.current())
-        .orElseThrow(ApiException::missing);
+    if (!clientes.existe(i.clienteId())) throw ApiException.missing();
     v.clienteId = i.clienteId();
     v.placa = normalizar(i.placa());
     v.marca = i.marca().trim();

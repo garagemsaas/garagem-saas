@@ -128,7 +128,7 @@ Nenhum desses limites impede o fluxo de aceite solicitado e validado; sua amplia
 
 Criados:
 
-- `docs/api-contracts.md`, `docs/fase1-finalizacao.md`.
+- `docs/api-contracts-fase1.md`, `docs/fase1-finalizacao.md`.
 - `frontend/src/api.ts`, `frontend/src/PrivatePhoto.tsx`, `frontend/src/PublicOrder.tsx`.
 - `frontend/tests/api.test.mjs`, `frontend/tests/e2e-real.mjs`, `frontend/tests/public-real.mjs`.
 - `backend/src/test/java/br/com/garagem/shared/error/ApiErrorsTest.java`.
@@ -164,7 +164,7 @@ Os responsáveis humanos **não foram atribuídos**. “Concluído” abaixo ref
 | Timeline | A DEFINIR — KAUÃ/CAUÃ | OS `/{id}/timeline` | Timeline | ESSENCIAL | Eventos persistidos até conclusão | CONCLUÍDO |
 | Busca e paginação | A DEFINIR — KAUÃ/CAUÃ | GET clientes, veículos, OS, usuários | Listas / Busca global | ESSENCIAL | Todas as páginas lidas; sem parâmetros fictícios | CONCLUÍDO; escala documentada |
 | Isolamento e conflitos | A DEFINIR — KAUÃ/CAUÃ | Recursos autenticados | Todas as telas operacionais | ESSENCIAL | REST, repository, FK e concorrência com banco real | CONCLUÍDO |
-| Contratos REST e aceite | A DEFINIR — KAUÃ/CAUÃ | 32 endpoints em api-contracts.md | Documentação | ESSENCIAL | Exemplos coerentes e evidências executadas | CONCLUÍDO |
+| Contratos REST e aceite | A DEFINIR — KAUÃ/CAUÃ | 32 endpoints em api-contracts-fase1.md | Documentação | ESSENCIAL | Exemplos coerentes e evidências executadas | CONCLUÍDO |
 | Plano único pago | A DEFINIR — KAUÃ/CAUÃ | Sem endpoint de cobrança | Sem tela comercial | ESSENCIAL | Confirmar pacote/preço sem freemium | PENDÊNCIA COMERCIAL/HUMANA |
 | Pilotos, responsáveis e prazos | A DEFINIR — KAUÃ/CAUÃ | Não se aplica | Não se aplica | ESSENCIAL | Preencher e aprovar os campos acima | PENDÊNCIA COMERCIAL/HUMANA |
 | Agenda, pátio, estoque, IA e demais Fase 2 | A DEFINIR — KAUÃ/CAUÃ | Não implementados | Somente referências preexistentes | FUTURO | Escopo separado, sem implementação nesta entrega | FORA DA FASE 1 |

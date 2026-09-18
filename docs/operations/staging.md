@@ -183,13 +183,13 @@ docker compose logs --no-log-prefix api | Select-String -SimpleMatch '<requestId
 
 ## Backup
 
-Use o procedimento validado da Fase 6 em [backup-piloto.md](backup-piloto.md).
+Use o procedimento validado da Fase 6 em [backup-piloto.md](../operations/backup-piloto.md).
 Ele pausa API e MinIO, gera dump custom do PostgreSQL e cópia fria do storage,
 registra checksums e restaura somente em projeto novo com volumes próprios.
 Não copie o volume MinIO enquanto houver escritores ativos.
 
 Backups reais pré/pós-piloto continuam pendentes; os ensaios locais estão
-registrados em [fase6-caua.md](fase6-caua.md).
+registrados em [fase6-caua.md](../archive/fase6-caua.md).
 
 ## Atualização
 

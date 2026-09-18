@@ -11,7 +11,7 @@ Fonte de verdade: os Controllers, DTOs e serviços deste checkout, mais `Securit
 15/09/2026 e conferido contra o `/v3/api-docs` da aplicação em execução: **33 operações de negócio
 em 23 caminhos**. Exemplos são fictícios; nenhum token aqui é utilizável.
 
-Sucede `docs/api-contracts.md`, da Fase 1, que continua valendo para o que não mudou. As diferenças
+Sucede `docs/api-contracts-fase1.md`, da Fase 1, que continua valendo para o que não mudou. As diferenças
 da Fase 2 estão reunidas em [O que mudou na Fase 2](#o-que-mudou-na-fase-2) e as da Fase 3 em
 [O que mudou na Fase 3](#o-que-mudou-na-fase-3).
 
@@ -28,11 +28,11 @@ inventário abaixo continua sendo a lista completa da API.
   cada requisição com usuário ativo, papel atual e oficina ativa. **Não existe header, query ou
   campo de corpo para escolher outra oficina.**
 - **Papéis**: `OWNER`, `ATENDENTE`, `MECANICO`. Nas tabelas, **Todos** = as três roles e
-  **Escritório** = `OWNER` e `ATENDENTE`. A matriz completa está em [permissoes.md](permissoes.md).
+  **Escritório** = `OWNER` e `ATENDENTE`. A matriz completa está em [permissoes.md](../architecture/permissoes.md).
 - **Datas** são ISO-8601 em UTC (`2026-09-15T19:31:16Z`). Ids são UUID. Valores monetários são
   decimais com duas casas, em texto JSON numérico.
 - **Campos opcionais** podem vir `null`. Revisão começa em zero.
-- **Erros** seguem RFC 7807 com `code` estável — veja [api-errors.md](api-errors.md). Todo endpoint
+- **Erros** seguem RFC 7807 com `code` estável — veja [api-errors.md](../api/api-errors.md). Todo endpoint
   protegido pode responder 401 e 403; id inexistente ou de outra oficina responde 404. As tabelas
   listam apenas os erros específicos de cada operação.
 - **`X-Request-Id`** vem em toda resposta e é o mesmo valor do campo `requestId` dos erros.
@@ -482,7 +482,7 @@ Regras que valem para os seis e não se repetem em cada um:
 - **Oficina** vem sempre do token. Não existe parâmetro, header ou campo de corpo para escolher
   outra. Id de outra oficina responde **404**, nunca 403 — [ver o porquê](api-errors.md#garantias).
 - **Erros** em RFC 7807 com `code` estável. **Decida por `code`**; `detail` é texto para pessoas,
-  já em português, e pode ser reescrito. Detalhe em [api-errors.md](api-errors.md).
+  já em português, e pode ser reescrito. Detalhe em [api-errors.md](../api/api-errors.md).
 - **`X-Request-Id`** vem em toda resposta e repete o `requestId` do corpo de erro.
 - **Todo endpoint protegido** pode responder 401 (sem sessão, token expirado, conta desativada) e
   403 (papel insuficiente). As tabelas abaixo listam só o que é específico da operação.
@@ -1199,7 +1199,7 @@ mudou. Quem já integrava contra a Fase 2 não precisa alterar nada.
 
 ## Fase 5 — Dinheiro Esquecido
 
-Referência de regras, persistência, concorrência e decisões: [fase5-caua.md](fase5-caua.md).
+Referência de regras, persistência, concorrência e decisões: [fase5-caua.md](../archive/fase5-caua.md).
 Todos os endpoints abaixo exigem Bearer e papel **OWNER ou ATENDENTE**. MECANICO: 403.
 A oficina vem do contexto autenticado; nenhum request recebe oficinaId. IDs alheios
 respondem 404, filtros alheios retornam página vazia. Não há envio de WhatsApp/e-mail.
@@ -1373,8 +1373,8 @@ o rejeitado não é registrado. Após recarregar, o usuário pode registrar a ou
  tentativa. Não repetir gravação financeira automaticamente após conflito.
 ## Fase 7 — Assinatura, planos e cobrança
 
-Referência de arquitetura, gateway e webhooks: [fase7-caua.md](fase7-caua.md).
-Regras de acesso em [permissoes.md](permissoes.md#fase-7--assinatura-planos-e-cobrança).
+Referência de arquitetura, gateway e webhooks: [fase7-caua.md](../archive/fase7-caua.md).
+Regras de acesso em [permissoes.md](../architecture/permissoes.md#fase-7--assinatura-planos-e-cobrança).
 
 A assinatura pertence à **oficina**, não ao usuário. Nenhum request recebe `oficinaId`: a oficina
 vem do token. Leitura para OWNER e ATENDENTE; decisão contratual só para OWNER; MECANICO 403.
@@ -1446,7 +1446,7 @@ assinatura à tolerância: o acesso pleno volta na confirmação do pagamento, q
 ### Histórico de cobrança
 
 Trilha imutável, mais recentes primeiro. Nenhum segredo, token ou número de cartão é gravado.
-Tipos em [fase7-caua.md](fase7-caua.md#12-como-consultar-logs-de-cobrança).
+Tipos em [fase7-caua.md](../archive/fase7-caua.md#12-como-consultar-logs-de-cobrança).
 
 ### Webhook
 
@@ -1461,4 +1461,4 @@ sem reprocessar — reentrega é comportamento normal de gateway. `status` vale 
 
 `PLAN_LIMIT_REACHED`, `STORAGE_LIMIT_REACHED` e `SUBSCRIPTION_INACTIVE` respondem **402** e podem
 aparecer em endpoints de outras fases — criação de usuário, veículo, OS e upload de foto. Detalhes
-em [api-errors.md](api-errors.md).
+em [api-errors.md](../api/api-errors.md).

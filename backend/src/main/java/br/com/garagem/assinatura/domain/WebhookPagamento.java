@@ -3,6 +3,7 @@ package br.com.garagem.assinatura.domain;
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.UUID;
+import org.springframework.data.domain.Persistable;
 
 /**
  * Recebimento bruto do gateway. Fora do escopo de tenant de propósito: o evento chega antes de
@@ -10,8 +11,27 @@ import java.util.UUID;
  */
 @Entity
 @Table(name = "webhook_pagamento")
-public class WebhookPagamento {
+public class WebhookPagamento implements Persistable<UUID> {
   @Id public UUID id = UUID.randomUUID();
+
+  /** Mesmo motivo de TenantEntity: id atribuído na construção faria o save virar merge. */
+  @Transient private boolean persistida;
+
+  @Override
+  public UUID getId() {
+    return id;
+  }
+
+  @Override
+  public boolean isNew() {
+    return !persistida;
+  }
+
+  @PostLoad
+  @PostPersist
+  void marcarPersistida() {
+    persistida = true;
+  }
 
   public Instant criadoEm = Instant.now();
   public String provedor;

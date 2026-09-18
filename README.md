@@ -1,17 +1,17 @@
 <div align="center">
 
-# Automotive Operations SaaS
+# Plataforma SaaS de Gestão Automotiva
 
-### Plataforma SaaS para gestão de oficinas, serviços automotivos e operações comerciais
+### Gestão operacional, relacionamento com clientes e recuperação de oportunidades para empresas do setor automotivo.
 
-Sistema web desenvolvido para centralizar operações automotivas, conectar equipes, organizar processos e transformar dados operacionais em oportunidades de negócio.
+Sistema web multi-tenant desenvolvido para centralizar operações, organizar atendimentos, acompanhar serviços e transformar dados operacionais em oportunidades comerciais.
 
-![Java](https://img.shields.io/badge/Java-25-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
-![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.5-6DB33F?style=for-the-badge&logo=springboot&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)
-![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)
-![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![Java](https://img.shields.io/badge/Java-25-ED8B00?style=flat-square&logo=openjdk&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.5-6DB33F?style=flat-square&logo=springboot&logoColor=white)
+![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-4169E1?style=flat-square&logo=postgresql&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=docker&logoColor=white)
 
 </div>
 
@@ -19,177 +19,92 @@ Sistema web desenvolvido para centralizar operações automotivas, conectar equi
 
 ## Sobre o projeto
 
-Este projeto é uma plataforma SaaS multi-tenant desenvolvida para digitalizar e organizar operações do setor automotivo.
+A plataforma foi criada para empresas do setor automotivo que precisam concentrar em um único ambiente informações que normalmente ficam espalhadas entre sistemas, planilhas, mensagens e controles manuais.
 
-A aplicação centraliza o ciclo completo de atendimento, desde o cadastro do cliente e do veículo até diagnóstico, orçamento, aprovação, execução do serviço, acompanhamento e conclusão.
+O fluxo acompanha toda a jornada operacional, desde o cadastro do cliente e do veículo até diagnóstico, orçamento, aprovação, execução, acompanhamento e conclusão do serviço.
 
-Além da operação tradicional, a plataforma possui recursos voltados para recuperação de oportunidades comerciais, gestão de assinaturas, controle de planos e acompanhamento operacional.
-
-O sistema foi desenvolvido utilizando uma arquitetura de **monólito modular**, priorizando segurança, separação de responsabilidades, escalabilidade gradual e facilidade de manutenção.
+Além da gestão operacional, o sistema identifica oportunidades comerciais a partir dos próprios dados da empresa, permitindo acompanhar contatos, retornos e valores recuperados.
 
 ---
 
-## Principais funcionalidades
+## Principais recursos
 
-### Gestão operacional
+### Operação
 
-- Cadastro de clientes
-- Cadastro e histórico de veículos
-- Ordens de serviço
-- Responsáveis e mecânicos
-- Checklist técnico
-- Diagnósticos
-- Registro fotográfico
-- Timeline completa da OS
-- Controle de status
-- Histórico operacional
+- clientes e veículos;
+- ordens de serviço;
+- responsáveis e equipe técnica;
+- checklist;
+- diagnóstico;
+- registro fotográfico;
+- controle de status;
+- linha do tempo do atendimento.
 
-### Orçamentos
+### Orçamentos e acompanhamento
 
-- Criação de orçamentos
-- Versionamento imutável
-- Histórico de alterações
-- Aprovação pública por link
-- Rejeição de orçamento
-- Controle de validade
-- Auditoria das decisões
+- criação e versionamento de orçamentos;
+- preservação do histórico;
+- aprovação ou recusa por acompanhamento digital;
+- registro de decisões;
+- rastreabilidade do atendimento.
 
 ### Oportunidades comerciais
 
-Módulo destinado à identificação automática de oportunidades que podem representar faturamento perdido.
-
-Entre os cenários monitorados:
+O módulo de oportunidades identifica situações que podem representar receita não recuperada, como:
 
 - orçamentos sem resposta;
 - revisões atrasadas;
-- clientes que precisam de nova abordagem;
-- serviços pendentes de reavaliação;
-- oportunidades recuperadas;
-- valores potenciais e efetivamente recuperados.
+- reavaliações pendentes;
+- clientes que precisam de novo contato;
+- oportunidades em acompanhamento;
+- valores potenciais e recuperados.
 
-O objetivo é transformar dados operacionais em ações comerciais.
+### Planos e assinaturas
 
----
+A aplicação possui infraestrutura para operação como SaaS, incluindo:
 
-## Dashboard
-
-O dashboard consolida indicadores importantes para a operação:
-
-- ordens de serviço;
-- clientes;
-- veículos;
-- serviços em andamento;
-- oportunidades abertas;
-- valores potenciais;
-- valores recuperados;
-- indicadores comerciais.
+- planos;
+- assinaturas;
+- limites de utilização;
+- controle de usuários;
+- controle de veículos e ordens;
+- armazenamento;
+- cobrança;
+- webhooks;
+- inadimplência;
+- suspensão e reativação;
+- métricas de utilização.
 
 ---
 
 ## Multi-tenancy
 
-A aplicação foi projetada para atender múltiplas empresas utilizando a mesma infraestrutura.
+Cada empresa utiliza um contexto isolado.
 
-Cada empresa possui seu próprio contexto isolado.
+O isolamento é aplicado no backend e no banco de dados, impedindo que uma empresa consulte ou relacione recursos pertencentes a outra.
 
-```text
-Empresa A
-├── usuários
-├── clientes
-├── veículos
-├── ordens
-├── fotos
-├── orçamentos
-└── oportunidades
-
-Empresa B
-├── usuários
-├── clientes
-├── veículos
-├── ordens
-├── fotos
-├── orçamentos
-└── oportunidades
-```
-
-O backend é responsável pela determinação do tenant.
-
-O frontend nunca é considerado autoridade para definir a empresa proprietária de um recurso.
-
----
-
-## Controle de acesso
-
-Atualmente existem três níveis principais de acesso:
-
-| Papel | Responsabilidade |
-|---|---|
-| `OWNER` | Administração da empresa e acesso completo |
-| `ATENDENTE` | Atendimento e operação administrativa |
-| `MECANICO` | Operação técnica relacionada aos serviços |
-
-As permissões são validadas no backend através do Spring Security.
-
----
-
-## Planos e assinaturas
-
-A plataforma possui infraestrutura própria para comercialização como SaaS.
-
-Recursos implementados:
-
-- planos;
-- assinaturas;
-- limites por plano;
-- quantidade de usuários;
-- quantidade de veículos;
-- ordens de serviço;
-- armazenamento;
-- cobrança;
-- webhooks;
-- inadimplência;
-- suspensão;
-- reativação;
-- métricas de utilização;
-- histórico de cobrança.
+O tenant é determinado pelo contexto autenticado; o frontend não é tratado como autoridade para definir a empresa proprietária de um recurso.
 
 ---
 
 ## Segurança
 
-A aplicação possui mecanismos de segurança implementados em diferentes camadas.
+A plataforma possui mecanismos de segurança e proteção operacional em diferentes camadas, incluindo:
 
-Entre eles:
-
-- autenticação baseada em tokens;
-- access token e refresh token;
-- rotação e revogação de refresh tokens;
+- autenticação e autorização;
+- controle de acesso por papel;
 - isolamento multi-tenant;
-- autorização baseada em papéis;
+- rotação e revogação de sessão;
 - rate limiting;
 - proteção contra brute force;
-- validação backend;
-- queries parametrizadas por JPA/Hibernate;
-- controle de uploads;
-- armazenamento privado de imagens;
+- validação de dados;
+- uploads controlados;
+- armazenamento privado de arquivos;
 - headers de segurança;
-- Content Security Policy;
 - CORS configurável;
+- tratamento padronizado de erros;
 - logs correlacionados por request ID;
-- proteção de endpoints administrativos;
-- tratamento padronizado de erros.
-
-A aplicação também possui testes específicos para:
-
-- IDOR/BOLA;
-- isolamento entre tenants;
-- autorização;
-- SQL Injection;
-- uploads;
-- JWT;
-- webhooks;
-- concorrência;
-- duplicidade de operações.
+- proteção contra duplicidade e concorrência em operações críticas.
 
 ---
 
@@ -197,295 +112,79 @@ A aplicação também possui testes específicos para:
 
 A aplicação utiliza **monólito modular**.
 
+Os módulos possuem fronteiras explícitas e se comunicam por contratos definidos, mantendo o deploy simples sem abrir mão da separação entre responsabilidades.
+
 ```text
 Frontend
    │
-   │ REST / JSON
    ▼
-Controllers
+REST API
    │
    ▼
-Application / Services
+Application / Domain
    │
    ▼
-Domain
+Persistence
    │
-   ▼
-Repositories
-   │
-   ▼
-PostgreSQL
+   ├── PostgreSQL
+   └── MinIO / S3
 ```
 
-Integrações de armazenamento utilizam:
+---
+
+## Tecnologia
+
+| Área | Tecnologias |
+|---|---|
+| Backend | Java 25 · Spring Boot · Spring Security · JPA/Hibernate |
+| Frontend | React 19 · TypeScript · Vite |
+| Banco | PostgreSQL 17 · Flyway |
+| Arquivos | MinIO / S3 |
+| API | REST · OpenAPI |
+| Infraestrutura | Docker · Docker Compose · GitHub Actions |
+| Testes | JUnit · Testcontainers · Playwright · axe-core |
+
+---
+
+## Qualidade
+
+A base atual possui:
 
 ```text
-API
- │
- └── MinIO / S3
+23 testes unitários
+154 testes de integração
+33 testes de navegador
+PostgreSQL e MinIO reais nos testes de integração
+Cenários de concorrência, billing e isolamento multi-tenant
+Testes de interface em desktop, tablet e mobile
+Verificações de acessibilidade WCAG 2.1 AA
 ```
 
-Essa abordagem mantém o deploy simples sem abrir mão da separação entre os módulos da aplicação.
+A arquitetura também possui testes que impedem regressões nas fronteiras entre módulos.
 
 ---
 
-## Tecnologias
+## Documentação
 
-### Backend
-
-- Java 25
-- Spring Boot 3.5
-- Spring Web
-- Spring Security
-- Spring Data JPA
-- Hibernate
-- Bean Validation
-- Flyway
-- Spring Actuator
-- OpenAPI / Swagger
-- Maven
-
-### Frontend
-
-- React 19
-- TypeScript
-- Vite
-- CSS
-- Playwright
-
-### Banco de dados
-
-- PostgreSQL 17
-
-### Storage
-
-- MinIO
-- API compatível com S3
-
-### Infraestrutura
-
-- Docker
-- Docker Compose
-- Git
-- GitHub
-- GitHub Actions
-
-### Testes
-
-- JUnit
-- Mockito
-- Testcontainers
-- Playwright
-- axe-core
+| Área | Local |
+|---|---|
+| API | `docs/api/` |
+| Arquitetura | `docs/architecture/` |
+| Operação | `docs/operations/` |
+| Segurança | `docs/security/` |
+| Produto | `docs/product/` |
+| Qualidade | `docs/quality/` |
+| Histórico | `docs/archive/` |
 
 ---
 
-## Estrutura do projeto
+## Evolução
 
-```text
-.
-├── backend/
-│   ├── src/main/java/
-│   ├── src/main/resources/
-│   │   └── db/migration/
-│   └── src/test/
-│
-├── frontend/
-│   ├── src/
-│   ├── public/
-│   ├── scripts/
-│   └── tests/
-│
-├── docs/
-│
-├── scripts/
-│
-├── compose.yml
-│
-└── README.md
-```
+A arquitetura foi preparada para permitir expansão gradual para outras operações do setor automotivo.
 
----
+Entre as possibilidades previstas:
 
-## Banco de dados
-
-O PostgreSQL é utilizado como banco principal.
-
-Alterações de schema são controladas exclusivamente através do Flyway.
-
-```text
-V1 → núcleo operacional
-V2 → integridade de orçamento
-V3 → oportunidades comerciais
-V4 → planos e assinaturas
-V5 → segurança e ciclo de tokens
-...
-```
-
-Isso permite que a evolução do banco seja reproduzível e versionada junto ao código.
-
----
-
-## Armazenamento de arquivos
-
-Fotos relacionadas às operações são armazenadas fora do banco.
-
-A aplicação utiliza MinIO/S3 para armazenamento privado.
-
-O banco mantém apenas os metadados necessários para relacionar o objeto ao:
-
-- tenant;
-- veículo;
-- ordem de serviço;
-- usuário responsável.
-
----
-
-## Observabilidade
-
-A aplicação registra informações importantes para diagnóstico:
-
-- request ID;
-- endpoint;
-- método HTTP;
-- status;
-- duração;
-- contexto autenticado;
-- falhas de autenticação;
-- erros inesperados.
-
-Também possui:
-
-```text
-/actuator/health
-```
-
-para monitoramento de disponibilidade.
-
----
-
-## API
-
-A API segue o prefixo:
-
-```text
-/api/v1
-```
-
-Durante o desenvolvimento, a documentação OpenAPI pode ser acessada através do Swagger.
-
-```text
-/swagger-ui.html
-```
-
-Em ambiente de produção, sua exposição pode ser desabilitada por configuração.
-
----
-
-## Executando localmente
-
-### Requisitos
-
-- Java 25
-- Docker
-- Docker Compose
-- Node.js
-- npm
-
-Clone o projeto:
-
-```bash
-git clone <repository-url>
-cd <repository>
-```
-
-Crie o arquivo de configuração:
-
-```bash
-cp .env.example .env
-```
-
-Configure as variáveis necessárias e execute:
-
-```bash
-docker compose --env-file .env up -d --build
-```
-
----
-
-## Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-Aplicação local:
-
-```text
-http://localhost:5173
-```
-
-API:
-
-```text
-http://localhost:8080
-```
-
----
-
-## Testes
-
-### Backend
-
-```bash
-cd backend
-./mvnw verify
-```
-
-Os testes de integração utilizam ambientes reais através do Testcontainers.
-
-### Frontend
-
-```bash
-cd frontend
-
-npm run typecheck
-npm run lint
-npm test
-npm run build
-```
-
----
-
-## Qualidade e engenharia
-
-O projeto segue princípios como:
-
-- separação de responsabilidades;
-- arquitetura modular;
-- APIs versionadas;
-- DTOs;
-- migrations versionadas;
-- validação no backend;
-- testes automatizados;
-- isolamento multi-tenant;
-- segurança por padrão;
-- revisão de código;
-- Conventional Commits;
-- desenvolvimento orientado por branches;
-- documentação técnica.
-
----
-
-## Evolução do produto
-
-A arquitetura foi construída para permitir expansão progressiva para outras operações do setor automotivo.
-
-Entre as possibilidades futuras:
-
-- gestão de estoque de veículos;
+- estoque de veículos;
 - leads comerciais;
 - propostas;
 - reservas;
@@ -497,69 +196,62 @@ Entre as possibilidades futuras:
 - automações comerciais;
 - inteligência aplicada aos dados operacionais.
 
-Sem necessidade de migrar prematuramente para microserviços.
-
 ---
 
 ## Status
 
-```text
-Core operacional                 ✅
-Frontend integrado               ✅
-Multi-tenancy                    ✅
-Autenticação e autorização       ✅
-Orçamento e aprovação pública    ✅
-Oportunidades comerciais         ✅
-Planos e assinaturas             ✅
-Cobrança e webhooks              ✅
-Observabilidade                  ✅
-Auditoria de segurança           ✅
-Testes automatizados             ✅
-
-Piloto real                      🚧
-Infraestrutura de produção       🚧
-```
-
----
-
-## Objetivo técnico
-
-Mais do que implementar funcionalidades, este projeto também representa a construção de uma aplicação SaaS completa utilizando conceitos encontrados em sistemas reais:
-
-- arquitetura;
-- backend;
-- frontend;
-- segurança;
-- banco de dados;
-- autenticação;
-- multi-tenancy;
-- armazenamento de arquivos;
-- billing;
-- observabilidade;
-- testes;
-- infraestrutura.
+| Área | Situação |
+|---|---|
+| Núcleo operacional | ✅ |
+| Frontend integrado | ✅ |
+| Multi-tenancy | ✅ |
+| Autenticação e autorização | ✅ |
+| Orçamentos e acompanhamento | ✅ |
+| Oportunidades comerciais | ✅ |
+| Planos e assinaturas | ✅ |
+| Billing e webhooks | ✅ |
+| Segurança e observabilidade | ✅ |
+| Testes automatizados | ✅ |
+| Piloto real | 🚧 |
+| Infraestrutura pública de produção | 🚧 |
 
 ---
 
 ## Desenvolvedores
 
+<div align="center">
+
 <table>
-  <tr>
-    <td align="center">
-      <strong>Cauã Souza</strong><br/>
-      Backend · Software Development · Databases
-    </td>
-    <td align="center">
-      <strong>Kauã Orcia</strong><br/>
-      Frontend · Software Development · Product
-    </td>
-  </tr>
+<tr>
+<td align="center" width="320">
+
+### Cauã Souza
+
+Backend · Arquitetura · Banco de Dados  
+Infraestrutura · Segurança
+
+[GitHub](https://github.com/cauahpsouza)
+
+</td>
+<td align="center" width="320">
+
+### Kauã Orcia
+
+Frontend · Produto · Experiência  
+Interface · Desenvolvimento
+
+</td>
+</tr>
 </table>
+
+</div>
 
 ---
 
 <div align="center">
 
 Desenvolvido por **Cauã Souza** & **Kauã Orcia**
+
+**Produto proprietário. Todos os direitos reservados.**
 
 </div>

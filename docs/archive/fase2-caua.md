@@ -104,4 +104,4 @@ docker compose up -d --build         # exige .env preenchido
 curl -i http://127.0.0.1:8080/actuator/health
 ```
 
-Validação manual completa em [staging.md](staging.md#validação-pós-subida).
+Validação manual completa em [staging.md](../operations/staging.md#validação-pós-subida).

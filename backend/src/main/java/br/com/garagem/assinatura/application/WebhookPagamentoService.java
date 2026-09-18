@@ -30,7 +30,7 @@ public class WebhookPagamentoService {
   }
 
   private final WebhookPagamentoRepository webhooks;
-  private final AssinaturaRepository assinaturas;
+  private final CicloAssinatura ciclo;
   private final AssinaturaService service;
   private final CobrancaService cobranca;
   private final PagamentoProvider provider;
@@ -40,7 +40,7 @@ public class WebhookPagamentoService {
 
   public WebhookPagamentoService(
       WebhookPagamentoRepository webhooks,
-      AssinaturaRepository assinaturas,
+      CicloAssinatura ciclo,
       AssinaturaService service,
       CobrancaService cobranca,
       PagamentoProvider provider,
@@ -48,7 +48,7 @@ public class WebhookPagamentoService {
       org.springframework.transaction.PlatformTransactionManager transacoes,
       Clock clock) {
     this.webhooks = webhooks;
-    this.assinaturas = assinaturas;
+    this.ciclo = ciclo;
     this.service = service;
     this.cobranca = cobranca;
     this.provider = provider;
@@ -70,16 +70,23 @@ public class WebhookPagamentoService {
     var evento = provider.lerEvento(corpoCru);
     if (evento == null)
       throw ApiException.invalid("Payload do webhook inválido: informe id e tipo do evento.");
-    var existente = webhooks.findByProvedorAndProviderEventId(provider.nome(), evento.id());
-    if (existente.isPresent()) return existente.get();
-    var w = new WebhookPagamento();
-    w.criadoEm = clock.instant();
-    w.provedor = provider.nome();
-    w.providerEventId = evento.id();
-    w.tipo = evento.tipo();
-    // Corpo cru truncado: o payload é prova do recebido, não um depósito ilimitado.
-    w.payload = corpoCru.length() > 20000 ? corpoCru.substring(0, 20000) : corpoCru;
-    return webhooks.save(w);
+    // Insere de forma tolerante à corrida e relê. Consultar-e-inserir deixaria duas entregas
+    // simultâneas colidirem no unique, e capturar a violação não resolve: a transação já fica
+    // marcada para rollback, e o gateway receberia 409 num evento que na verdade foi registrado.
+    jdbc.update(
+        """
+        insert into webhook_pagamento(id,criado_em,provedor,provider_event_id,tipo,payload,processado)
+        values(?,?,?,?,?,?,false) on conflict(provedor,provider_event_id) do nothing
+        """,
+        UUID.randomUUID(),
+        java.sql.Timestamp.from(clock.instant()),
+        provider.nome(),
+        evento.id(),
+        evento.tipo(),
+        corpoCru.length() > 20000 ? corpoCru.substring(0, 20000) : corpoCru);
+    return webhooks
+        .findByProvedorAndProviderEventId(provider.nome(), evento.id())
+        .orElseThrow(ApiException::missing);
   }
 
   /**
@@ -88,7 +95,6 @@ public class WebhookPagamentoService {
    * conta própria.
    */
   public Resultado processar(WebhookPagamento w, String corpoCru) {
-    if (w.processado) return Resultado.DUPLICADO;
     var evento = provider.lerEvento(corpoCru);
     UUID oficina = oficinaDa(evento.providerSubscriptionId());
     if (oficina == null) {
@@ -109,7 +115,14 @@ public class WebhookPagamentoService {
   }
 
   private Resultado aplicarEvento(WebhookPagamento w, UUID oficina) {
-    var a = assinaturas.lock(oficina).orElseThrow(ApiException::missing);
+    // Reivindica o evento no banco, não em memória. O UPDATE condicional é atômico: entregas
+    // simultâneas do mesmo id bloqueiam nesta linha, e só a primeira transação a confirmar
+    // enxerga processado=false. As demais atualizam zero linhas e saem como duplicadas.
+    //
+    // A reivindicação vive na MESMA transação do efeito: se aplicar o evento falhar, o rollback
+    // devolve o evento para reprocessamento em vez de marcá-lo como resolvido.
+    if (!reivindicar(w)) return Resultado.DUPLICADO;
+    var a = ciclo.de(oficina);
     w.oficinaId = oficina;
     w.assinaturaId = a.id;
     cobranca.registrarWebhook(
@@ -123,8 +136,40 @@ public class WebhookPagamentoService {
         tratado ? TipoEventoCobranca.WEBHOOK_PROCESSED : TipoEventoCobranca.WEBHOOK_FAILED,
         w.providerEventId,
         tratado ? "Evento " + w.tipo + " aplicado." : "Evento " + w.tipo + " sem tratamento.");
-    marcar(w, true, tratado ? null : "Tipo sem tratamento nesta versão.");
+    concluir(w, oficina, a.id, tratado ? null : "Tipo sem tratamento nesta versão.");
     return tratado ? Resultado.PROCESSADO : Resultado.IGNORADO;
+  }
+
+  /**
+   * Marca o evento como processado apenas se ainda não estava. Devolve true para quem conseguiu.
+   */
+  private boolean reivindicar(WebhookPagamento w) {
+    int linhas =
+        jdbc.update(
+            "update webhook_pagamento set processado=true, processado_em=? where id=? and processado=false",
+            java.sql.Timestamp.from(clock.instant()),
+            w.id);
+    if (linhas == 1) w.processado = true;
+    return linhas == 1;
+  }
+
+  /** Completa o registro do evento já reivindicado, sem mexer no campo que serve de trava. */
+  private void concluir(WebhookPagamento w, UUID oficina, UUID assinatura, String erro) {
+    w.oficinaId = oficina;
+    w.assinaturaId = assinatura;
+    w.erro = erro;
+    jdbc.update(
+        "update webhook_pagamento set erro=?, oficina_id=?, assinatura_id=? where id=?",
+        erro,
+        oficina,
+        assinatura,
+        w.id);
+    LoggerFactory.getLogger(WebhookPagamentoService.class)
+        .atInfo()
+        .addKeyValue("webhook_id", w.id)
+        .addKeyValue("webhook_tipo", w.tipo)
+        .addKeyValue("webhook_processado", true)
+        .log("webhook_pagamento");
   }
 
   /**
@@ -144,25 +189,11 @@ public class WebhookPagamentoService {
       }
       case "assinatura.suspensa" -> {
         service.registrarFalhaDePagamento(a, "suspensão informada pelo provedor");
-        a.inadimplenteDesde = a.inadimplenteDesde == null ? clock.instant() : a.inadimplenteDesde;
-        a.status = StatusAssinatura.INADIMPLENTE;
-        service.aplicarTolerancia(a);
+        service.suspenderPorInformeDoProvedor(a);
         yield true;
       }
       case "assinatura.cancelada" -> {
-        a.status = StatusAssinatura.CANCELADA;
-        a.canceladaEm = a.canceladaEm == null ? clock.instant() : a.canceladaEm;
-        a.cancelamentoEfetivoEm =
-            a.cancelamentoEfetivoEm == null ? clock.instant() : a.cancelamentoEfetivoEm;
-        a.cancelamentoMotivo =
-            a.cancelamentoMotivo == null ? "Cancelada pelo provedor." : a.cancelamentoMotivo;
-        a.atualizadoEm = clock.instant();
-        cobranca.registrar(
-            a,
-            TipoEventoCobranca.SUBSCRIPTION_CANCELED,
-            "Cancelamento informado pelo provedor. Dados preservados.",
-            null,
-            null);
+        service.cancelarPorInformeDoProvedor(a);
         yield true;
       }
       default -> false;

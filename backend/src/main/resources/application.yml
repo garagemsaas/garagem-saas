@@ -31,7 +31,9 @@ server:
   tomcat:
     accesslog:
       enabled: false
-  forward-headers-strategy: none
+  # none é o padrão seguro: impede forja de X-Forwarded-*. Atrás de proxy TLS confiável, use
+  # framework — é o que faz o Spring reconhecer HTTPS e emitir HSTS.
+  forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:none}
   error:
     include-message: never
     include-stacktrace: never

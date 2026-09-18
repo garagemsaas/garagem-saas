@@ -3,9 +3,9 @@ package br.com.garagem.assinatura.application;
 import br.com.garagem.assinatura.application.pagamento.PagamentoProvider;
 import br.com.garagem.assinatura.domain.*;
 import br.com.garagem.assinatura.repository.*;
-import br.com.garagem.ordemservico.application.OsService;
 import br.com.garagem.shared.error.ApiException;
 import br.com.garagem.shared.error.ErrorCodes;
+import br.com.garagem.shared.seguranca.UsuarioAutenticado;
 import br.com.garagem.tenancy.TenantContext;
 import java.time.*;
 import java.util.*;
@@ -14,8 +14,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Ciclo de vida da assinatura da oficina. Toda transição passa por aqui, sempre sob lock da linha e
- * sempre deixando evento de auditoria — inclusive as disparadas por webhook.
+ * Decisões comerciais da assinatura: plano, cancelamento, reativação e confirmação de pagamento.
+ *
+ * <p>Carregar e normalizar a assinatura é responsabilidade de {@link CicloAssinatura}; trocar de
+ * status com os carimbos que o banco exige é de {@link Transicoes}. Aqui ficam só as regras.
  *
  * <p>Regra que atravessa a classe: inadimplência e cancelamento retiram capacidade de crescer,
  * nunca dados. Nada neste serviço apaga registro operacional da oficina.
@@ -23,13 +25,11 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional
 public class AssinaturaService {
-  /** Tolerância antes de suspender. Configurável; o padrão acompanha o ciclo de faturamento. */
-  private final Duration tolerancia;
-
   private final AssinaturaRepository assinaturas;
   private final PlanoRepository planos;
   private final PlanoLimiteService limites;
   private final CobrancaService cobranca;
+  private final CicloAssinatura ciclo;
   private final PagamentoProvider provider;
   private final Clock clock;
 
@@ -38,17 +38,16 @@ public class AssinaturaService {
       PlanoRepository planos,
       PlanoLimiteService limites,
       CobrancaService cobranca,
+      CicloAssinatura ciclo,
       PagamentoProvider provider,
-      Clock clock,
-      @org.springframework.beans.factory.annotation.Value("${app.pagamento.tolerancia:P7D}")
-          Duration tolerancia) {
+      Clock clock) {
     this.assinaturas = assinaturas;
     this.planos = planos;
     this.limites = limites;
     this.cobranca = cobranca;
+    this.ciclo = ciclo;
     this.provider = provider;
     this.clock = clock;
-    this.tolerancia = tolerancia;
   }
 
   @Transactional(readOnly = true)
@@ -56,48 +55,15 @@ public class AssinaturaService {
     return planos.findByAtivoTrueOrderByOrdemAscCodigoAsc();
   }
 
-  private Assinatura bloquear(long revisao) {
-    var a =
-        assinaturas
-            .lock(TenantContext.current())
-            .orElseThrow(
-                () ->
-                    new ApiException(
-                        HttpStatus.CONFLICT,
-                        ErrorCodes.SUBSCRIPTION_INACTIVE,
-                        "Esta oficina não possui assinatura configurada. Fale com o suporte."));
-    if (a.revisao != revisao)
-      throw ApiException.conflict("A assinatura mudou. Atualize a página antes de decidir.");
-    return a;
+  /** Assinatura da oficina, travada e com o estado temporal já aplicado. */
+  public Assinatura atual() {
+    return ciclo.atual();
   }
 
-  /**
-   * Cria a assinatura da oficina no gateway e a deixa pronta para cobrar. Idempotente por oficina:
-   * uma segunda chamada devolve a existente em vez de criar cliente duplicado no provedor.
-   */
-  public Assinatura contratar(String codigoPlano, String nomeOficina, String emailResponsavel) {
-    var existente = assinaturas.findByOficinaId(TenantContext.current());
-    if (existente.isPresent()) return existente.get();
-    var plano = porCodigo(codigoPlano);
-    var a = new Assinatura();
-    a.criadoEm = clock.instant();
-    a.planoId = plano.id;
-    a.status = StatusAssinatura.TRIAL;
-    a.provedor = provider.nome();
-    a.periodoInicio = clock.instant();
-    a.periodoFim = plano.periodicidade.proximo(clock.instant());
-    a.trialInicio = a.periodoInicio;
-    a.trialFim = a.periodoFim;
-    a.atualizadoEm = clock.instant();
-    assinaturas.save(a);
-    a.providerCustomerId = provider.criarCliente(a, nomeOficina, emailResponsavel);
-    a.providerSubscriptionId = provider.criarAssinatura(a, plano);
-    cobranca.registrar(
-        a,
-        TipoEventoCobranca.SUBSCRIPTION_CREATED,
-        "Assinatura criada no plano " + plano.codigo + ".",
-        OsService.autor(),
-        Map.of("plano", plano.codigo, "provedor", a.provedor));
+  private Assinatura bloquear(long revisao) {
+    var a = ciclo.atual();
+    if (a.revisao != revisao)
+      throw ApiException.conflict("A assinatura mudou. Atualize a página antes de decidir.");
     return a;
   }
 
@@ -117,7 +83,7 @@ public class AssinaturaService {
         a,
         TipoEventoCobranca.SUBSCRIPTION_CHANGED,
         "Plano alterado de " + atual.codigo + " para " + destino.codigo + ".",
-        OsService.autor(),
+        UsuarioAutenticado.id(),
         Map.of("de", atual.codigo, "para", destino.codigo));
     return a;
   }
@@ -152,14 +118,12 @@ public class AssinaturaService {
   public Assinatura confirmarPagamento(Assinatura a, String origem) {
     var anterior = a.status;
     var plano = planos.findById(a.planoId).orElseThrow(ApiException::missing);
-    a.status = StatusAssinatura.ATIVA;
-    a.inadimplenteDesde = null;
-    a.suspensaEm = null;
-    if (a.periodoFim.isBefore(clock.instant())) {
+    boolean renovar = a.periodoFim.isBefore(clock.instant());
+    Transicoes.paraAtiva(a, clock.instant());
+    if (renovar) {
       a.periodoInicio = a.periodoFim;
       a.periodoFim = plano.periodicidade.proximo(a.periodoFim);
     }
-    a.atualizadoEm = clock.instant();
     cobranca.registrar(
         a,
         TipoEventoCobranca.PAYMENT_APPROVED,
@@ -188,37 +152,48 @@ public class AssinaturaService {
         Map.of("status", a.status.name()));
     if (a.status == StatusAssinatura.CANCELADA) return a;
     if (a.status != StatusAssinatura.INADIMPLENTE && a.status != StatusAssinatura.SUSPENSA) {
-      a.status = StatusAssinatura.INADIMPLENTE;
-      a.inadimplenteDesde = clock.instant();
-      a.atualizadoEm = clock.instant();
+      Transicoes.paraInadimplente(a, clock.instant());
       cobranca.registrar(
           a,
           TipoEventoCobranca.ACCOUNT_PAST_DUE,
           "Assinatura em atraso. Tolerância de "
-              + tolerancia.toDays()
+              + ciclo.tolerancia().toDays()
               + " dia(s) antes da suspensão; nenhum dado é removido.",
           null,
-          Map.of("tolerancia_dias", tolerancia.toDays()));
+          Map.of("tolerancia_dias", ciclo.tolerancia().toDays()));
     }
     return a;
   }
 
-  /**
-   * Aplica a tolerância vencida. Idempotente e sem relógio próprio: pode ser chamada por webhook,
-   * por leitura da própria oficina ou por rotina futura sem duplicar suspensão.
-   */
+  /** Suspensão por tolerância vencida, para quem opera fora do contexto autenticado (webhook). */
   public Assinatura aplicarTolerancia(Assinatura a) {
-    if (a.status != StatusAssinatura.INADIMPLENTE || a.inadimplenteDesde == null) return a;
-    if (clock.instant().isBefore(a.inadimplenteDesde.plus(tolerancia))) return a;
-    a.status = StatusAssinatura.SUSPENSA;
-    a.suspensaEm = clock.instant();
-    a.atualizadoEm = clock.instant();
+    return ciclo.aplicarTolerancia(a);
+  }
+
+  /** Força a suspensão quando o próprio provedor informa que a assinatura foi suspensa. */
+  public Assinatura suspenderPorInformeDoProvedor(Assinatura a) {
+    if (a.status == StatusAssinatura.CANCELADA) return a;
+    Transicoes.paraSuspensa(a, clock.instant());
     cobranca.registrar(
         a,
         TipoEventoCobranca.ACCOUNT_SUSPENDED,
-        "Assinatura suspensa após a tolerância. Leitura, exportação e pagamento seguem liberados.",
+        "Suspensão informada pelo provedor. Leitura, exportação e pagamento seguem liberados.",
         null,
-        Map.of("inadimplente_desde", a.inadimplenteDesde.toString()));
+        null);
+    return a;
+  }
+
+  /** Cancelamento informado pelo provedor: encerra sem passar pelas validações da oficina. */
+  public Assinatura cancelarPorInformeDoProvedor(Assinatura a) {
+    if (a.status == StatusAssinatura.CANCELADA) return a;
+    Transicoes.paraCancelada(a, clock.instant());
+    if (a.cancelamentoMotivo == null) a.cancelamentoMotivo = "Cancelada pelo provedor.";
+    cobranca.registrar(
+        a,
+        TipoEventoCobranca.SUBSCRIPTION_CANCELED,
+        "Cancelamento informado pelo provedor. Dados preservados.",
+        null,
+        null);
     return a;
   }
 
@@ -233,13 +208,14 @@ public class AssinaturaService {
     if (motivo == null || motivo.isBlank())
       throw ApiException.invalid("Informe o motivo do cancelamento.");
     provider.cancelarAssinatura(a, imediato);
-    a.canceladaEm = clock.instant();
-    a.cancelamentoEfetivoEm = imediato ? clock.instant() : a.periodoFim;
+    var agora = clock.instant();
+    Transicoes.agendarCancelamento(a, imediato ? agora : a.periodoFim, agora);
     a.cancelamentoMotivo = motivo.trim();
-    a.canceladaPor = OsService.autor();
-    a.atualizadoEm = clock.instant();
-    // Agendado mantém o status atual até a data efetiva: a oficina segue operando o que pagou.
-    if (imediato) a.status = StatusAssinatura.CANCELADA;
+    a.canceladaPor = UsuarioAutenticado.id();
+    // Cancelar imediato limpa o carimbo de suspensão junto com a troca de status. Sem isso o banco
+    // recusava a operação, e a oficina suspensa — a que mais tem motivo para cancelar — ficava
+    // presa.
+    if (imediato) Transicoes.paraCancelada(a, agora);
     cobranca.registrar(
         a,
         TipoEventoCobranca.SUBSCRIPTION_CANCELED,
@@ -249,21 +225,6 @@ public class AssinaturaService {
             + ". Os dados da oficina são preservados.",
         a.canceladaPor,
         Map.of("imediato", imediato, "motivo", a.cancelamentoMotivo));
-    return a;
-  }
-
-  /** Encerra um cancelamento agendado cuja data já passou. Idempotente. */
-  public Assinatura aplicarCancelamentoAgendado(Assinatura a) {
-    if (a.cancelamentoEfetivoEm == null || a.status == StatusAssinatura.CANCELADA) return a;
-    if (clock.instant().isBefore(a.cancelamentoEfetivoEm)) return a;
-    a.status = StatusAssinatura.CANCELADA;
-    a.atualizadoEm = clock.instant();
-    cobranca.registrar(
-        a,
-        TipoEventoCobranca.SUBSCRIPTION_CANCELED,
-        "Cancelamento agendado entrou em vigor. Dados preservados para consulta e exportação.",
-        null,
-        null);
     return a;
   }
 
@@ -277,34 +238,18 @@ public class AssinaturaService {
       throw ApiException.conflict("A assinatura não está cancelada.");
     provider.reativarAssinatura(a);
     boolean agendado = a.status != StatusAssinatura.CANCELADA;
-    a.canceladaEm = null;
-    a.cancelamentoEfetivoEm = null;
-    a.cancelamentoMotivo = null;
-    a.canceladaPor = null;
-    if (!agendado) {
-      a.status = StatusAssinatura.INADIMPLENTE;
-      a.inadimplenteDesde = clock.instant();
-      a.suspensaEm = null;
-    }
-    a.atualizadoEm = clock.instant();
+    var agora = clock.instant();
+    Transicoes.revogarCancelamento(a, agora);
+    if (!agendado) Transicoes.paraInadimplente(a, agora);
     cobranca.registrar(
         a,
         TipoEventoCobranca.SUBSCRIPTION_REACTIVATED,
         agendado
             ? "Cancelamento agendado revogado; a assinatura segue no ciclo atual."
             : "Assinatura reativada. O acesso completo volta na confirmação do pagamento.",
-        OsService.autor(),
+        UsuarioAutenticado.id(),
         Map.of("agendado", agendado));
     return a;
-  }
-
-  /**
-   * Normaliza o estado no momento da leitura: aplica tolerância vencida e cancelamento agendado.
-   * Evita que a oficina veja um estado defasado só porque nenhuma rotina passou por ali.
-   */
-  public Assinatura atual() {
-    var a = assinaturas.lock(TenantContext.current()).orElseThrow(ApiException::missing);
-    return aplicarCancelamentoAgendado(aplicarTolerancia(a));
   }
 
   private Plano porCodigo(String codigo) {
@@ -312,5 +257,11 @@ public class AssinaturaService {
         .findByCodigo(codigo == null ? "" : codigo.trim().toUpperCase(Locale.ROOT))
         .filter(p -> p.ativo)
         .orElseThrow(() -> ApiException.invalid("Plano inexistente ou indisponível."));
+  }
+
+  /** Leitura crua, sem normalizar: usada só por teste e diagnóstico. */
+  @Transactional(readOnly = true)
+  public Optional<Assinatura> semNormalizar() {
+    return assinaturas.findByOficinaId(TenantContext.current());
   }
 }

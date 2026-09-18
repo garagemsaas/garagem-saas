@@ -18,7 +18,7 @@ estava presente na base inspecionada. Backend, autenticação e regras de negóc
 - [x] Preparação inicial conectada à API existente, com atalhos e estados de consulta/erro.
 - [x] Textos de uma oferta V1 sob consulta, sem preço ou diferenciação de planos inventados.
 
-Todos os materiais e instruções estão no [kit comercial](comercial/README.md).
+Todos os materiais e instruções estão no [kit comercial](../product/comercial/README.md).
 
 ## Comportamento do frontend
 

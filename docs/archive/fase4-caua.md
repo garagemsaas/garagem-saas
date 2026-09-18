@@ -55,7 +55,7 @@ Nenhum endpoint criado/removido. Base `/api/v1`; `O=/ordens-servico/{id}`.
 | GET `O/timeline` | Todos, eventos persistidos em ordem crescente |
 
 Detalhes, limites, parâmetros, exemplos, DTOs, códigos HTTP e códigos de erro estão em
-[api-v1.md](api-v1.md#complementos-da-fase-4--os-e-acompanhamento-público).
+[api-v1.md](../api/api-v1.md#complementos-da-fase-4--os-e-acompanhamento-público).
 Mudanças funcionais: 413 consistente no serviço de fotos, revogação sem novo evento,
 comprovante da recusa atual visível e erros públicos sem credencial. Nenhum novo código de erro.
 

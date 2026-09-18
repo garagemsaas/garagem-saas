@@ -33,32 +33,26 @@ public class PlanoLimiteService {
       "select count(*) from ordem_servico where oficina_id=:t and criado_em>=:inicio";
 
   private final NamedParameterJdbcTemplate jdbc;
-  private final AssinaturaRepository assinaturas;
+  private final CicloAssinatura ciclo;
   private final PlanoRepository planos;
   private final Clock clock;
 
   public PlanoLimiteService(
-      NamedParameterJdbcTemplate jdbc,
-      AssinaturaRepository assinaturas,
-      PlanoRepository planos,
-      Clock clock) {
+      NamedParameterJdbcTemplate jdbc, CicloAssinatura ciclo, PlanoRepository planos, Clock clock) {
     this.jdbc = jdbc;
-    this.assinaturas = assinaturas;
+    this.ciclo = ciclo;
     this.planos = planos;
     this.clock = clock;
   }
 
-  /** Assinatura da oficina autenticada. Ausência é erro de dado, não caminho normal. */
-  @Transactional(readOnly = true)
+  /**
+   * Assinatura da oficina autenticada, travada e com o estado temporal aplicado.
+   *
+   * <p>Antes lia o estado cru. Duas consequências: uma tolerância vencida nunca virava suspensão
+   * fora da tela de cobrança, e as contagens de limite corriam sem serialização nenhuma.
+   */
   public Assinatura assinatura() {
-    return assinaturas
-        .findByOficinaId(TenantContext.current())
-        .orElseThrow(
-            () ->
-                new ApiException(
-                    HttpStatus.CONFLICT,
-                    ErrorCodes.SUBSCRIPTION_INACTIVE,
-                    "Esta oficina não possui assinatura configurada. Fale com o suporte."));
+    return ciclo.atual();
   }
 
   @Transactional(readOnly = true)
@@ -100,8 +94,10 @@ public class PlanoLimiteService {
    * Porta única das operações que aumentam consumo. Suspensa ou cancelada continua lendo tudo, mas
    * não cria: bloquear é preservar, nunca apagar.
    */
-  @Transactional(readOnly = true)
+  @Transactional
   public Assinatura garantirOperacional(String acao) {
+    // A leitura trava a linha da assinatura. Toda contagem de limite depois disto acontece
+    // serializada por oficina: duas criações concorrentes deixam de ver o mesmo total.
     var a = assinatura();
     if (!a.status.permiteCrescer())
       throw new ApiException(
@@ -117,7 +113,7 @@ public class PlanoLimiteService {
     return a;
   }
 
-  @Transactional(readOnly = true)
+  @Transactional
   public void garantirNovoUsuario() {
     var plano = plano(garantirOperacional("cadastrar usuários"));
     long usados = contar(USUARIOS_ATIVOS, null);
@@ -128,7 +124,7 @@ public class PlanoLimiteService {
               .formatted(plano.maxUsuarios, usados));
   }
 
-  @Transactional(readOnly = true)
+  @Transactional
   public void garantirArmazenamento(long bytesAdicionais) {
     var plano = plano(garantirOperacional("enviar arquivos"));
     long usados = contar(ARMAZENAMENTO, null);
@@ -139,7 +135,7 @@ public class PlanoLimiteService {
               .formatted(legivel(usados), legivel(plano.maxArmazenamentoBytes)));
   }
 
-  @Transactional(readOnly = true)
+  @Transactional
   public void garantirNovoVeiculo() {
     var plano = plano(garantirOperacional("cadastrar veículos"));
     if (plano.maxVeiculos == null) return;
@@ -151,7 +147,7 @@ public class PlanoLimiteService {
               .formatted(plano.maxVeiculos, usados));
   }
 
-  @Transactional(readOnly = true)
+  @Transactional
   public void garantirNovaOrdemServico() {
     var plano = plano(garantirOperacional("abrir ordens de serviço"));
     if (plano.maxOrdensServicoMes == null) return;

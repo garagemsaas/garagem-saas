@@ -1,8 +1,8 @@
 package br.com.garagem.tenancy;
 
-import br.com.garagem.auth.application.Tokens;
 import br.com.garagem.shared.error.ErrorCodes;
 import br.com.garagem.shared.error.ProblemJson;
+import br.com.garagem.shared.seguranca.Tokens;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
 import java.io.IOException;

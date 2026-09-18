@@ -1,7 +1,7 @@
 package br.com.garagem.ordemservico.acessopublico.api;
 
+import br.com.garagem.ordemservico.acessopublico.application.AcessoPublicoService;
 import br.com.garagem.ordemservico.api.OsDtos.*;
-import br.com.garagem.ordemservico.application.OsService;
 import br.com.garagem.tenancy.TenantRequestFilter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -17,9 +17,9 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/publico/{token}")
 @SecurityRequirements
 public class PublicoController {
-  private final OsService service;
+  private final AcessoPublicoService service;
 
-  public PublicoController(OsService service) {
+  public PublicoController(AcessoPublicoService service) {
     this.service = service;
   }
 
