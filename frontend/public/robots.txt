@@ -1,0 +1,11 @@
+# Apenas as páginas institucionais são indexáveis. A aplicação da oficina e o link de
+# acompanhamento do cliente não são conteúdo público e não devem aparecer em buscador.
+User-agent: *
+Allow: /institucional
+Allow: /ajuda
+Disallow: /acompanhar
+Disallow: /materiais/
+Disallow: /api/
+Disallow: /
+
+Sitemap: https://garagem.example/sitemap.xml

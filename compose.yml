@@ -1,6 +1,7 @@
 name: garagem-saas
 services:
   postgres:
+    restart: unless-stopped
     image: postgres:17.11-alpine
     environment:
       POSTGRES_DB: garagem
@@ -16,6 +17,7 @@ services:
       timeout: 3s
       retries: 20
   minio:
+    restart: unless-stopped
     image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z.hotfix.7aa24e772
     command: server /data --console-address ':9001'
     environment:
@@ -46,6 +48,7 @@ services:
         mc mb --ignore-existing "local/$$S3_BUCKET"
         mc anonymous set none "local/$$S3_BUCKET"
   api:
+    restart: unless-stopped
     build: ./backend
     depends_on:
       postgres:

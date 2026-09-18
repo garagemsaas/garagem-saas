@@ -29,6 +29,13 @@ import org.springframework.web.cors.*;
 @EnableMethodSecurity
 @EnableConfigurationProperties(CorsProperties.class)
 public class SecurityConfig {
+  /** Caminhos de documentação: HTML servido pelo próprio app, com CSP própria. */
+  private static final org.springframework.security.web.util.matcher.RequestMatcher DOCS =
+      request -> {
+        String caminho = request.getRequestURI();
+        return caminho.startsWith("/swagger-ui") || caminho.startsWith("/v3/api-docs");
+      };
+
   @Bean
   PasswordEncoder passwords() {
     return new BCryptPasswordEncoder(12);
@@ -131,7 +138,44 @@ public class SecurityConfig {
                         r ->
                             r.policy(
                                 org.springframework.security.web.header.writers
-                                    .ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER)))
+                                    .ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER))
+                    // Duas CSPs, por caminho. A API só devolve JSON e recebe a política mais
+                    // fechada possível: nada pode ser carregado a partir da origem dela. O Swagger
+                    // é HTML servido pelo mesmo app e quebraria inteiro sob 'none', então recebe o
+                    // mínimo de que precisa — e continua sem frame e sem origem externa.
+                    // O frontend, que serve HTML de verdade, precisa da própria CSP no servidor
+                    // que o entrega (docs/staging.md).
+                    .addHeaderWriter(
+                        new org.springframework.security.web.header.writers
+                            .DelegatingRequestMatcherHeaderWriter(
+                            DOCS,
+                            new org.springframework.security.web.header.writers
+                                .ContentSecurityPolicyHeaderWriter(
+                                "default-src 'self'; script-src 'self' 'unsafe-inline';"
+                                    + " style-src 'self' 'unsafe-inline'; img-src 'self' data:;"
+                                    + " connect-src 'self'; frame-ancestors 'none'; base-uri 'self'")))
+                    .addHeaderWriter(
+                        new org.springframework.security.web.header.writers
+                            .DelegatingRequestMatcherHeaderWriter(
+                            new org.springframework.security.web.util.matcher.NegatedRequestMatcher(
+                                DOCS),
+                            new org.springframework.security.web.header.writers
+                                .ContentSecurityPolicyHeaderWriter(
+                                "default-src 'none'; frame-ancestors 'none'; base-uri 'none';"
+                                    + " form-action 'none'")))
+                    .permissionsPolicyHeader(
+                        pp ->
+                            pp.policy(
+                                "accelerometer=(), camera=(), geolocation=(), gyroscope=(),"
+                                    + " magnetometer=(), microphone=(), payment=(), usb=()"))
+                    // HSTS só faz sentido sobre TLS, e o Spring só o emite em requisição segura.
+                    // Atrás de um proxy que termina TLS é preciso ligar app.seguranca.confiar-proxy
+                    // e server.forward-headers-strategy, senão a aplicação nunca se vê em HTTPS.
+                    .httpStrictTransportSecurity(
+                        hsts ->
+                            hsts.includeSubDomains(true)
+                                .preload(false)
+                                .maxAgeInSeconds(java.time.Duration.ofDays(180).toSeconds())))
         .build();
   }
 

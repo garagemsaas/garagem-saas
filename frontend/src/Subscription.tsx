@@ -63,6 +63,7 @@ export default function Subscription({ role }: { role: Role }) {
 
   useEffect(() => {
     let active = true;
+    // oxlint-disable-next-line react/set-state-in-effect -- API request lifecycle
     setLoading(true); setError('');
     Promise.all([api<Detail>(base), api<PageResult<BillingEvent>>(`${base}/eventos?pagina=0&tamanho=20`)])
       .then(([d, e]) => { if (active) { setDetail(d); setEvents(e.itens); } })
