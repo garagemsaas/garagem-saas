@@ -45,6 +45,7 @@ public final class ProblemJson {
       case 401 -> "Unauthorized";
       case 403 -> "Forbidden";
       case 404 -> "Not Found";
+      case 429 -> "Too Many Requests";
       default -> "Error";
     };
   }

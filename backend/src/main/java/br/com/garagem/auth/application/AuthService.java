@@ -23,13 +23,19 @@ public class AuthService {
   private final Duration accessTtl;
   private final Duration refreshTtl;
   private final String dummy;
+  private final org.springframework.transaction.support.TransactionTemplate novaTransacao;
 
   public AuthService(
       JdbcTemplate jdbc,
       PasswordEncoder passwords,
       JwtEncoder encoder,
+      org.springframework.transaction.PlatformTransactionManager transacoes,
       @Value("${app.jwt.access-ttl}") Duration accessTtl,
       @Value("${app.jwt.refresh-ttl}") Duration refreshTtl) {
+    var template = new org.springframework.transaction.support.TransactionTemplate(transacoes);
+    template.setPropagationBehavior(
+        org.springframework.transaction.TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    this.novaTransacao = template;
     this.jdbc = jdbc;
     this.passwords = passwords;
     this.encoder = encoder;
@@ -79,16 +85,57 @@ public class AuthService {
             Tokens.hash(input.refreshToken()));
     if (accounts.isEmpty()) {
       MDC.put("auth_falha", "REFRESH_RECUSADO");
+      detectarReuso(input);
       throw ApiException.unauthorized();
     }
-    revoke(input);
+    revogar(input, "ROTACAO");
     return issue(accounts.getFirst());
+  }
+
+  /**
+   * Um refresh já revogado sendo apresentado de novo significa que duas partes tiveram o mesmo
+   * token: ou é o cliente legítimo repetindo, ou é alguém usando um token roubado. Não há como
+   * distinguir, então derruba-se a família inteira e o usuário entra de novo.
+   *
+   * <p>Sem isto, o ladrão que rotaciona primeiro fica com uma sessão válida indefinidamente, porque
+   * cada renovação lhe dá um token novo e o dono legítimo só vê um 401 isolado.
+   */
+  private void detectarReuso(Refresh input) {
+    // Transação própria: quem chama termina lançando 401, e o rollback desse erro desfaria a
+    // revogação — a defesa sumiria justamente no caminho em que ela precisa valer.
+    novaTransacao.executeWithoutResult(
+        status -> {
+          // Só ROTACAO é evidência de reuso. Um token revogado por LOGOUT reapresentado é uma
+          // aba atrasada; derrubar a sessão da pessoa por isso seria defeito, não defesa.
+          var usuarios =
+              jdbc.query(
+                  "select usuario_id from refresh_token where oficina_id=? and token_hash=? and motivo_revogacao='ROTACAO'",
+                  (rs, n) -> rs.getObject(1, UUID.class),
+                  input.oficinaId(),
+                  Tokens.hash(input.refreshToken()));
+          if (usuarios.isEmpty()) return;
+          int derrubados =
+              jdbc.update(
+                  "update refresh_token set revogado_em=now(), motivo_revogacao='REUSO' where oficina_id=? and usuario_id=? and revogado_em is null",
+                  input.oficinaId(),
+                  usuarios.getFirst());
+          MDC.put("auth_falha", "REFRESH_REUTILIZADO");
+          LoggerFactory.getLogger(AuthService.class)
+              .atWarn()
+              .addKeyValue("sessoes_revogadas", derrubados)
+              .log("refresh_reutilizado_familia_revogada");
+        });
   }
 
   @Transactional
   public void revoke(Refresh input) {
+    revogar(input, "LOGOUT");
+  }
+
+  private void revogar(Refresh input, String motivo) {
     jdbc.update(
-        "update refresh_token set revogado_em=now() where oficina_id=? and token_hash=? and revogado_em is null",
+        "update refresh_token set revogado_em=now(), motivo_revogacao=? where oficina_id=? and token_hash=? and revogado_em is null",
+        motivo,
         input.oficinaId(),
         Tokens.hash(input.refreshToken()));
   }

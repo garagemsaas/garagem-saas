@@ -64,12 +64,28 @@ management:
     db:
       enabled: true
 springdoc:
+  # Em produção a documentação interativa não precisa ficar aberta: ela descreve toda a superfície
+  # da API para quem ainda não autenticou. Defina API_DOCS_ENABLED=false no ambiente de produção.
+  api-docs:
+    enabled: ${API_DOCS_ENABLED:true}
   swagger-ui:
+    enabled: ${API_DOCS_ENABLED:true}
     path: /swagger-ui.html
     operations-sorter: alpha
     tags-sorter: alpha
     display-request-duration: true
 app:
+  seguranca:
+    # Teto de requisições por origem nas superfícies anônimas. Janela em duração ISO-8601.
+    rate-limit:
+      habilitado: ${RATE_LIMIT_ENABLED:true}
+      login: ${RATE_LIMIT_LOGIN:10}
+      publico: ${RATE_LIMIT_PUBLIC:60}
+      webhook: ${RATE_LIMIT_WEBHOOK:120}
+      janela: ${RATE_LIMIT_WINDOW:PT1M}
+    # Só ligue atrás de um proxy que SOBRESCREVA X-Forwarded-For. Ligado com a porta exposta
+    # direto, qualquer cliente forja o cabeçalho e escapa do teto.
+    confiar-proxy: ${TRUST_PROXY:false}
   observability:
     slow-request-ms: ${SLOW_REQUEST_MS:1000}
   jwt:

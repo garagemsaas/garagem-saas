@@ -20,6 +20,9 @@ public final class ErrorCodes {
   public static final String UNSUPPORTED_MEDIA_TYPE = "UNSUPPORTED_MEDIA_TYPE";
   public static final String STORAGE_UNAVAILABLE = "STORAGE_UNAVAILABLE";
 
+  /** Teto de requisições da superfície anônima excedido. A resposta traz Retry-After. */
+  public static final String RATE_LIMITED = "RATE_LIMITED";
+
   /** Limite contratado atingido: a oficina precisa mudar de plano, não tentar de novo. */
   public static final String PLAN_LIMIT_REACHED = "PLAN_LIMIT_REACHED";
 
@@ -42,6 +45,7 @@ public final class ErrorCodes {
       case CONFLICT -> CONFLICT;
       case PAYLOAD_TOO_LARGE -> PAYLOAD_TOO_LARGE;
       case UNSUPPORTED_MEDIA_TYPE -> UNSUPPORTED_MEDIA_TYPE;
+      case TOO_MANY_REQUESTS -> RATE_LIMITED;
       case SERVICE_UNAVAILABLE -> STORAGE_UNAVAILABLE;
       default -> INTERNAL_ERROR;
     };
