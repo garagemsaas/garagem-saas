@@ -18,15 +18,10 @@ import org.springframework.transaction.annotation.Transactional;
 public class VeiculoService {
   private final VeiculoRepository repo;
   private final ClientePort clientes;
-  private final br.com.garagem.assinatura.application.PlanoLimiteService limites;
 
-  public VeiculoService(
-      VeiculoRepository repo,
-      ClientePort clientes,
-      br.com.garagem.assinatura.application.PlanoLimiteService limites) {
+  public VeiculoService(VeiculoRepository repo, ClientePort clientes) {
     this.repo = repo;
     this.clientes = clientes;
-    this.limites = limites;
   }
 
   /** Campos que a listagem aceita em {@code ordenacao}; qualquer outro é recusado com 400. */
@@ -78,7 +73,7 @@ public class VeiculoService {
   }
 
   public Saida criar(Entrada input) {
-    limites.garantirNovoVeiculo();
+
     Veiculo v = new Veiculo();
     preencher(v, input);
     repo.save(v);

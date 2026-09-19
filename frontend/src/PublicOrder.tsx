@@ -1,3 +1,5 @@
+import { BrandingProvider } from './Branding';
+import type { Branding } from './branding-context';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { api, ApiError } from './api';
 import { PageState } from './PageState';
@@ -17,6 +19,7 @@ export function PublicRoute() {
 }
 export default function PublicOrder({ token }: { token: string }) {
   const [data, setData] = useState<PublicSummary>();
+  const [branding, setBranding] = useState<Branding>();
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
@@ -27,7 +30,7 @@ export default function PublicOrder({ token }: { token: string }) {
   useEffect(() => {
     let active = true;
     if (!/^[A-Za-z0-9_-]{43}$/.test(token)) return;
-    api<PublicSummary>(path).then(value => { if (active) setData(value); }).catch(e => { if (active) { setError(e.message); setInvalid(e instanceof ApiError && e.status === 404); } });
+    Promise.all([api<PublicSummary>(path), api<Branding>(`${path}/empresa`)]).then(([value, identity]) => { if (active) { setData(value); setBranding(identity); } }).catch(e => { if (active) { setError(e.message); setInvalid(e instanceof ApiError && e.status === 404); } });
     return () => { active = false; };
   }, [path, token, attempt]);
   async function decide() {
@@ -48,7 +51,7 @@ export default function PublicOrder({ token }: { token: string }) {
     finally { setBusy(false); }
   }
   if (invalid || !/^[A-Za-z0-9_-]{43}$/.test(token)) return <main className="public-order"><Brand /><PageState state="error" title="Link indisponível">Este link é inválido, expirou ou foi revogado. Solicite um novo link à oficina.</PageState></main>;
-  return <main className="detail-panel public-order">
+  const content = <main className="detail-panel public-order">
     <Brand />
     {error && data && <p role="alert" className="error">{error}</p>}
     {!data ? error ? <PageState state="error" title="Não foi possível carregar o acompanhamento" retry={() => { setError(''); setAttempt(n => n + 1); }}>{error}</PageState> : <PageState state="loading" title="Carregando acompanhamento" /> : <>
@@ -63,4 +66,5 @@ export default function PublicOrder({ token }: { token: string }) {
       <button disabled={busy} onClick={async () => { setBusy(true); try { setData(await api<PublicSummary>(path)); setDecision(null); setError(''); } catch (e) { setError(e instanceof Error ? e.message : 'Falha ao atualizar.'); if (e instanceof ApiError && e.status === 404) { setInvalid(true); setData(undefined); setDecision(null); } } finally { setBusy(false); } }}>Atualizar acompanhamento</button>
     </>}
   </main>;
+  return branding ? <BrandingProvider branding={branding} base={`${path}/empresa`}>{content}</BrandingProvider> : content;
 }

@@ -1,3 +1,4 @@
+import { empresa, branding } from './company-fixture.mjs';
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
@@ -27,6 +28,7 @@ async function fixture(context, role = 'OWNER') {
       return { itens: filtered.slice(pagina * tamanho, (pagina + 1) * tamanho), pagina, tamanho, total: filtered.length, totalPaginas: Math.ceil(filtered.length / tamanho) };
     };
     if (state.delay) await new Promise(resolve => setTimeout(resolve, state.delay));
+    if (path.startsWith('/publico/') && path.endsWith('/empresa')) return send(branding);
     if (path.startsWith('/publico/')) {
       expect(req.headers().authorization).toBeUndefined();
       const order = state.orders[0];
@@ -43,6 +45,7 @@ async function fixture(context, role = 'OWNER') {
     if (state.expired) return send({ detail: 'Sessão expirada.' }, 401);
     if (path === '/auth/refresh') return send({ ...session, papel: role });
     expect(req.headers().authorization).toBe('Bearer test-access');
+    if (path === '/empresa') return send(empresa);
     if (path === '/dashboard') return state.failClients ? send({ detail: 'Serviço indisponível.' }, 503) : send({ emAndamento: state.orders.filter(o => o.status !== 'PRONTO').length, prontas: state.orders.filter(o => o.status === 'PRONTO').length, porStatus: { AGUARDANDO_APROVACAO: state.orders.filter(o => o.status === 'AGUARDANDO_APROVACAO').length }, orcamentosAguardandoDecisao: { total: 0, quantidade: 0 } });
     if (path === '/usuarios') return send(page(state.users));
     for (const [resource, key] of [['clientes', 'clients'], ['veiculos', 'vehicles']]) {
@@ -98,15 +101,21 @@ async function fixture(context, role = 'OWNER') {
 }
 async function login(page) {
   await page.goto('/');
-  await page.getByLabel('Oficina', { exact: true }).fill('oficina');
+  await page.getByLabel('Empresa', { exact: true }).fill('oficina');
   await page.getByLabel('E-mail', { exact: true }).fill('kaua@example.test');
   await page.getByLabel('Senha', { exact: true }).fill('test-password');
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();
 }
 async function nav(page, name) {
+  // A identidade da empresa carrega antes da área operacional, então logo após entrar a tela ainda
+  // é o estado de carregamento — sem menu e sem navegação. `isVisible()` não espera: em telas
+  // pequenas ele respondia "não" nesse instante, o menu nunca era aberto e a navegação, que só
+  // existe dentro dele, jamais aparecia. Esperar a casca aparecer resolve nos três tamanhos.
   const menu = page.getByRole('button', { name: 'Abrir menu', exact: true });
+  const navegacao = page.getByRole('navigation', { name: 'Navegação principal', exact: true });
+  await expect(menu.or(navegacao.first())).toBeVisible();
   if (await menu.isVisible()) await menu.click();
-  await page.getByRole('navigation', { name: 'Navegação principal', exact: true }).filter({ visible: true }).getByRole('button', { name, exact: true }).click();
+  await navegacao.filter({ visible: true }).getByRole('button', { name, exact: true }).click();
 }
 async function noOverflow(page) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
@@ -152,6 +161,8 @@ test('atualização automática preserva rascunho e recupera falha sem apagar a 
 });
 
 test('fluxo completo: cliente, veículo, OS, checklist, diagnóstico, orçamento, foto e aprovação pública', async ({ page, context }, info) => {
+  // Jornada longa com duas páginas e várias análises axe; as esperas individuais continuam em 8 s.
+  test.setTimeout(120_000);
   const state = await fixture(context);
   const errors = []; page.on('pageerror', e => errors.push(e.message));
   await login(page); await expect(page.getByRole('heading', { name: 'Um dia bem organizado.' })).toBeVisible();

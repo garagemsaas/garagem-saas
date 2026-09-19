@@ -1,3 +1,4 @@
+import { branding } from './company-fixture.mjs';
 import { test, expect } from '@playwright/test';
 
 test('versão substituída exige nova confirmação e preserva comprovante de recusa', async ({ page }) => {
@@ -5,6 +6,7 @@ test('versão substituída exige nova confirmação e preserva comprovante de re
   let decided = false;
   const writes = [];
   await page.route('**/api/v1/publico/**', async route => {
+    if (new URL(route.request().url()).pathname.endsWith('/empresa')) return route.fulfill({ contentType: 'application/json', body: JSON.stringify(branding) });
     const request = route.request();
     expect(request.headers().authorization).toBeUndefined();
     if (request.method() === 'POST') {
@@ -41,6 +43,7 @@ for (const action of ['atualizar', 'decidir']) {
   test(`link revogado ao ${action} remove orçamento e ações`, async ({ page }) => {
     let revoked = false;
     await page.route('**/api/v1/publico/**', async route => {
+    if (new URL(route.request().url()).pathname.endsWith('/empresa')) return route.fulfill({ contentType: 'application/json', body: JSON.stringify(branding) });
       expect(route.request().headers().authorization).toBeUndefined();
       await route.fulfill({ status: revoked ? 404 : 200, contentType: 'application/json', body: JSON.stringify(revoked ? {
         code: 'NOT_FOUND', detail: 'Acesso inválido ou expirado.',

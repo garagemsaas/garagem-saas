@@ -1,5 +1,4 @@
-/* Tela de entrada. Saiu do App.css global seguindo o padrão já usado por Recovery.css e
-   Subscription.css: estilo junto da tela que ele veste. Regras idênticas às anteriores. */
+/* Tela de entrada. Estilo junto da tela que ele veste, como em Recovery.css. */
 .login-page {
   display: grid;
   grid-template-columns: 45% 55%;

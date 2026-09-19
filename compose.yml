@@ -75,6 +75,8 @@ services:
       APP_BOOTSTRAP_SLUG: ${APP_BOOTSTRAP_SLUG:-}
       APP_BOOTSTRAP_NOME: ${APP_BOOTSTRAP_NOME:-}
       APP_BOOTSTRAP_EMAIL: ${APP_BOOTSTRAP_EMAIL:-}
+      APP_BOOTSTRAP_MODULOS: ${APP_BOOTSTRAP_MODULOS:-OFICINA}
+      APP_BOOTSTRAP_OPERADOR: ${APP_BOOTSTRAP_OPERADOR:-}
       APP_BOOTSTRAP_SENHA: ${APP_BOOTSTRAP_SENHA:-}
       # Cobrança. Sem PAYMENT_WEBHOOK_SECRET a aplicação recusa todo webhook, por desenho:
       # é melhor não confirmar pagamento nenhum do que aceitar um evento não autenticado.

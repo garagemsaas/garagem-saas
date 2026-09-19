@@ -3,6 +3,7 @@ package br.com.garagem.assinatura.api;
 import br.com.garagem.assinatura.api.AssinaturaDtos.WebhookSaida;
 import br.com.garagem.assinatura.application.WebhookPagamentoService;
 import br.com.garagem.shared.error.ApiException;
+import br.com.garagem.tenancy.SemModulo;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,7 +20,11 @@ import org.springframework.web.bind.annotation.*;
  * normal de um gateway, e devolver erro faria o provedor repetir indefinidamente um evento que já
  * está resolvido.
  */
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(
+    name = "app.legacy-billing.enabled",
+    havingValue = "true")
 @RestController
+@SemModulo
 @RequestMapping("/api/v1/webhooks/pagamento")
 @Tag(
     name = "Webhooks de pagamento",

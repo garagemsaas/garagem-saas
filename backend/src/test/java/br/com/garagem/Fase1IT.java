@@ -370,6 +370,33 @@ class Fase1IT extends br.com.garagem.suporte.IntegracaoBase {
                 Integer.class,
                 slug))
         .isEqualTo(1);
+    // O bootstrap não exige variável nova para funcionar, mas continua deixando trilha: sem isso
+    // uma empresa nasceria ativa e com módulos sem nenhum registro de quem a provisionou.
+    assertThat(
+            jdbc.queryForObject(
+                """
+                select e.operador from empresa_administracao_evento e
+                 join oficina o on o.id=e.oficina_id where o.slug=?
+                """,
+                String.class,
+                slug))
+        .isEqualTo("bootstrap");
+    assertThat(
+            jdbc.queryForObject(
+                """
+                select count(*) from empresa_modulo m
+                 join oficina o on o.id=m.oficina_id where o.slug=? and m.modulo='OFICINA'
+                """,
+                Integer.class,
+                slug))
+        .isEqualTo(1);
+    // Provisionar não cria assinatura: a venda é direta e o core não depende de billing.
+    assertThat(
+            jdbc.queryForObject(
+                "select count(*) from assinatura a join oficina o on o.id=a.oficina_id where o.slug=?",
+                Integer.class,
+                slug))
+        .isZero();
   }
 
   @Test

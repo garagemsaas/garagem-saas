@@ -1,4 +1,4 @@
-# Frontend Garagem SaaS — Fase 2 (Kauã)
+# Frontend — Plataforma Automotiva
 
 React, TypeScript e Vite, integrado aos contratos REST documentados em [api-v1.md](../docs/api-v1.md).
 Não existe modo demonstração nem fallback com registros fictícios.
@@ -92,3 +92,5 @@ orçamentos pendentes também percorrem páginas. Esses seletores podem evoluir
 para autocomplete remoto quando o volume exigir.
 
 Veja o [checklist e as evidências da fase 3](../docs/fase3-kaua-frontend.md).
+
+Identidade por empresa: `BrandingProvider`, `branding-context.ts` e `CompanySettings.tsx`. Configuração carregada da API após autenticação; acompanhamento público usa o token validado. Billing não faz parte da navegação.

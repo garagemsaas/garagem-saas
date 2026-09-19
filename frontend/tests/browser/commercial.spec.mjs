@@ -1,3 +1,4 @@
+import { empresa } from './company-fixture.mjs';
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
@@ -6,7 +7,7 @@ async function accessible(page) {
   expect(report.violations.map(v => ({ id: v.id, nodes: v.nodes.map(n => n.target) }))).toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
 }
-test('institucional pública, proposta honesta, downloads e ajuda sem API', async ({ page }, info) => {
+test('institucional pública, venda direta e ajuda sem API', async ({ page }, info) => {
   const calls = [];
   await page.route('**/api/v1/**', route => { calls.push(route.request().url()); return route.abort(); });
   await page.goto('/institucional');
@@ -15,22 +16,14 @@ test('institucional pública, proposta honesta, downloads e ajuda sem API', asyn
   await page.screenshot({ path: test.info().outputPath(`institucional-${info.project.name}.png`), fullPage: true });
   await page.getByRole('link', { name: 'Ver a proposta', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Condições sob consulta' })).toBeInViewport();
-  const deck = await page.request.get('/materiais/garagem-apresentacao.pptx');
-  expect(deck.status()).toBe(200); expect((await deck.body()).subarray(0, 2).toString()).toBe('PK');
-  const video = await page.request.get('/materiais/garagem-demonstracao.webm');
-  expect(video.status()).toBe(200); expect((await video.body()).subarray(0, 4).toString('hex')).toBe('1a45dfa3');
-  const captions = await page.request.get('/materiais/garagem-demonstracao.vtt');
-  expect(await captions.text()).toContain('WEBVTT');
-  const player = page.locator('video');
-  await player.evaluate(v => v.load());
-  await expect.poll(() => player.evaluate(v => v.readyState)).toBeGreaterThanOrEqual(2);
-  expect(await player.evaluate(v => v.duration)).toBeGreaterThan(45);
+  await expect(page.locator('video')).toHaveCount(0);
+  await expect(page.getByText('sem planos self-service ou cotas por plano.', { exact: false })).toBeVisible();
   await page.goto('/ajuda');
   await page.getByText('Como envio um orçamento?', { exact: true }).click();
   await expect(page.getByText('Disponibilizar ou copiar não envia uma mensagem.', { exact: false })).toBeVisible();
   await accessible(page); expect(calls).toEqual([]);
   await page.getByRole('link', { name: 'Acessar minha oficina', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Entre na sua oficina' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Entre na sua empresa' })).toBeVisible();
 });
 
 for (const role of ['OWNER', 'ATENDENTE', 'MECANICO']) {
@@ -41,13 +34,14 @@ for (const role of ['OWNER', 'ATENDENTE', 'MECANICO']) {
       const request = route.request(), path = new URL(request.url()).pathname;
       calls.push({ path, method: request.method() });
       const send = (body, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
+    if (path.endsWith('/empresa')) return send(empresa);
       if (path.endsWith('/auth/login')) return send({ accessToken: 'a', refreshToken: 'r', oficinaId: 'a', usuarioId: 'u', nome: 'Teste', papel: role, expiresIn: 900 });
       if (path.endsWith('/dashboard')) return send({ emAndamento: 0, prontas: 0, porStatus: {}, orcamentosAguardandoDecisao: { total: 0, quantidade: 0 } });
       if (fail) return send({ detail: 'Falha de consulta' }, 503);
       return send({ itens: [], pagina: 0, tamanho: 10, total: exists ? 2 : 0 });
     });
     await page.goto('/');
-    await page.getByLabel('Oficina', { exact: true }).fill('a');
+    await page.getByLabel('Empresa', { exact: true }).fill('a');
     await page.getByLabel('E-mail', { exact: true }).fill('a@example.test');
     await page.getByLabel('Senha', { exact: true }).fill('teste');
     await page.getByRole('button', { name: 'Entrar', exact: true }).click();

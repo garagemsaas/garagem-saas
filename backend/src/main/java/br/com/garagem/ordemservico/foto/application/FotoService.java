@@ -40,7 +40,6 @@ public class FotoService {
   private final ChecklistItemRepository itens;
   private final ChecklistEntradaRepository checklists;
   private final DiagnosticoItemRepository diagnosticos;
-  private final br.com.garagem.assinatura.application.PlanoLimiteService limites;
 
   public FotoService(
       FotoVeiculoRepository fotos,
@@ -48,15 +47,13 @@ public class FotoService {
       FotoStorage storage,
       ChecklistItemRepository itens,
       ChecklistEntradaRepository checklists,
-      DiagnosticoItemRepository diagnosticos,
-      br.com.garagem.assinatura.application.PlanoLimiteService limites) {
+      DiagnosticoItemRepository diagnosticos) {
     this.fotos = fotos;
     this.os = os;
     this.storage = storage;
     this.itens = itens;
     this.checklists = checklists;
     this.diagnosticos = diagnosticos;
-    this.limites = limites;
   }
 
   public Saida upload(
@@ -118,9 +115,7 @@ public class FotoService {
       throw naoSuportado();
     }
     if (bytes.length > 10 * 1024 * 1024) throw tamanhoExcedido();
-    // Cota conferida sobre os bytes reescritos, que são os que de fato ocupam o bucket, e no
-    // servidor: o tamanho informado pelo navegador não decide nada.
-    limites.garantirArmazenamento(bytes.length);
+
     FotoVeiculo f = new FotoVeiculo();
     f.ordemServicoId = osId;
     f.autorId = UsuarioAutenticado.id();

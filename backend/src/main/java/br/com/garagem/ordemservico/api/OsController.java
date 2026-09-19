@@ -1,10 +1,12 @@
 package br.com.garagem.ordemservico.api;
 
+import br.com.garagem.oficina.ModuloEmpresa;
 import br.com.garagem.ordemservico.acessopublico.application.AcessoPublicoService;
 import br.com.garagem.ordemservico.api.OsDtos.*;
 import br.com.garagem.ordemservico.application.OsService;
 import br.com.garagem.ordemservico.domain.StatusOs;
 import br.com.garagem.shared.persistence.Pagina;
+import br.com.garagem.tenancy.RequerModulo;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.Valid;
@@ -16,6 +18,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
+@RequerModulo(ModuloEmpresa.OFICINA)
 @RequestMapping("/api/v1/ordens-servico")
 public class OsController {
   private final OsService service;

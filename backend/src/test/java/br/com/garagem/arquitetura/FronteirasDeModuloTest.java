@@ -123,6 +123,15 @@ class FronteirasDeModuloTest {
   }
 
   @Test
+  void coreOperacionalNaoDependeDoBillingLegado() throws IOException {
+    for (var arquivo : fontes())
+      if (MODULOS.contains(arquivo.modulo()) && !arquivo.modulo().equals("assinatura"))
+        assertThat(String.join("\n", arquivo.linhas()))
+            .as("%s deve operar sem assinatura ou cotas comerciais", arquivo.caminho())
+            .doesNotContain("br.com.garagem.assinatura.");
+  }
+
+  @Test
   void utilidadeDeSegurancaNaoMoraDentroDeUmModuloDeNegocio() throws IOException {
     // O ciclo original nasceu de `autor()` guardado em OsService e chamado por quatro módulos.
     for (var a : fontes())

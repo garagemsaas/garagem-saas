@@ -20,6 +20,9 @@ import org.springframework.transaction.annotation.*;
  * <p>A idempotência é do banco, não de memória: o unique {@code (provedor, provider_event_id)} é
  * quem decide o empate entre duas entregas simultâneas do mesmo evento.
  */
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(
+    name = "app.legacy-billing.enabled",
+    havingValue = "true")
 @Service
 public class WebhookPagamentoService {
   /** Resultado do processamento, para o controller escolher o status HTTP sem reinterpretar. */

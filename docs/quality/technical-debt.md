@@ -1,3 +1,5 @@
+> Atualização Fase 9: o tenant representa Empresa. Billing e cotas históricas estão desativados e fora do core. OWNER edita somente a própria identidade; situação e módulos são administrativos. Veja [modelo atualizado](/docs/architecture/empresa-white-label.md) e [provisionamento](/docs/operations/provisionamento-empresa.md). Referências a planos nas fases anteriores são históricas.
+
 # Dívida técnica em aberto
 
 Registro do que **permanece** por fazer. Os 17 achados da auditoria de qualidade de 18/09/2026 foram
@@ -65,12 +67,16 @@ com o Flyway. Reavaliar se o banco for aberto a algum consumidor fora desta apli
 
 ## Convenções que valem manter
 
-Três testes existem para impedir regressões que não quebram compilação e só apareceriam em produção:
+Quatro testes existem para impedir regressões que não quebram compilação e só apareceriam em
+produção:
 
 - `ConfiguracaoDeAmbienteTest` — toda variável documentada chega ao contêiner, e nenhum exemplo
   carrega credencial real. Existe porque onze variáveis, incluindo o segredo do webhook, ficaram
   documentadas sem nunca serem repassadas.
 - `FronteirasDeModuloTest` — nenhum ciclo entre módulos e nenhum acesso ao interior de outro módulo.
+- `ContratoDeModuloTest` — todo `@RestController` declara se exige módulo da empresa. Existe porque
+  a exigência já morou numa regex de caminhos: ela não errava, apenas ficava para trás quando alguém
+  criava rota nova sem lembrar dela, e nada acusava.
 - `Fase9ConcorrenciaIT` — limites e webhook sob concorrência real, e o ciclo de cobrança de ponta a
   ponta sem fabricar estado por SQL.
 

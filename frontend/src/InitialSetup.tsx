@@ -29,6 +29,6 @@ export default function InitialSetup({ role, navigate }: { role: Role; navigate:
     <h3>Preparação inicial da oficina</h3>
     <p>Esta consulta usa os registros da oficina conectada. Encontrar um cadastro não confirma que ele está correto: revise os dados antes de começar.</p>
     {error ? <PageState state="error" title="Não foi possível verificar a preparação" retry={() => setAttempt(n => n + 1)}>{error}</PageState> : !counts ? <p role="status">Verificando os cadastros da oficina…</p> : <ul>{steps.map(step => <li key={step.page}><div><Icon name={step.done ? 'good' : 'clock'} size={18} /><strong>{step.label}</strong></div><small>{step.done ? 'Registro encontrado — confira os dados' : step.page === 'team' ? 'Sem usuário adicional — opcional' : 'Nenhum registro encontrado'}</small><p>{step.hint}</p><button onClick={() => navigate(step.page)}>Ir para {step.page === 'team' ? 'equipe' : step.page === 'clients' ? 'clientes' : step.page === 'vehicles' ? 'veículos' : 'ordens de serviço'}<Icon name="forward" size={16} /></button></li>)}</ul>}
-    <p>O identificador da oficina e o primeiro acesso são preparados pela equipe responsável pelo Garagem. Esta tela não altera dados da oficina nem contrata um plano.</p>
+    <p>O identificador da oficina e o primeiro acesso são preparados pela equipe responsável pela Plataforma Automotiva. O OWNER configura a identidade em Configurações. Módulos e situação são administrados pela plataforma.</p>
   </section>;
 }

@@ -49,7 +49,7 @@ try {
   assert.equal(await page.getByRole('heading', { name: `Ordem de Serviço #${order.numero}`, exact: true }).count(), 0);
   console.log('Troca de token no fragmento limpa o resumo público anterior.');
   await page.goto(base);
-  await page.getByLabel('Oficina', { exact: true }).fill(fixture.b.slug);
+  await page.getByLabel('Empresa', { exact: true }).fill(fixture.b.slug);
   await page.getByLabel('E-mail', { exact: true }).fill(fixture.email);
   await page.locator('input[name="senha"]').fill(fixture.password);
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();

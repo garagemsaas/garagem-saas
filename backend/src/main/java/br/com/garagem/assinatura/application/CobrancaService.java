@@ -13,6 +13,9 @@ import org.springframework.transaction.annotation.Transactional;
  * Auditoria financeira. Único lugar que grava {@link EventoCobranca}, para que nenhum caminho de
  * cobrança fique sem rastro e para que a higiene do conteúdo seja garantida em um ponto só.
  */
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(
+    name = "app.legacy-billing.enabled",
+    havingValue = "true")
 @Service
 @Transactional
 public class CobrancaService {

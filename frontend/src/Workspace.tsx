@@ -23,11 +23,11 @@ interface WorkspaceProps {
   role: Role; name: string; workshop: string; logout: () => void;
   orders: Order[]; clients: Client[]; vehicles: Vehicle[]; today: Date;
   openOrder: (id: string) => void; openClient: (client: Client) => void;
-  openVehicle: (vehicle: Vehicle) => void; openRecovery: () => void; openSubscription: () => void;
+  openVehicle: (vehicle: Vehicle) => void; openRecovery: () => void; openCompany: () => void;
 }
 
 export default function Workspace(props: WorkspaceProps) {
-  const { page, navigate, children, role, name, workshop, logout, orders, clients, today, openOrder, openClient, openVehicle, openRecovery, openSubscription } = props;
+  const { page, navigate, children, role, name, workshop, logout, orders, clients, today, openOrder, openClient, openVehicle, openRecovery, openCompany } = props;
   const [panel, setPanel] = useState<Panel>(null);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState({ orders: [] as Order[], clients: [] as Client[], vehicles: [] as Vehicle[], total: 0 });
@@ -74,7 +74,7 @@ export default function Workspace(props: WorkspaceProps) {
   const navButton = (id: Page, icon: IconName = id) => <button key={id} aria-current={page === id ? "page" : undefined} className={page === id ? "active" : ""} onClick={() => move(id)}><Icon name={icon} /><span>{labels[id]}</span></button>;
   const navigation = <>
     <div className="workspace-brand"><Brand /></div>
-    <div className="tenant-label"><Icon name="security" size={18} /><div><strong>{workshop}</strong><span>Oficina autenticada</span></div></div>
+    <div className="tenant-label"><Icon name="security" size={18} /><div><strong>{workshop}</strong><span>Empresa autenticada</span></div></div>
     <span className="navigation-caption">OPERAÇÃO</span>
     <nav aria-label="Navegação principal">
       {navButton("overview")}{navButton("orders")}{navButton("clients")}{navButton("vehicles")}
@@ -104,7 +104,7 @@ export default function Workspace(props: WorkspaceProps) {
       </header>
       <div className="context-strip"><span><Icon name="info" size={14} />Dados da oficina</span><time dateTime={today.toISOString()}>{today.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}</time></div>
       <main ref={mainRef} tabIndex={-1} id="main-content" className="premium-main">{children}</main>
-      <footer className="premium-footer"><span>garagem <span>/</span> Gestão que cuida do seu negócio.</span><span>Operação da oficina</span></footer>
+      <footer className="premium-footer"><span>Plataforma Automotiva <span>/</span> Gestão que cuida do seu negócio.</span><span>Operação da oficina</span></footer>
     </div>
     {panel === "search" && <Drawer title="Buscar na oficina" close={() => setPanel(null)}>
       <Search value={query} onChange={setQuery} placeholder="OS, placa, veículo ou cliente" />
@@ -124,8 +124,8 @@ export default function Workspace(props: WorkspaceProps) {
     </Drawer>}
     {(panel === "profile" || panel === "settings") && <Drawer title={panel === "profile" ? "Seu perfil" : "Configurações"} close={() => setPanel(null)}>
       <div className="profile-summary"><span className="avatar">{initials}</span><h3>{name}</h3><p>{roles[role]} · {workshop}</p></div>
-      <p>Sua sessão está vinculada à oficina informada. Preferências da oficina ainda não estão disponíveis.</p>
-      {role !== "MECANICO" && <button onClick={() => { setPanel(null); openSubscription(); }}><Icon name="security" />Plano e assinatura</button>}
+      <p>Sua sessão está vinculada à sua empresa.</p>
+      {role === "OWNER" && <button onClick={() => { setPanel(null); openCompany(); }}><Icon name="security" />Identidade da empresa</button>}
       {role === "OWNER" && <button onClick={() => move("team")}><Icon name="team" />Gerenciar equipe</button>}
       <button className="session-logout" onClick={logout}><Icon name="logout" size={18} />Sair da oficina</button>
     </Drawer>}

@@ -49,8 +49,6 @@ public class OsService {
   private final EventoOrdemServicoRepository eventos;
   private final JdbcTemplate jdbc;
 
-  private final br.com.garagem.assinatura.application.PlanoLimiteService limites;
-
   public OsService(
       OrdemServicoRepository ordens,
       VeiculoPort veiculos,
@@ -63,8 +61,7 @@ public class OsService {
       ItemOrcamentoRepository itens,
       AprovacaoOrcamentoRepository aprovacoes,
       EventoOrdemServicoRepository eventos,
-      JdbcTemplate jdbc,
-      br.com.garagem.assinatura.application.PlanoLimiteService limites) {
+      JdbcTemplate jdbc) {
     this.ordens = ordens;
     this.veiculos = veiculos;
     this.usuarios = usuarios;
@@ -77,7 +74,6 @@ public class OsService {
     this.aprovacoes = aprovacoes;
     this.eventos = eventos;
     this.jdbc = jdbc;
-    this.limites = limites;
   }
 
   /** Campos que a listagem aceita em {@code ordenacao}; qualquer outro é recusado com 400. */
@@ -127,7 +123,7 @@ public class OsService {
 
   public OsSaida criar(NovaOs input) {
     // Abrir OS é a operação que mais consome a oficina; passa pelo plano antes de tocar em dado.
-    limites.garantirNovaOrdemServico();
+
     var v = veiculos.buscar(input.veiculoId()).orElseThrow(ApiException::missing);
     if (input.kmEntrada() < v.km())
       throw ApiException.invalid("KM de entrada inferior à quilometragem cadastrada.");

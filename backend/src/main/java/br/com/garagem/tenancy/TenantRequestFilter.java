@@ -73,6 +73,10 @@ public class TenantRequestFilter extends OncePerRequestFilter {
       }
       if (!TenantContext.UNRESOLVED.equals(TenantContext.resolvedOrEmpty()))
         MDC.put("oficina_id", TenantContext.current().toString());
+      // Qual módulo um endpoint exige é decisão dele, declarada com @RequerModulo e aplicada por
+      // ModuloInterceptor. Este filtro resolve a empresa; não interpreta caminhos de URL.
+      if (!TenantContext.UNRESOLVED.equals(TenantContext.resolvedOrEmpty()))
+        res.setHeader("Cache-Control", "no-store");
       chain.doFilter(req, res);
     } finally {
       TenantContext.clear();

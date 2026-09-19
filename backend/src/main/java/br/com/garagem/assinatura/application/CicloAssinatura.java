@@ -34,6 +34,9 @@ import org.springframework.transaction.annotation.Transactional;
  *       API, sem lock em memória.
  * </ul>
  */
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(
+    name = "app.legacy-billing.enabled",
+    havingValue = "true")
 @Service
 public class CicloAssinatura {
   private final AssinaturaRepository assinaturas;

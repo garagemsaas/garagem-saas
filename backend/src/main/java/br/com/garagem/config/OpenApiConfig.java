@@ -24,7 +24,7 @@ public class OpenApiConfig {
     return new OpenAPI()
         .info(
             new Info()
-                .title("Garagem SaaS — API v1")
+                .title("Plataforma Automotiva — API v1")
                 .version("v1")
                 .description(
                     """

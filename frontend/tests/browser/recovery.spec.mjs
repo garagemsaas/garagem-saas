@@ -1,3 +1,4 @@
+import { empresa } from './company-fixture.mjs';
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
@@ -12,6 +13,7 @@ async function setup(page, role = 'OWNER') {
   await page.route('**/api/v1/**', async route => {
     const req = route.request(), url = new URL(req.url()), path = url.pathname.replace('/api/v1', '');
     const send = (body, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
+    if (path.endsWith('/empresa')) return send(empresa);
     if (path === '/auth/login') return send({ accessToken: 'access', refreshToken: 'refresh', oficinaId: 'tenant', usuarioId: 'u', nome: 'Kauã', papel: role, expiresIn: 900 });
     if (path === '/dashboard') return send({ emAndamento: 0, prontas: 0, porStatus: {}, orcamentosAguardandoDecisao: { total: 0, quantidade: 0 } });
     if (!path.startsWith('/dinheiro-esquecido')) return send({ itens: [], pagina: 0, tamanho: 10, total: 0 });
@@ -37,7 +39,7 @@ async function setup(page, role = 'OWNER') {
     return send({ oportunidade: opportunity, contatos: state.contacts, resultado: state.recovered, auditoria: [] });
   });
   await page.goto('/');
-  await page.getByLabel('Oficina', { exact: true }).fill('oficina');
+  await page.getByLabel('Empresa', { exact: true }).fill('oficina');
   await page.getByLabel('E-mail', { exact: true }).fill('kaua@example.test');
   await page.getByLabel('Senha', { exact: true }).fill('senha-teste');
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();

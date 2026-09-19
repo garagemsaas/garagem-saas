@@ -1,3 +1,5 @@
+> Atualização Fase 9: o tenant representa Empresa. Billing e cotas históricas estão desativados e fora do core. OWNER edita somente a própria identidade; situação e módulos são administrativos. Veja [modelo atualizado](/docs/architecture/empresa-white-label.md) e [provisionamento](/docs/operations/provisionamento-empresa.md). Referências a planos nas fases anteriores são históricas.
+
 # Arquitetura da Fase 1
 
 Backend único, organizado por funcionalidade, com API REST `/api/v1`, DTOs e transações nos serviços. Java 25, Spring Boot 3.5.16 e JUnit 5. A linha 3.5 mantém o JUnit 5 exigido e suporta Java 25: https://docs.spring.io/spring-boot/3.5/system-requirements.html.

@@ -3,6 +3,7 @@ package br.com.garagem.cliente.api;
 import br.com.garagem.cliente.api.ClienteDtos.*;
 import br.com.garagem.cliente.application.ClienteService;
 import br.com.garagem.shared.persistence.Pagina;
+import br.com.garagem.tenancy.SemModulo;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.Valid;
@@ -11,6 +12,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
+@SemModulo
 @RequestMapping("/api/v1/clientes")
 public class ClienteController {
   private final ClienteService service;

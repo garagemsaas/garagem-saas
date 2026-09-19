@@ -2,6 +2,8 @@ package br.com.garagem.dinheiroesquecido.api;
 
 import br.com.garagem.dinheiroesquecido.api.RecuperacaoDtos.*;
 import br.com.garagem.dinheiroesquecido.application.RecuperacaoService;
+import br.com.garagem.oficina.ModuloEmpresa;
+import br.com.garagem.tenancy.RequerModulo;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import java.util.UUID;
@@ -9,6 +11,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
+@RequerModulo(ModuloEmpresa.OFICINA)
 @RequestMapping("/api/v1")
 @PreAuthorize("hasAnyRole('OWNER','ATENDENTE')")
 public class ProgramacaoRecuperacaoController {

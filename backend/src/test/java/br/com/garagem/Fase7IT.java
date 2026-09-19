@@ -30,6 +30,7 @@ class Fase7IT extends br.com.garagem.suporte.IntegracaoBase {
   /** Propriedades específicas desta suíte; a origem de dados vem da base. */
   @org.springframework.test.context.DynamicPropertySource
   static void propriedadesDaSuite(org.springframework.test.context.DynamicPropertyRegistry r) {
+    r.add("app.legacy-billing.enabled", () -> true);
     r.add("app.pagamento.webhook-secret", () -> SEGREDO);
     r.add("app.pagamento.tolerancia", () -> "P7D");
     r.add("spring.datasource.hikari.maximum-pool-size", () -> 8);
@@ -69,6 +70,9 @@ class Fase7IT extends br.com.garagem.suporte.IntegracaoBase {
   @Autowired ObjectMapper json;
   @Autowired JdbcTemplate jdbc;
   @Autowired PasswordEncoder encoder;
+
+  @org.springframework.test.context.bean.override.mockito.MockitoBean
+  br.com.garagem.ordemservico.foto.application.FotoStorage storage;
 
   static final String SENHA = "SenhaSegura123!";
   static final java.util.concurrent.atomic.AtomicInteger PLACAS =
@@ -118,6 +122,10 @@ class Fase7IT extends br.com.garagem.suporte.IntegracaoBase {
 
   void criarOficina(UUID id, String slug) {
     jdbc.update("insert into oficina(id,nome,slug) values(?,?,?)", id, "Oficina", slug);
+    jdbc.update(
+        "insert into assinatura(id,oficina_id,plano_id,status,trial_inicio,trial_fim,periodo_inicio,periodo_fim) select ?,?,id,'TRIAL',now(),now()+interval '14 days',now(),now()+interval '14 days' from plano where codigo='PROFISSIONAL'",
+        UUID.randomUUID(),
+        id);
   }
 
   UUID criarUsuario(UUID oficina, String email, String papel, boolean ativo) {
@@ -319,7 +327,7 @@ class Fase7IT extends br.com.garagem.suporte.IntegracaoBase {
   // -------------------------------------------------------------- planos e limites
 
   @Test
-  void oficinaNasceComAssinaturaDeAvaliacaoEPlanoEspelhado() throws Exception {
+  void contratoHistoricoPreservaPlanoEspelhado() throws Exception {
     var detalhe = get(BASE, tokenOwnerA, 200);
     assertThat(detalhe.path("assinatura").path("status").asText()).isEqualTo("TRIAL");
     assertThat(detalhe.path("assinatura").path("permiteCrescer").asBoolean()).isTrue();
@@ -329,29 +337,27 @@ class Fase7IT extends br.com.garagem.suporte.IntegracaoBase {
   }
 
   @Test
-  void limiteDeUsuariosAbaixoNoLimiteEAcima() throws Exception {
+  void usuariosNaoDependemDoLimiteHistorico() throws Exception {
     usarPlano(oficinaA, "BASICO");
     ajustarLimite("BASICO", "max_usuarios", 4);
     // Já existem 3 ativos no setup: abaixo do limite, a criação passa.
     novoUsuario(tokenOwnerA, 201);
-    // Exatamente no limite (4 de 4): a próxima criação é recusada.
-    var erro = novoUsuario(tokenOwnerA, 402);
-    assertThat(erro.path("code").asText()).isEqualTo("PLAN_LIMIT_REACHED");
-    assertThat(erro.path("detail").asText()).contains("4 usuário(s) ativo(s)");
+    // A cota histórica não limita novas criações.
+    novoUsuario(tokenOwnerA, 201);
   }
 
   @Test
-  void desativarUsuarioLiberaVagaSemDesbloquearEdicao() throws Exception {
+  void usuarioPodeSerCriadoAntesEDepoisDeDesativacao() throws Exception {
     usarPlano(oficinaA, "BASICO");
     ajustarLimite("BASICO", "max_usuarios", 3);
-    novoUsuario(tokenOwnerA, 402);
+    novoUsuario(tokenOwnerA, 201);
     // Desativar não é bloqueado pelo plano e devolve a vaga: o limite conta usuários ativos.
     jdbc.update("update usuario set ativo=false where id=?", mecanicoA);
     novoUsuario(tokenOwnerA, 201);
   }
 
   @Test
-  void limiteDeArmazenamentoBloqueiaUploadAcimaDaCota() throws Exception {
+  void limiteHistoricoNaoBloqueiaUpload() throws Exception {
     usarPlano(oficinaA, "BASICO");
     String os = novaOs(tokenOwnerA, 201).path("id").asText();
     // Cota menor que qualquer imagem válida: o próximo upload não cabe.
@@ -363,13 +369,13 @@ class Fase7IT extends br.com.garagem.suporte.IntegracaoBase {
                         .file(imagem())
                         .param("finalidade", "ENTRADA")
                         .header("Authorization", "Bearer " + tokenOwnerA))
-                .andExpect(MockMvcResultMatchers.status().is(402))
+                .andExpect(MockMvcResultMatchers.status().is(201))
                 .andReturn());
-    assertThat(erro.path("code").asText()).isEqualTo("STORAGE_LIMIT_REACHED");
+    assertThat(erro.path("id").asText()).isNotBlank();
     assertThat(
             jdbc.queryForObject(
                 "select count(*) from foto_veiculo where oficina_id=?", Integer.class, oficinaA))
-        .isZero();
+        .isEqualTo(1);
   }
 
   MockMultipartFile imagem() throws Exception {
@@ -380,11 +386,11 @@ class Fase7IT extends br.com.garagem.suporte.IntegracaoBase {
   }
 
   @Test
-  void limiteDeOrdensPorMesEDeVeiculosRespeitaIlimitado() throws Exception {
+  void ordensEVeiculosIndependemDoLimiteHistorico() throws Exception {
     usarPlano(oficinaA, "BASICO");
     ajustarLimite("BASICO", "max_ordens_servico_mes", 1);
     novaOs(tokenOwnerA, 201);
-    assertThat(novaOs(tokenOwnerA, 402).path("code").asText()).isEqualTo("PLAN_LIMIT_REACHED");
+    novaOs(tokenOwnerA, 201);
     // PREMIUM tem os dois limites nulos: ilimitado não bloqueia.
     usarPlano(oficinaA, "PREMIUM");
     novaOs(tokenOwnerA, 201);
@@ -466,7 +472,7 @@ class Fase7IT extends br.com.garagem.suporte.IntegracaoBase {
   }
 
   @Test
-  void cancelamentoImediatoBloqueiaCrescimentoSemApagarDados() throws Exception {
+  void cancelamentoHistoricoNaoBloqueiaOperacaoNemApagaDados() throws Exception {
     String veiculoId = veiculo(tokenOwnerA, 201).path("id").asText();
     novaOsCom(tokenOwnerA, veiculoId, 201);
     post(
@@ -474,17 +480,17 @@ class Fase7IT extends br.com.garagem.suporte.IntegracaoBase {
         tokenOwnerA,
         Map.of("imediato", true, "motivo", "Troca de sistema", "revisao", revisao(tokenOwnerA)),
         200);
-    var erro = novaOsCom(tokenOwnerA, veiculoId, 402);
-    assertThat(erro.path("code").asText()).isEqualTo("SUBSCRIPTION_INACTIVE");
-    // O bloqueio alcança todo crescimento, não só a OS.
-    assertThat(veiculo(tokenOwnerA, 402).path("code").asText()).isEqualTo("SUBSCRIPTION_INACTIVE");
+    var erro = novaOsCom(tokenOwnerA, veiculoId, 201);
+    assertThat(erro.path("id").asText()).isNotBlank();
+    // O cancelamento histórico também não bloqueia o cadastro de veículos.
+    veiculo(tokenOwnerA, 201);
     // Leitura e área financeira seguem liberadas; nenhum registro foi removido.
     get("/api/v1/ordens-servico", tokenOwnerA, 200);
     get(BASE, tokenOwnerA, 200);
     assertThat(
             jdbc.queryForObject(
                 "select count(*) from ordem_servico where oficina_id=?", Integer.class, oficinaA))
-        .isEqualTo(1);
+        .isEqualTo(2);
   }
 
   @Test
@@ -598,8 +604,7 @@ class Fase7IT extends br.com.garagem.suporte.IntegracaoBase {
     RELOGIO.agora = RELOGIO.agora.plus(java.time.Duration.ofDays(8));
     var suspensa = get(BASE, tokenOwnerA, 200).path("assinatura");
     assertThat(suspensa.path("status").asText()).isEqualTo("SUSPENSA");
-    assertThat(novaOsCom(tokenOwnerA, veiculoId, 402).path("code").asText())
-        .isEqualTo("SUBSCRIPTION_INACTIVE");
+    novaOsCom(tokenOwnerA, veiculoId, 201);
     assertThat(tipos(tokenOwnerA))
         .contains("PAYMENT_FAILED", "ACCOUNT_PAST_DUE", "ACCOUNT_SUSPENDED");
   }

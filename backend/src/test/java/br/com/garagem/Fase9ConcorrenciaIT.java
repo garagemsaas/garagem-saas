@@ -37,6 +37,7 @@ class Fase9ConcorrenciaIT extends br.com.garagem.suporte.IntegracaoBase {
   /** Propriedades específicas desta suíte; a origem de dados vem da base. */
   @org.springframework.test.context.DynamicPropertySource
   static void propriedadesDaSuite(org.springframework.test.context.DynamicPropertyRegistry r) {
+    r.add("app.legacy-billing.enabled", () -> true);
     r.add("app.pagamento.webhook-secret", () -> SEGREDO);
     r.add("app.pagamento.tolerancia", () -> "P7D");
     r.add("app.seguranca.rate-limit.habilitado", () -> false);
@@ -79,6 +80,9 @@ class Fase9ConcorrenciaIT extends br.com.garagem.suporte.IntegracaoBase {
   @Autowired JdbcTemplate jdbc;
   @Autowired PasswordEncoder encoder;
 
+  @org.springframework.test.context.bean.override.mockito.MockitoBean
+  br.com.garagem.ordemservico.foto.application.FotoStorage storage;
+
   static final String SENHA = "SenhaSegura123!";
   static final java.util.concurrent.atomic.AtomicInteger PLACAS =
       new java.util.concurrent.atomic.AtomicInteger();
@@ -94,6 +98,11 @@ class Fase9ConcorrenciaIT extends br.com.garagem.suporte.IntegracaoBase {
     oficina = UUID.randomUUID();
     slug = "c-" + oficina;
     jdbc.update("insert into oficina(id,nome,slug) values(?,?,?)", oficina, "Concorrência", slug);
+    jdbc.update(
+        "insert into assinatura(id,oficina_id,plano_id,status,trial_inicio,trial_fim,periodo_inicio,periodo_fim) select ?,?,id,'TRIAL',now(),now()+interval '14 days',now(),now()+interval '14 days' from plano where codigo='PROFISSIONAL'",
+        UUID.randomUUID(),
+        oficina);
+
     jdbc.update(
         "insert into usuario(id,oficina_id,nome,email,senha_hash,papel) values(?,?,?,?,?,'OWNER')",
         UUID.randomUUID(),
@@ -302,32 +311,32 @@ class Fase9ConcorrenciaIT extends br.com.garagem.suporte.IntegracaoBase {
   // ---------------------------------------------------------------- F-01 limites atômicos
 
   @Test
-  void limiteDeUsuariosNaoEhUltrapassadoPorCriacoesSimultaneas() throws Exception {
+  void criacaoConcorrenteDeUsuariosIndependeDeCota() throws Exception {
     limitarPlano("max_usuarios", 3);
     criarUsuario(); // 2 ativos, resta 1 vaga
     assertThat(contar("usuario")).isEqualTo(2);
 
     var codigos = emParalelo(6, this::criarUsuario);
 
-    assertThat(Collections.frequency(codigos, 201)).as("apenas uma vaga existia").isEqualTo(1);
-    assertThat(Collections.frequency(codigos, 402)).isEqualTo(5);
-    assertThat(contar("usuario")).as("ativos finais").isEqualTo(3);
+    assertThat(Collections.frequency(codigos, 201)).isEqualTo(6);
+    assertThat(Collections.frequency(codigos, 402)).isZero();
+    assertThat(contar("usuario")).as("ativos finais").isEqualTo(8);
   }
 
   @Test
-  void limiteDeVeiculosNaoEhUltrapassadoPorCriacoesSimultaneas() throws Exception {
+  void criacaoConcorrenteDeVeiculosIndependeDeCota() throws Exception {
     String cliente = clienteNovo();
     criarVeiculo(cliente);
     limitarPlano("max_veiculos", 2);
 
     var codigos = emParalelo(6, () -> criarVeiculo(cliente));
 
-    assertThat(Collections.frequency(codigos, 201)).isEqualTo(1);
-    assertThat(contar("veiculo")).isEqualTo(2);
+    assertThat(Collections.frequency(codigos, 201)).isEqualTo(6);
+    assertThat(contar("veiculo")).isEqualTo(7);
   }
 
   @Test
-  void limiteDeOrdensDeServicoNaoEhUltrapassadoPorCriacoesSimultaneas() throws Exception {
+  void criacaoConcorrenteDeOrdensIndependeDeCota() throws Exception {
     String cliente = clienteNovo();
     criarVeiculo(cliente);
     String veiculo =
@@ -338,12 +347,12 @@ class Fase9ConcorrenciaIT extends br.com.garagem.suporte.IntegracaoBase {
 
     var codigos = emParalelo(6, () -> criarOs(veiculo));
 
-    assertThat(Collections.frequency(codigos, 201)).isEqualTo(1);
-    assertThat(contar("ordem_servico")).isEqualTo(2);
+    assertThat(Collections.frequency(codigos, 201)).isEqualTo(6);
+    assertThat(contar("ordem_servico")).isEqualTo(7);
   }
 
   @Test
-  void limiteDeArmazenamentoNaoEhUltrapassadoPorUploadsSimultaneos() throws Exception {
+  void uploadsConcorrentesIndependemDeCota() throws Exception {
     String cliente = clienteNovo();
     criarVeiculo(cliente);
     String veiculo =
@@ -353,13 +362,13 @@ class Fase9ConcorrenciaIT extends br.com.garagem.suporte.IntegracaoBase {
     String os =
         jdbc.queryForObject(
             "select cast(id as text) from ordem_servico where oficina_id=?", String.class, oficina);
-    // Cota menor que qualquer imagem válida: nenhum upload cabe, nem sob concorrência.
+    // Cota histórica menor que a imagem não deve limitar uploads, inclusive concorrentes.
     limitarPlano("max_armazenamento_bytes", 10);
 
     var codigos = emParalelo(6, () -> enviarFoto(os));
 
-    assertThat(codigos).as("nenhum upload cabia na cota").allMatch(c -> c == 402);
-    assertThat(contar("foto_veiculo")).isZero();
+    assertThat(codigos).allMatch(c -> c == 201);
+    assertThat(contar("foto_veiculo")).isEqualTo(6);
   }
 
   int enviarFoto(String os) throws Exception {
@@ -450,8 +459,9 @@ class Fase9ConcorrenciaIT extends br.com.garagem.suporte.IntegracaoBase {
 
     String cliente = clienteNovo();
     assertThat(criarVeiculo(cliente))
-        .as("criar recurso deve bloquear por suspensão, sem ninguém consultar a assinatura")
-        .isEqualTo(402);
+        .as("core operacional independe da cobrança histórica")
+        .isEqualTo(201);
+    get(BASE, 200);
     assertThat(
             jdbc.queryForObject(
                 "select status from assinatura where oficina_id=?", String.class, oficina))
@@ -498,7 +508,8 @@ class Fase9ConcorrenciaIT extends br.com.garagem.suporte.IntegracaoBase {
 
     // Nenhuma leitura de /assinatura entre o vencimento e a tentativa: o bloqueio tem de vir do
     // próprio caminho de criação, não de um efeito colateral de abrir a tela.
-    assertThat(criarVeiculo(cliente)).isEqualTo(402);
+    assertThat(criarVeiculo(cliente)).isEqualTo(201);
+    get(BASE, 200);
     assertThat(
             jdbc.queryForObject(
                 "select status from assinatura where oficina_id=?", String.class, oficina))
