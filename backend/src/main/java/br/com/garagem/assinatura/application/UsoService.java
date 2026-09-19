@@ -11,6 +11,9 @@ import org.springframework.transaction.annotation.Transactional;
  * Traduz plano e consumo para a resposta que a oficina lê. Um limite só aparece aqui se existir no
  * plano, de modo que acrescentar um limite novo em {@link Plano} baste para ele surgir na tela.
  */
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(
+    name = "app.legacy-billing.enabled",
+    havingValue = "true")
 @Service
 public class UsoService {
   private final PlanoLimiteService limites;

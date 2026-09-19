@@ -3,6 +3,7 @@ package br.com.garagem.auth.api;
 import br.com.garagem.auth.api.AuthDtos.*;
 import br.com.garagem.auth.application.AuthService;
 import br.com.garagem.shared.seguranca.LimiteRequisicoesFilter;
+import br.com.garagem.tenancy.SemModulo;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import jakarta.servlet.http.HttpServletRequest;
@@ -11,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
+@SemModulo
 @RequestMapping("/api/v1/auth")
 @SecurityRequirements
 public class AuthController {

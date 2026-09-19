@@ -3,6 +3,7 @@ package br.com.garagem.usuario.api;
 import br.com.garagem.shared.error.ApiException;
 import br.com.garagem.shared.persistence.Pagina;
 import br.com.garagem.shared.seguranca.UsuarioAutenticado;
+import br.com.garagem.tenancy.SemModulo;
 import br.com.garagem.tenancy.TenantContext;
 import br.com.garagem.usuario.domain.*;
 import br.com.garagem.usuario.repository.UsuarioRepository;
@@ -18,21 +19,16 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
+@SemModulo
 @RequestMapping("/api/v1/usuarios")
 public class UsuarioController {
   private final UsuarioRepository repo;
   private final PasswordEncoder encoder;
-  private final br.com.garagem.assinatura.application.PlanoLimiteService limites;
   private final JdbcTemplate jdbc;
 
-  public UsuarioController(
-      UsuarioRepository repo,
-      PasswordEncoder encoder,
-      br.com.garagem.assinatura.application.PlanoLimiteService limites,
-      JdbcTemplate jdbc) {
+  public UsuarioController(UsuarioRepository repo, PasswordEncoder encoder, JdbcTemplate jdbc) {
     this.repo = repo;
     this.encoder = encoder;
-    this.limites = limites;
     this.jdbc = jdbc;
   }
 
@@ -97,7 +93,7 @@ public class UsuarioController {
   public Saida criar(@Valid @RequestBody Entrada input) {
     // Limite do plano antes de qualquer trabalho: desativar, editar e excluir seguem livres, só a
     // criação consome vaga. A contagem é de usuários ativos, feita no banco.
-    limites.garantirNovoUsuario();
+
     if (input.senha().getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 72)
       throw ApiException.invalid("Senha excede 72 bytes.");
     Usuario u = new Usuario();
@@ -121,7 +117,6 @@ public class UsuarioController {
       description =
           "Revogação de acesso da oficina. Desativar tem efeito imediato: a sessão é conferida no"
               + " banco a cada requisição, e os refresh tokens do usuário são revogados na hora."
-              + " Reativar consome vaga do plano e é recusado com 402 se o limite estiver cheio."
               + " Nenhum dado do usuário é apagado, e a autoria dos registros é preservada.")
   public Saida situacao(@PathVariable UUID id, @Valid @RequestBody SituacaoEntrada input) {
     var alvo =
@@ -135,9 +130,6 @@ public class UsuarioController {
       if (alvo.papel == Papel.OWNER && ownersAtivos() <= 1)
         throw ApiException.conflict(
             "Esta é a última pessoa com acesso de proprietário. Promova outra antes de desativar.");
-    } else {
-      // Reativar aumenta o número de usuários ativos, então passa pelo mesmo limite da criação.
-      limites.garantirNovoUsuario();
     }
     alvo.ativo = input.ativo();
     if (!input.ativo())

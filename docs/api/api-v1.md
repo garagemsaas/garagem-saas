@@ -1,3 +1,5 @@
+> Atualização Fase 9: o tenant representa Empresa. Billing e cotas históricas estão desativados e fora do core. OWNER edita somente a própria identidade; situação e módulos são administrativos. Veja [modelo atualizado](/docs/architecture/empresa-white-label.md) e [provisionamento](/docs/operations/provisionamento-empresa.md). Referências a planos nas fases anteriores são históricas.
+
 # API v1 — inventário de contratos
 
 Fase 5: os contratos aditivos de Dinheiro Esquecido estão na
@@ -1450,7 +1452,7 @@ Tipos em [fase7-caua.md](../archive/fase7-caua.md#12-como-consultar-logs-de-cobr
 
 ### Webhook
 
-Sem JWT. Exige `X-Garagem-Signature` com o HMAC-SHA256 hexadecimal do **corpo cru** e o segredo do
+Sem JWT. Exige `X-Plataforma Automotiva-Signature` com o HMAC-SHA256 hexadecimal do **corpo cru** e o segredo do
 ambiente. Sem segredo configurado, todo evento é recusado com 401.
 
 Idempotente por `(provedor, id do evento)`. Evento duplicado ou de tipo desconhecido devolve **200**

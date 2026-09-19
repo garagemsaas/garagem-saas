@@ -1,7 +1,9 @@
 package br.com.garagem.ordemservico.foto.api;
 
+import br.com.garagem.oficina.ModuloEmpresa;
 import br.com.garagem.ordemservico.foto.application.FotoService;
 import br.com.garagem.ordemservico.foto.application.FotoService.Saida;
+import br.com.garagem.tenancy.RequerModulo;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.util.*;
@@ -10,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
+@RequerModulo(ModuloEmpresa.OFICINA)
 @RequestMapping("/api/v1/ordens-servico/{osId}/fotos")
 public class FotoController {
   private final FotoService service;

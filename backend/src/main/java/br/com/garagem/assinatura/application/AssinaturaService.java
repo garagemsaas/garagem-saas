@@ -22,6 +22,9 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>Regra que atravessa a classe: inadimplência e cancelamento retiram capacidade de crescer,
  * nunca dados. Nada neste serviço apaga registro operacional da oficina.
  */
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(
+    name = "app.legacy-billing.enabled",
+    havingValue = "true")
 @Service
 @Transactional
 public class AssinaturaService {

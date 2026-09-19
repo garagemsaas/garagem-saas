@@ -8,7 +8,9 @@ import Workspace from "./Workspace";
 import { labels } from "./navigation";
 import type { Page } from "./navigation";
 import Recovery from './Recovery';
-import Subscription from './Subscription';
+import CompanySettings from './CompanySettings';
+import { BrandingProvider } from './Branding';
+import { useEmpresa } from './branding-context';
 import './Login.css';
 import { date, number, roles } from "./model";
 import type { Client, Order, Vehicle } from "./model";
@@ -54,6 +56,8 @@ export default function App() {
     setLoginError('Sessão expirada. Entre novamente.');
   }, [setToast]);
   const [session, setSession] = useSession(limparSessao);
+  const company = useEmpresa(session?.usuarioId);
+  const oficinaEnabled = company.empresa?.modulos.includes("OFICINA") ?? false;
   function setSelected(value: string) {
     setSelectedId(value);
     if (value !== selected) setDetailLoading(Boolean(value));
@@ -111,7 +115,7 @@ export default function App() {
   }
   const sessionId = session?.usuarioId;
   useEffect(() => {
-    if (!sessionId || selected) return;
+    if (!sessionId || !oficinaEnabled || selected) return;
     let active = true;
     const sequence = ++loadSequence.current;
     // Synchronize the loading indicator with this API request's lifecycle.
@@ -124,7 +128,7 @@ export default function App() {
         .finally(() => { if (active) setDataLoading(false); });
     }, query ? 300 : 0);
     return () => { active = false; window.clearTimeout(timer); };
-  }, [sessionId, page, pagination, query, reload, selected]);
+  }, [sessionId, oficinaEnabled, page, pagination, query, reload, selected]);
   const [optionsLoading, setOptionsLoading] = useState(false);
   const [optionsError, setOptionsError] = useState('');
   const [optionsAttempt, setOptionsAttempt] = useState(0);
@@ -177,14 +181,14 @@ export default function App() {
               <span>Entregar</span>
             </div>
           </div>
-          <small>Garagem SaaS · Núcleo operacional</small>
+          <small>Plataforma Automotiva · Núcleo operacional</small>
         </section>
         <main className="login-main">
           <div className="login-form">
-            <span className="demo-label">GARAGEM · ACESSO DA OFICINA</span>
-            <h2>Entre na sua oficina</h2>
+            <span className="demo-label">PLATAFORMA AUTOMOTIVA · ACESSO DA EMPRESA</span>
+            <h2>Entre na sua empresa</h2>
             <p>Seu espaço de trabalho começa aqui.</p>
-            <p><a href="/institucional">Conhecer o Garagem</a> · <a href="/ajuda">Ajuda para começar</a></p>
+            <p><a href="/institucional">Conhecer a Plataforma Automotiva</a> · <a href="/ajuda">Ajuda para começar</a></p>
             <form
               onSubmit={async (e) => {
                 e.preventDefault();
@@ -193,7 +197,7 @@ export default function App() {
                 const email = String(f.get("email")).trim();
                 const senha = String(f.get("senha"));
                 if (!oficina) {
-                  setLoginError("Informe a oficina.");
+                  setLoginError("Informe a empresa.");
                   return;
                 }
                 if (busy) return;
@@ -212,8 +216,8 @@ export default function App() {
               }}
             >
               <Field
-                label="Oficina"
-                hint="Identificador da sua oficina."
+                label="Empresa"
+                hint="Identificador da sua empresa."
               >
                 <input
                   name="oficina"
@@ -263,19 +267,21 @@ export default function App() {
 
             </form>
           </div>
-          <footer>Garagem SaaS · Português do Brasil</footer>
+          <footer>Plataforma Automotiva · Português do Brasil</footer>
         </main>
       </div>
     );
+  if (!company.empresa) return <main className="public-order"><Brand /><PageState state={company.error ? 'error' : 'loading'} title="Identidade da empresa" retry={company.retry}>{company.error || 'Carregando configuração…'}</PageState><button onClick={logout}>Sair</button></main>;
+  if (!oficinaEnabled) return <BrandingProvider branding={company.empresa.branding}><main className="public-order"><Brand /><h1>Empresa configurada</h1><p>Nenhum módulo operacional está disponível para esta empresa nesta versão.</p>{session.role === 'OWNER' && <CompanySettings empresa={company.empresa} update={company.update} />}<button onClick={logout}>Sair</button></main></BrandingProvider>;
   return (
-    <Workspace page={page} navigate={navigate} role={session.role}
+    <BrandingProvider branding={company.empresa.branding}><Workspace page={page} navigate={navigate} role={session.role}
       name={user?.nome ?? "Usuário"} workshop={session.oficina}
       logout={logout} orders={data.ordens} clients={data.clientes} vehicles={data.veiculos} today={today}
       openOrder={openOrder}
       openClient={(c) => { navigate("clients"); setClient(c); setPanel("view-client"); }}
       openVehicle={(v) => { navigate("vehicles"); setVehicle(v); setPanel("view-vehicle"); }}
       openRecovery={() => setPanel("recovery")}
-      openSubscription={() => setPanel("subscription")}>
+      openCompany={() => setPanel("company")}>
           <button className="text-button" disabled={dataLoading || detailLoading} onClick={() => { setDataError(''); if (selected) { setDetailLoading(true); setDetailAttempt(n => n + 1); } else setReload(n => n + 1); }}>{dataLoading ? 'Atualizando…' : 'Atualizar dados'}</button>
           {dataLoading && !query ? <PageState state="loading" title="Carregando dados da oficina" /> : detailLoading ? <PageState state="loading" title="Carregando ordem de serviço" /> : dataError ? <PageState state="error" title="Não foi possível carregar os dados" retry={() => { setDataError(''); if (selected) { setDetailLoading(true); setDetailAttempt(n => n + 1); } else setReload(n => n + 1); }}>{dataError}</PageState> : page === "overview" ? <Suspense fallback={<PageState state="loading" title="Preparando sua visão geral" />}><Dashboard summary={data.dashboard} orders={data.ordens} clients={data.clientes} vehicles={data.veiculos}
             today={today} canWrite={canWrite} openOrder={openOrder}
@@ -651,7 +657,12 @@ export default function App() {
           title={vehicle ? "Editar veículo" : "Cadastrar veículo"}
           close={() => setPanel("")}
         >
-          {optionsLoading ? <PageState state="loading" title="Carregando clientes" /> : optionsError ? <PageState state="error" title="Não foi possível carregar as opções" retry={() => setOptionsAttempt(n => n + 1)}>{optionsError}</PageState> : <VehicleForm
+          {/* O estado de carregamento só aparece enquanto não há o que mostrar. Abrir a edição
+              dispara uma releitura dos clientes, e trocar o formulário pelo indicador no meio dela
+              desmontava e remontava os campos: o que a pessoa já tivesse digitado voltava ao valor
+              original, sem aviso. Com a lista em mãos, o formulário permanece montado e a releitura
+              apenas atualiza as opções. */}
+          {optionsLoading && !options.clientes.length ? <PageState state="loading" title="Carregando clientes" /> : optionsError ? <PageState state="error" title="Não foi possível carregar as opções" retry={() => setOptionsAttempt(n => n + 1)}>{optionsError}</PageState> : <VehicleForm
             current={vehicle}
             clients={options.clientes}
             vehicles={data.veiculos}
@@ -716,9 +727,9 @@ export default function App() {
       {panel === "recovery" && canWrite && <Drawer title="Dinheiro Esquecido" close={() => setPanel("")} wide>
         <Recovery openOrder={openOrder} />
       </Drawer>}
-      {panel === "subscription" && canWrite && <Drawer title="Plano e assinatura" close={() => setPanel("")} wide>
-        <Subscription role={session.role} />
+      {panel === "company" && session.role === "OWNER" && <Drawer title="Identidade da empresa" close={() => setPanel("")} wide>
+        <CompanySettings empresa={company.empresa} update={company.update} />
       </Drawer>}
-    </Workspace>
+    </Workspace></BrandingProvider>
   );
 }

@@ -1,6 +1,7 @@
 package br.com.garagem.veiculo.api;
 
 import br.com.garagem.shared.persistence.Pagina;
+import br.com.garagem.tenancy.SemModulo;
 import br.com.garagem.veiculo.api.VeiculoDtos.*;
 import br.com.garagem.veiculo.application.VeiculoService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -11,6 +12,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
+@SemModulo
 @RequestMapping("/api/v1/veiculos")
 public class VeiculoController {
   private final VeiculoService service;

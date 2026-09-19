@@ -35,7 +35,7 @@ $ambiente = 'C:\Operacao\garagem\piloto.env'
 $composes = @('compose.yml', 'C:\Operacao\garagem\piloto-compose.yml')
 $versao = 'COMMIT-OU-IMAGEM-APROVADA'
 & .\scripts\backup-piloto.ps1 -Project $origem -EnvFile $ambiente `
-  -ComposeFiles $composes -Destination 'D:\Backups\Garagem' -Stage pre `
+  -ComposeFiles $composes -Destination 'D:\Backups\Plataforma Automotiva' -Stage pre `
   -Operator 'NOME-DO-RESPONSAVEL' -ApplicationVersion $versao -MaintenanceConfirmed
 ```
 
@@ -79,7 +79,7 @@ todo override e os mounts dos demais serviços. Preserve as imagens PG/MinIO do
 manifest: este procedimento físico de MinIO não é uma migração entre versões.
 
 ```powershell
-$backup = 'D:\Backups\Garagem\garagem-piloto-pre-TIMESTAMP'
+$backup = 'D:\Backups\Plataforma Automotiva\garagem-piloto-pre-TIMESTAMP'
 & .\scripts\restore-piloto.ps1 -Project 'garagem-restore-validacao-001' `
   -EnvFile $ambiente -ComposeFiles @('compose.yml','C:\Operacao\garagem\restore.yml') `
   -BackupDirectory $backup -IsolatedTargetConfirmed

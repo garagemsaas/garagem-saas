@@ -1,10 +1,11 @@
+import { empresa } from './company-fixture.mjs';
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
 async function login(page, role) {
   await page.route('**/api/v1/**', route => {
     const path = new URL(route.request().url()).pathname;
-    const body = path.endsWith('/auth/login')
+    const body = path.endsWith('/empresa') ? empresa : path.endsWith('/auth/login')
       ? { accessToken: 'test', refreshToken: 'test', oficinaId: 'pilot-a', usuarioId: 'u', nome: 'Participante', papel: role, expiresIn: 900 }
       : path.endsWith('/dashboard')
         ? { emAndamento: 0, prontas: 0, porStatus: {}, orcamentosAguardandoDecisao: { total: 0, quantidade: 0 } }
@@ -12,7 +13,7 @@ async function login(page, role) {
     return route.fulfill({ contentType: 'application/json', body: JSON.stringify(body) });
   });
   await page.goto('/');
-  await page.getByLabel('Oficina', { exact: true }).fill('piloto-a');
+  await page.getByLabel('Empresa', { exact: true }).fill('piloto-a');
   await page.getByLabel('E-mail', { exact: true }).fill('piloto@example.test');
   await page.getByLabel('Senha', { exact: true }).fill('teste');
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();

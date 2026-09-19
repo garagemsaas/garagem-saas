@@ -59,21 +59,14 @@ O módulo de oportunidades identifica situações que podem representar receita 
 - oportunidades em acompanhamento;
 - valores potenciais e recuperados.
 
-### Planos e assinaturas
+### Empresa e identidade visual
 
-A aplicação possui infraestrutura para operação como SaaS, incluindo:
+Uma base de código atende empresas independentes com nome, logo, favicon, cores e contatos próprios. Módulos OFICINA e REVENDA podem ser combinados; somente OFICINA tem operação implementada nesta fase. O OWNER configura sua identidade, enquanto um operador autorizado provisiona módulos e situação ATIVA/INATIVA.
 
-- planos;
-- assinaturas;
-- limites de utilização;
-- controle de usuários;
-- controle de veículos e ordens;
-- armazenamento;
-- cobrança;
-- webhooks;
-- inadimplência;
-- suspensão e reativação;
-- métricas de utilização.
+A venda é direta, sem planos self-service, cotas comerciais, checkout ou gateway obrigatório. Billing histórico permanece desativado e fora do core.
+
+- [Arquitetura e contratos de branding](docs/architecture/empresa-white-label.md)
+- [Provisionamento administrativo](docs/operations/provisionamento-empresa.md)
 
 ---
 
@@ -208,7 +201,8 @@ Entre as possibilidades previstas:
 | Autenticação e autorização | ✅ |
 | Orçamentos e acompanhamento | ✅ |
 | Oportunidades comerciais | ✅ |
-| Planos e assinaturas | ✅ |
+| White-label e módulos por empresa | ✅ |
+| Billing histórico | Desativado |
 | Billing e webhooks | ✅ |
 | Segurança e observabilidade | ✅ |
 | Testes automatizados | ✅ |

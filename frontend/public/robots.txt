@@ -8,4 +8,4 @@ Disallow: /materiais/
 Disallow: /api/
 Disallow: /
 
-Sitemap: https://garagem.example/sitemap.xml
+Sitemap: https://plataforma.example/sitemap.xml

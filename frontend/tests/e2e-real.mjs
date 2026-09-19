@@ -28,7 +28,7 @@ try {
   const nav = name => page.getByRole('navigation', { name: 'Navegação principal', exact: true }).getByRole('button', { name, exact: true }).click();
   async function login(workshop) {
     await page.goto(base);
-    await page.getByLabel('Oficina', { exact: true }).fill(workshop.slug);
+    await page.getByLabel('Empresa', { exact: true }).fill(workshop.slug);
     await page.getByLabel('E-mail', { exact: true }).fill(fixture.email);
     await page.locator('input[name="senha"]').fill(fixture.password);
     await button('Entrar').click();

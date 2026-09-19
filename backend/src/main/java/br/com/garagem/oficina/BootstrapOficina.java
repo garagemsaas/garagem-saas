@@ -30,24 +30,59 @@ public class BootstrapOficina implements ApplicationRunner {
     String nome = env.getRequiredProperty("app.bootstrap.nome").trim();
     String email = env.getRequiredProperty("app.bootstrap.email").trim().toLowerCase(Locale.ROOT);
     String senha = env.getRequiredProperty("app.bootstrap.senha");
+    // Quem provisionou, para a trilha administrativa. O próprio bootstrap é um operador legítimo:
+    // exigir a variável faria toda instalação que já definia as cinco anteriores quebrar no start
+    // por causa de uma sexta que ninguém sabia existir.
+    String operador = env.getProperty("app.bootstrap.operador", "").trim();
+    if (operador.isEmpty()) operador = "bootstrap";
+    var modulosConfigurados = env.getProperty("app.bootstrap.modulos", "OFICINA");
     if (!slug.matches("[a-z0-9-]{3,80}")
         || nome.isBlank()
         || nome.length() > 160
         || !email.contains("@")
         || email.length() > 254
         || senha.length() < 12
-        || senha.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 72)
+        || senha.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 72
+        || operador.length() > 160)
       throw new IllegalArgumentException("Configuração de bootstrap inválida");
-    UUID id = UUID.randomUUID();
-    int created =
-        jdbc.update(
-            "insert into oficina(id,nome,slug) values(?,?,?) on conflict(slug) do nothing",
-            id,
-            nome,
-            slug);
-    // A assinatura de avaliação é criada pelo gatilho `assinatura_da_oficina` (V4), junto com a
-    // oficina: o invariante vale para qualquer origem de cadastro, não só para este bootstrap.
-    if (created == 1)
+    String[] modulos;
+    try {
+      modulos =
+          Arrays.stream(modulosConfigurados.split(","))
+              .map(String::trim)
+              .filter(m -> !m.isEmpty())
+              .map(ModuloEmpresa::valueOf)
+              .distinct()
+              .map(Enum::name)
+              .toArray(String[]::new);
+    } catch (IllegalArgumentException e) {
+      // Um módulo desconhecido é erro de configuração, e a mensagem precisa dizer isso em vez de
+      // vazar o nome do enum do Java para quem está subindo o ambiente.
+      throw new IllegalArgumentException("Configuração de bootstrap inválida");
+    }
+    if (modulos.length == 0)
+      throw new IllegalArgumentException("Configuração de bootstrap inválida");
+    String operadorAuditado = operador;
+    // A empresa nasce com os módulos contratados, não com OFICINA para ser corrigida depois: uma
+    // instalação de revenda nunca chega a existir como oficina, nem por um instante.
+    UUID id =
+        jdbc.execute(
+            (java.sql.Connection connection) -> {
+              try (var statement =
+                  connection.prepareStatement("select provisionar_empresa(?, ?, ?, ?, ?)")) {
+                statement.setString(1, slug);
+                statement.setString(2, nome);
+                statement.setArray(3, connection.createArrayOf("text", modulos));
+                statement.setString(4, operadorAuditado);
+                statement.setString(5, "Provisionamento inicial por venda direta");
+                try (var resultado = statement.executeQuery()) {
+                  return resultado.next() ? resultado.getObject(1, UUID.class) : null;
+                }
+              }
+            });
+    // Slug já existente devolve null: o bootstrap é idempotente e não redefine senha de quem
+    // existe.
+    if (id != null)
       jdbc.update(
           "insert into usuario(id,oficina_id,nome,email,senha_hash,papel) values(?,?,?,?,?,'OWNER')",
           UUID.randomUUID(),

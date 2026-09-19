@@ -370,3 +370,11 @@ td { font-size: 13px; }
   .budget-table td { display: flex; justify-content: space-between; gap: 16px; padding: 8px 0; border: 0; white-space: normal; text-align: right; }
   .budget-table td::before { content: attr(data-label); color: var(--muted); font-weight: 400; text-align: left; flex-shrink: 0; }
 }
+
+.company-logo { width: 48px; height: 48px; object-fit: contain; flex-shrink: 0; }
+.brand { overflow-wrap: anywhere; }
+.workspace-brand .brand { font-size: 18px; }
+.company-settings fieldset { display: grid; gap: 16px; border: 0; padding: 0; }
+.company-settings label { display: grid; gap: 6px; margin: 12px 0; }
+button.primary, .workspace-brand .brand-mark { color: var(--brand-on-primary, #fff); }
+button.primary:hover:not(:disabled) { color: var(--brand-on-secondary, #fff); }

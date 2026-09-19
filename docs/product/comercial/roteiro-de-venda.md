@@ -1,11 +1,13 @@
-# Roteiro de venda — Garagem Oficina
+> Atualização Fase 9: o tenant representa Empresa. Billing e cotas históricas estão desativados e fora do core. OWNER edita somente a própria identidade; situação e módulos são administrativos. Veja [modelo atualizado](/docs/architecture/empresa-white-label.md) e [provisionamento](/docs/operations/provisionamento-empresa.md). Referências a planos nas fases anteriores são históricas.
+
+# Roteiro de venda — Plataforma Automotiva Oficina
 
 Material para Kauã e Cauã. Oferta proposta, sujeita às condições aprovadas pelos sócios.
 Não usar o resultado dos testes automatizados como depoimento, prova de receita ou validação do piloto.
 
 ## 1. Abertura e permissão (1 minuto)
 
-“Olá! Estamos apresentando o Garagem, um sistema para organizar o atendimento da oficina
+“Olá! Estamos apresentando o Plataforma Automotiva, um sistema para organizar o atendimento da oficina
 e acompanhar oportunidades de retorno. Posso entender como vocês trabalham hoje antes de mostrar?”
 
 Se não houver interesse, agradecer e encerrar. Não insistir nem cadastrar contato sem finalidade acordada.
@@ -23,8 +25,7 @@ Se uma exclusão for indispensável, explicar que a oferta atual ainda não aten
 
 ## 3. Demonstração orientada pela necessidade (5 minutos)
 
-Usar dados fictícios. Abrir a apresentação em `frontend/public/materiais/garagem-apresentacao.pptx`
-e o vídeo legendado `garagem-demonstracao.webm` da mesma pasta, ou demonstrar em ambiente de teste.
+Usar dados fictícios em ambiente de teste. Os materiais da marca anterior estão arquivados e não devem ser usados como oferta atual.
 
 “Aqui o atendimento fica vinculado ao cliente e ao veículo. A OS reúne o diagnóstico
 e as versões do orçamento. A oficina disponibiliza a versão e compartilha o link manualmente.”

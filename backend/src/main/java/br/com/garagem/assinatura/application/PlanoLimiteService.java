@@ -20,6 +20,9 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>A contagem é sempre feita no banco, dentro da oficina autenticada, e no instante da operação —
  * nunca a partir de um total mantido à parte, que sairia do lugar em qualquer falha parcial.
  */
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(
+    name = "app.legacy-billing.enabled",
+    havingValue = "true")
 @Service
 public class PlanoLimiteService {
   /** Regra de negócio, não constante de infraestrutura: consumo é o que está gravado. */

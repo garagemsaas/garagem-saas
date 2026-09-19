@@ -1,4 +1,4 @@
-# Política de Privacidade — Garagem SaaS
+# Política de Privacidade — Plataforma Automotiva
 
 **Versão 1.0 — minuta para revisão jurídica.** O inventário de dados abaixo foi levantado a partir
 do código e das migrations em 17/09/2026 (`V1`–`V4`). **Nada aqui afirma coleta que o sistema não
@@ -14,9 +14,9 @@ faça.** Campos entre colchetes dependem de definição da empresa.
 
 | Situação | Controlador | Operador |
 |---|---|---|
-| Dados da oficina contratante e de seus usuários | Garagem SaaS | — |
-| Dados de clientes finais e veículos cadastrados pela oficina | A oficina contratante | Garagem SaaS |
-| Dados de cobrança da assinatura | Garagem SaaS | Meio de pagamento contratado |
+| Dados da oficina contratante e de seus usuários | Plataforma Automotiva | — |
+| Dados de clientes finais e veículos cadastrados pela oficina | A oficina contratante | Plataforma Automotiva |
+| Dados de cobrança da assinatura | Plataforma Automotiva | Meio de pagamento contratado |
 
 A oficina é quem decide cadastrar um cliente final e quais dados inserir. Cabe a ela a base legal
 desse tratamento. A Plataforma trata esses dados apenas para executar o serviço contratado.

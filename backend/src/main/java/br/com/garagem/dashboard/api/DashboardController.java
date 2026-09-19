@@ -2,12 +2,15 @@ package br.com.garagem.dashboard.api;
 
 import br.com.garagem.dashboard.api.DashboardDtos.DashboardSaida;
 import br.com.garagem.dashboard.application.DashboardService;
+import br.com.garagem.oficina.ModuloEmpresa;
+import br.com.garagem.tenancy.RequerModulo;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import java.time.Clock;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
+@RequerModulo(ModuloEmpresa.OFICINA)
 @RequestMapping("/api/v1/dashboard")
 public class DashboardController {
   private final DashboardService service;

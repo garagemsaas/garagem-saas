@@ -1,3 +1,4 @@
+import { useBranding } from "./branding-context";
 import { cloneElement, isValidElement, useContext, useEffect, useId, useRef } from "react";
 import { FormErrors } from './form-context';
 import type { ReactNode } from "react";
@@ -7,13 +8,14 @@ import type { Status } from "./model";
 import { Icon } from "./icons";
 export { Icon } from "./icons";
 export function Brand() {
+  const { branding, logo } = useBranding();
   return (
     <div className="brand">
-      <span className="brand-mark">
+      {logo ? <img className="company-logo" src={logo} alt="" /> : <span className="brand-mark">
         <Icon name="vehicles" size={25} />
-      </span>
+      </span>}
       <span>
-        garagem<span className="brand-sub">GESTÃO DE OFICINAS</span>
+        {branding?.nomeExibicao ?? "Plataforma Automotiva"}
       </span>
     </div>
   );

@@ -5,6 +5,7 @@ import br.com.garagem.assinatura.application.*;
 import br.com.garagem.assinatura.domain.*;
 import br.com.garagem.shared.error.ApiException;
 import br.com.garagem.shared.persistence.Pagina;
+import br.com.garagem.tenancy.SemModulo;
 import io.swagger.v3.oas.annotations.*;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -19,7 +20,11 @@ import org.springframework.web.bind.annotation.*;
  * <p>Continua acessível com a assinatura suspensa, de propósito: é por aqui que a oficina entende a
  * suspensão e se regulariza.
  */
+@org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(
+    name = "app.legacy-billing.enabled",
+    havingValue = "true")
 @RestController
+@SemModulo
 @RequestMapping("/api/v1/assinatura")
 @PreAuthorize("hasAnyRole('OWNER','ATENDENTE')")
 @Tag(

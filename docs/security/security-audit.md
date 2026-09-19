@@ -1,3 +1,5 @@
+> Atualização Fase 9: o tenant representa Empresa. Billing e cotas históricas estão desativados e fora do core. OWNER edita somente a própria identidade; situação e módulos são administrativos. Veja [modelo atualizado](/docs/architecture/empresa-white-label.md) e [provisionamento](/docs/operations/provisionamento-empresa.md). Referências a planos nas fases anteriores são históricas.
+
 # Auditoria de segurança e prontidão para produção
 
 Auditoria executada em **18/09/2026**, na branch `feature/fase7-preparacao-vendas`, contra o código
