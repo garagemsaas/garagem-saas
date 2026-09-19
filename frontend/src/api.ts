@@ -125,7 +125,7 @@ export async function loadData(page: Page = 'overview', pagina = 0, busca = '') 
   veiculos.push(...buscados);
   // Clientes só depois dos veículos: um veículo recém-buscado pode trazer um cliente novo.
   const idsDeCliente = [...orders.map(o => o.clienteId), ...veiculos.map(v => v.clienteId)];
-  const faltandoCliente = [...new Set(idsDeCliente.filter(id => !clientes.some(c => c.id === id)))];
+  const faltandoCliente = [...new Set(idsDeCliente.filter(id => Boolean(id) && !clientes.some(c => c.id === id)))];
   clientes.push(...await Promise.all(faltandoCliente.map(id => api<Client>(`/clientes/${id}`))));
   return data;
 }

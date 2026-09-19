@@ -419,7 +419,9 @@
   padding: 16px 21px;
   border-top: 1px solid #e6ebe1;
   font-size: 10px;
-  color: #7a8573;
+  /* 10px é texto pequeno: AA pede 4.5:1. O cinza anterior ficava em 4,0 sobre branco e o axe
+     reprovava o rodapé de paginação assim que ele apareceu sobre fundo claro. */
+  color: #5b6656;
   gap: 16px;
 }
 .pager > div {

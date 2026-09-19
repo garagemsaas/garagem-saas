@@ -49,7 +49,8 @@ public final class OsDtos {
       Instant criadoEm,
       Instant previsaoEntrega,
       Instant concluidaEm,
-      long revisao) {
+      long revisao,
+      String tipo) {
     public static OsSaida de(OrdemServico o) {
       return new OsSaida(
           o.id,
@@ -63,7 +64,8 @@ public final class OsDtos {
           o.criadoEm,
           o.previsaoEntrega,
           o.concluidaEm,
-          o.revisao);
+          o.revisao,
+          o.tipo);
     }
   }
 

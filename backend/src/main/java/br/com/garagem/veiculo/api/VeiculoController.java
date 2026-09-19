@@ -62,6 +62,14 @@ public class VeiculoController {
     return service.criar(input);
   }
 
+  @GetMapping("/{id}/propriedade/historico")
+  public Pagina<VeiculoService.PropriedadeHistorico> historico(
+      @PathVariable UUID id,
+      @RequestParam(defaultValue = "0") int pagina,
+      @RequestParam(defaultValue = "20") int tamanho) {
+    return service.historico(id, pagina, tamanho);
+  }
+
   @PutMapping("/{id}")
   @PreAuthorize("hasAnyRole('OWNER','ATENDENTE')")
   @Operation(summary = "Atualizar veículo com controle de revisão")

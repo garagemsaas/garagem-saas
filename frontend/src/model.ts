@@ -24,9 +24,12 @@ export interface Client {
   revisao: number;
 }
 export interface Vehicle {
+  propriedade?: 'CLIENTE' | 'EMPRESA' | 'NAO_INFORMADA';
+  versao?: string | null; anoModelo?: number | null; chassi?: string | null; renavam?: string | null;
+  combustivel?: string | null; cambio?: string | null; observacoes?: string | null;
   id: string;
-  clienteId: string;
-  placa: string;
+  clienteId: string | null;
+  placa: string | null;
   marca: string;
   modelo: string;
   ano: number;
@@ -78,10 +81,11 @@ export interface Photo {
   vinculo?: string;
 }
 export interface Order {
+  tipo?: "CLIENTE" | "INTERNA";
   id: string;
   numero: number;
   veiculoId: string;
-  clienteId: string;
+  clienteId: string | null;
   mecanicoId: string;
   status: Status;
   kmEntrada: number;

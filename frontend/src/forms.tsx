@@ -145,27 +145,32 @@ export function VehicleForm({
   clients,
   vehicles,
   save,
-  close,
+  close, allowUnowned = false, clientPicker,
 }: {
+  allowUnowned?: boolean; clientPicker?: ReactNode;
   current?: Vehicle;
   clients: Client[];
   vehicles: Vehicle[];
   save: (v: Vehicle) => void | Promise<void>;
   close: () => void | Promise<void>;
 }) {
-  if (!clients.length) return <><Empty title="Cadastre um cliente primeiro">Todo veículo precisa estar vinculado ao seu proprietário. Abra Clientes e cadastre o contato antes de continuar.</Empty><button onClick={close}>Voltar</button></>;
+  if (!allowUnowned && !clients.length) return <><Empty title="Cadastre um cliente primeiro">Todo veículo precisa estar vinculado ao seu proprietário. Abra Clientes e cadastre o contato antes de continuar.</Empty><button onClick={close}>Voltar</button></>;
   return (
     <Form
       close={close}
       save={(f) => {
         const placa = val(f, "placa").replace(/[- ]/g, "").toUpperCase();
-        if (vehicles.some((v) => v.placa === placa && v.id !== current?.id))
+        if (placa && vehicles.some((v) => v.placa === placa && v.id !== current?.id))
           throw Error("Esta placa já está cadastrada na oficina.");
         if (!val(f, "marca") || !val(f, "modelo") || !val(f, "cor"))
           throw Error("Preencha marca, modelo e cor.");
         return save({
           id: current?.id || uid(),
           clienteId: val(f, "clienteId"),
+          propriedade: current?.propriedade,
+          versao: val(f, "versao") || null, anoModelo: Number(val(f, "anoModelo")) || null,
+          chassi: val(f, "chassi") || null, renavam: val(f, "renavam") || null,
+          combustivel: val(f, "combustivel") || null, cambio: val(f, "cambio") || null, observacoes: val(f, "observacoes") || null,
           placa,
           marca: val(f, "marca"),
           modelo: val(f, "modelo"),
@@ -176,10 +181,11 @@ export function VehicleForm({
         });
       }}
     >
-      <Field label="Cliente *">
+      {clientPicker || <Field label="Cliente *">
         <select
           name="clienteId"
-          required
+          required={!allowUnowned}
+          disabled={current?.propriedade === 'EMPRESA'}
           defaultValue={current?.clienteId || ""}
         >
           <option value="" disabled>
@@ -191,14 +197,14 @@ export function VehicleForm({
             </option>
           ))}
         </select>
-      </Field>
-      <Field label="Placa *">
+      </Field>}
+      <Field label={allowUnowned ? 'Placa (ou informe chassi)' : 'Placa *'}>
         <input
           name="placa"
           className="plate-input"
-          required
+          required={!allowUnowned}
           pattern="[A-Za-z]{3}[- ]?[0-9][A-Za-z0-9][0-9]{2}"
-          defaultValue={current?.placa}
+          defaultValue={current?.placa || ''}
           maxLength={8}
           placeholder="ABC1D23"
         />
@@ -249,6 +255,14 @@ export function VehicleForm({
           defaultValue={current?.km || 0}
         />
       </Field>
+      <div className="form-grid">
+        <Field label="Versão"><input name="versao" maxLength={100} defaultValue={current?.versao || ''} /></Field>
+        <Field label="Ano modelo"><input name="anoModelo" type="number" min={1886} max={2200} defaultValue={current?.anoModelo || current?.ano} /></Field>
+        <Field label="Chassi"><input name="chassi" maxLength={30} pattern="[A-Za-z0-9]+" defaultValue={current?.chassi || ''} /></Field>
+        <Field label="RENAVAM"><input name="renavam" maxLength={20} pattern="[0-9]+" defaultValue={current?.renavam || ''} /></Field>
+        <Field label="Combustível"><input name="combustivel" maxLength={40} defaultValue={current?.combustivel || ''} /></Field>
+        <Field label="Câmbio"><input name="cambio" maxLength={40} defaultValue={current?.cambio || ''} /></Field>
+      </div><Field label="Observações"><textarea name="observacoes" maxLength={4000} defaultValue={current?.observacoes || ''} /></Field>
     </Form>
   );
 }

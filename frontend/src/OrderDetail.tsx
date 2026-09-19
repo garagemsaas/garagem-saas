@@ -96,7 +96,7 @@ export default function OrderDetail({
 }: {
   order: Order;
   vehicle: Vehicle;
-  client: Client;
+  client?: Client;
   users: User[];
   role: Role;
   update: (o: Order) => void | Promise<void>;
@@ -232,7 +232,7 @@ export default function OrderDetail({
       <section className="identity-strip">
         <div>
           <small>Cliente</small>
-          <strong>{client.nome}</strong>
+          <strong>{client?.nome || "Prepara??o interna da empresa"}</strong>
         </div>
         <div>
           <small>Quilometragem</small>
@@ -330,11 +330,11 @@ export default function OrderDetail({
               <dl className="definition-grid">
                 <div>
                   <dt>Telefone</dt>
-                  <dd>{client.telefone}</dd>
+                  <dd>{client?.telefone || "?"}</dd>
                 </div>
                 <div>
                   <dt>E-mail</dt>
-                  <dd>{client.email || "Não informado"}</dd>
+                  <dd>{client?.email || "Não informado"}</dd>
                 </div>
               </dl>
             </div>
@@ -539,7 +539,7 @@ export default function OrderDetail({
                     · Canal: link público
                   </p>
                 )}
-                {office && (
+                {office && order.tipo !== 'INTERNA' && (
                   <div className="approval-box">
                     <div>
                       <h3>Aprovação do cliente</h3>
@@ -815,7 +815,7 @@ export default function OrderDetail({
           >
             <Field label="Próxima etapa *">
               <select name="status" required>
-                {transitions[order.status].map((s) => (
+                {(order.tipo === "INTERNA" && order.status === "ORCAMENTO" ? ["EM_MANUTENCAO" as const] : transitions[order.status]).map((s) => (
                   <option key={s} value={s}>
                     {statuses[s]}
                   </option>

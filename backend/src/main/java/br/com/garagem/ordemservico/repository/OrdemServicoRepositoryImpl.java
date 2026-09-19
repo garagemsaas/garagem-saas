@@ -32,12 +32,10 @@ class OrdemServicoRepositoryImpl implements OrdemServicoRepositoryCustom {
 
   private static final String BASE =
       """
-      from OrdemServico o, Veiculo v, Cliente c
+      from OrdemServico o join Veiculo v on o.veiculoId=v.id and v.oficinaId=o.oficinaId
+        left join Cliente c on o.clienteId=c.id and c.oficinaId=o.oficinaId
        where o.oficinaId = :oficinaId
-         and v.oficinaId = :oficinaId
-         and c.oficinaId = :oficinaId
-         and o.veiculoId = v.id
-         and o.clienteId = c.id\
+         and v.oficinaId = :oficinaId\
       """;
 
   @PersistenceContext private EntityManager em;

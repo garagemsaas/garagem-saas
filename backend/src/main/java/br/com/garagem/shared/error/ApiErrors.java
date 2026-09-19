@@ -70,6 +70,13 @@ public class ApiErrors {
 
   @ExceptionHandler(DataIntegrityViolationException.class)
   ResponseEntity<ProblemDetail> integrity(Exception e) {
+    // A resposta continua genérica de propósito: qual restrição caiu é desenho do banco e não vai
+    // para o cliente. Mas alguém precisa saber — sem isto, um 409 destes é indistinguível de um
+    // conflito de negócio legítimo no log, e a única pista de qual regra o impediu se perde.
+    LoggerFactory.getLogger(ApiErrors.class)
+        .warn(
+            "Restrição de integridade violada: {}",
+            org.springframework.core.NestedExceptionUtils.getMostSpecificCause(e).getMessage());
     return problem(
         HttpStatus.CONFLICT,
         ErrorCodes.DUPLICATE,
