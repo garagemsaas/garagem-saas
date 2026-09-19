@@ -12,6 +12,7 @@ public class OrdemServico extends TenantEntity {
   public long numero;
   public UUID veiculoId;
   public UUID clienteId;
+  public String tipo = "CLIENTE";
   public UUID mecanicoId;
 
   @Enumerated(EnumType.STRING)

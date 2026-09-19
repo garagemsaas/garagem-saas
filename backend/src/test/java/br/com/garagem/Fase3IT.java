@@ -453,7 +453,9 @@ class Fase3IT extends br.com.garagem.suporte.IntegracaoBase {
             "criadoEm",
             "previsaoEntrega",
             "concluidaEm",
-            "revisao");
+            "revisao",
+            // Distingue a OS de cliente da OS interna de preparação de veículo do estoque.
+            "tipo");
     assertThat(principal.path("status").asText()).isEqualTo("RECEBIDO");
 
     // Cliente e veículo vêm por id: a tela resolve pelos próprios contratos, não por join na OS.
@@ -803,9 +805,26 @@ class Fase3IT extends br.com.garagem.suporte.IntegracaoBase {
 
     assertThat(campos(schemas.path("ClienteEntrada").path("properties")))
         .containsExactlyInAnyOrder("nome", "telefone", "email", "revisao");
+    // A Fase 10 somou os atributos que a revenda precisa descrever no anúncio. O conjunto segue
+    // exato de propósito: o que esta asserção protege é a fronteira entre contratos, não o tamanho
+    // da lista — campo novo aqui é decisão, nunca vazamento de outro DTO.
     assertThat(campos(schemas.path("VeiculoEntrada").path("properties")))
         .containsExactlyInAnyOrder(
-            "clienteId", "placa", "marca", "modelo", "ano", "km", "cor", "revisao");
+            "clienteId",
+            "placa",
+            "marca",
+            "modelo",
+            "ano",
+            "km",
+            "cor",
+            "revisao",
+            "versao",
+            "anoModelo",
+            "chassi",
+            "renavam",
+            "combustivel",
+            "cambio",
+            "observacoes");
 
     // O envelope de página deixa de ser um schema só para todas as listagens.
     assertThat(campos(schemas)).contains("PaginaClienteSaida", "PaginaVeiculoSaida");

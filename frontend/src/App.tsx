@@ -20,6 +20,7 @@ import type { Session } from "./api";
 import "./App.css";
 import "./design-system.css";
 
+const RevendaApp = lazy(() => import("./revenda/RevendaApp"));
 const Dashboard = lazy(() => import("./Dashboard"));
 
 const subtitles: Record<Page, string> = {
@@ -57,6 +58,9 @@ export default function App() {
   }, [setToast]);
   const [session, setSession] = useSession(limparSessao);
   const company = useEmpresa(session?.usuarioId);
+  const [context, setContext] = useState<"OFICINA" | "REVENDA">("OFICINA");
+  const revendaEnabled = company.empresa?.modulos.includes("REVENDA") && session?.role !== "MECANICO";
+  const dealerActive = revendaEnabled && (context === "REVENDA" || !company.empresa?.modulos.includes("OFICINA"));
   const oficinaEnabled = company.empresa?.modulos.includes("OFICINA") ?? false;
   function setSelected(value: string) {
     setSelectedId(value);
@@ -109,13 +113,13 @@ export default function App() {
     setClient(saved); finish('Cliente salvo.'); setReload(n => n + 1);
   }
   async function saveVehicle(v: Vehicle) {
-    const saved = await api<Vehicle>(vehicle ? `/veiculos/${vehicle.id}` : '/veiculos', vehicle ? 'PUT' : 'POST', { clienteId: v.clienteId, placa: v.placa, marca: v.marca, modelo: v.modelo, ano: v.ano, km: v.km, cor: v.cor, revisao: v.revisao });
+    const saved = await api<Vehicle>(vehicle ? `/veiculos/${vehicle.id}` : '/veiculos', vehicle ? 'PUT' : 'POST', { ...v, clienteId: v.clienteId || null, placa: v.placa || null });
     setData(d => ({ ...d, veiculos: d.veiculos.some(item => item.id === saved.id) ? d.veiculos.map(item => item.id === saved.id ? saved : item) : [...d.veiculos, saved] }));
     setVehicle(saved); finish('Veículo salvo.'); setReload(n => n + 1);
   }
   const sessionId = session?.usuarioId;
   useEffect(() => {
-    if (!sessionId || !oficinaEnabled || selected) return;
+    if (!sessionId || !oficinaEnabled || dealerActive || selected) return;
     let active = true;
     const sequence = ++loadSequence.current;
     // Synchronize the loading indicator with this API request's lifecycle.
@@ -128,7 +132,7 @@ export default function App() {
         .finally(() => { if (active) setDataLoading(false); });
     }, query ? 300 : 0);
     return () => { active = false; window.clearTimeout(timer); };
-  }, [sessionId, oficinaEnabled, page, pagination, query, reload, selected]);
+  }, [sessionId, oficinaEnabled, dealerActive, page, pagination, query, reload, selected]);
   const [optionsLoading, setOptionsLoading] = useState(false);
   const [optionsError, setOptionsError] = useState('');
   const [optionsAttempt, setOptionsAttempt] = useState(0);
@@ -272,6 +276,7 @@ export default function App() {
       </div>
     );
   if (!company.empresa) return <main className="public-order"><Brand /><PageState state={company.error ? 'error' : 'loading'} title="Identidade da empresa" retry={company.retry}>{company.error || 'Carregando configuração…'}</PageState><button onClick={logout}>Sair</button></main>;
+  if (dealerActive) return <BrandingProvider branding={company.empresa.branding}><Suspense fallback={<PageState state="loading" title="Abrindo revenda" />}><RevendaApp key={session.usuarioId} empresa={company.empresa} update={company.update} userId={session.usuarioId} role={session.role} logout={logout} switchOffice={id => { setContext("OFICINA"); if (id) openOrder(id); else navigate("overview"); }} /></Suspense></BrandingProvider>;
   if (!oficinaEnabled) return <BrandingProvider branding={company.empresa.branding}><main className="public-order"><Brand /><h1>Empresa configurada</h1><p>Nenhum módulo operacional está disponível para esta empresa nesta versão.</p>{session.role === 'OWNER' && <CompanySettings empresa={company.empresa} update={company.update} />}<button onClick={logout}>Sair</button></main></BrandingProvider>;
   return (
     <BrandingProvider branding={company.empresa.branding}><Workspace page={page} navigate={navigate} role={session.role}
@@ -282,6 +287,7 @@ export default function App() {
       openVehicle={(v) => { navigate("vehicles"); setVehicle(v); setPanel("view-vehicle"); }}
       openRecovery={() => setPanel("recovery")}
       openCompany={() => setPanel("company")}>
+          {revendaEnabled && <button onClick={() => { setSelected(""); setContext("REVENDA"); }}>Ir para revenda</button>}
           <button className="text-button" disabled={dataLoading || detailLoading} onClick={() => { setDataError(''); if (selected) { setDetailLoading(true); setDetailAttempt(n => n + 1); } else setReload(n => n + 1); }}>{dataLoading ? 'Atualizando…' : 'Atualizar dados'}</button>
           {dataLoading && !query ? <PageState state="loading" title="Carregando dados da oficina" /> : detailLoading ? <PageState state="loading" title="Carregando ordem de serviço" /> : dataError ? <PageState state="error" title="Não foi possível carregar os dados" retry={() => { setDataError(''); if (selected) { setDetailLoading(true); setDetailAttempt(n => n + 1); } else setReload(n => n + 1); }}>{dataError}</PageState> : page === "overview" ? <Suspense fallback={<PageState state="loading" title="Preparando sua visão geral" />}><Dashboard summary={data.dashboard} orders={data.ordens} clients={data.clientes} vehicles={data.veiculos}
             today={today} canWrite={canWrite} openOrder={openOrder}

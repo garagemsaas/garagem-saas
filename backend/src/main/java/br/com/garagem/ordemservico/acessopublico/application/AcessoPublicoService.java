@@ -63,7 +63,8 @@ public class AcessoPublicoService {
   }
 
   public LinkSaida criarLink(UUID id) {
-    os.bloquear(id);
+    if ("INTERNA".equals(os.bloquear(id).tipo))
+      throw ApiException.conflict("OS interna não possui acompanhamento público.");
     String token = Tokens.novo();
     LinkAcessoPublico l = new LinkAcessoPublico();
     l.ordemServicoId = id;

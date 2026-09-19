@@ -7,6 +7,9 @@ import org.springframework.data.domain.*;
 import org.springframework.data.jpa.repository.Query;
 
 public interface VeiculoRepository extends TenantRepository<Veiculo> {
+  @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+  @Query("select v from Veiculo v where v.id=:id and v.oficinaId=:oficinaId")
+  java.util.Optional<Veiculo> lock(UUID id, UUID oficinaId);
 
   /**
    * Filtro combinado da oficina atual. {@code clienteId} também é confrontado com a oficina, de

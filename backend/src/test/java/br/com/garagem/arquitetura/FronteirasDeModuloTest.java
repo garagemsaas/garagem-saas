@@ -34,6 +34,7 @@ class FronteirasDeModuloTest {
           "usuario",
           "auth",
           "dashboard",
+          "revenda",
           "oficina");
 
   private static final Pattern IMPORT =

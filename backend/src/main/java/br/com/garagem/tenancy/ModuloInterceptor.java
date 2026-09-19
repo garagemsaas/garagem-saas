@@ -28,19 +28,27 @@ public class ModuloInterceptor implements HandlerInterceptor {
   public boolean preHandle(HttpServletRequest req, HttpServletResponse res, Object handler)
       throws IOException {
     if (!(handler instanceof HandlerMethod alvo)) return true;
-    var exigido = AnnotatedElementUtils.findMergedAnnotation(alvo.getMethod(), RequerModulo.class);
-    if (exigido == null)
-      exigido = AnnotatedElementUtils.findMergedAnnotation(alvo.getBeanType(), RequerModulo.class);
-    if (exigido == null) return true;
+    var exigidos = java.util.EnumSet.noneOf(br.com.garagem.oficina.ModuloEmpresa.class);
+    var classe = AnnotatedElementUtils.findMergedAnnotation(alvo.getBeanType(), RequerModulo.class);
+    var metodo = AnnotatedElementUtils.findMergedAnnotation(alvo.getMethod(), RequerModulo.class);
+    if (classe != null) exigidos.add(classe.value());
+    if (metodo != null) exigidos.add(metodo.value());
+    if (exigidos.isEmpty()) return true;
     // Sem tenant resolvido não há módulo a consultar. Quem barra esse caso é a autenticação, que
     // roda antes; responder 404 aqui esconderia o 401 correto de quem só está deslogado.
     if (TenantContext.UNRESOLVED.equals(TenantContext.resolvedOrEmpty())) return true;
-    if (Boolean.TRUE.equals(
+    var parametros = new java.util.ArrayList<Object>();
+    parametros.add(TenantContext.current());
+    exigidos.forEach(m -> parametros.add(m.name()));
+    String placeholders = String.join(",", java.util.Collections.nCopies(exigidos.size(), "?"));
+    if (java.util.Objects.equals(
         jdbc.queryForObject(
-            "select exists(select 1 from empresa_modulo where oficina_id=? and modulo=?)",
-            Boolean.class,
-            TenantContext.current(),
-            exigido.value().name()))) return true;
+            "select count(*) from empresa_modulo where oficina_id=? and modulo in ("
+                + placeholders
+                + ")",
+            Integer.class,
+            parametros.toArray()),
+        exigidos.size())) return true;
     ProblemJson.write(res, 404, ErrorCodes.NOT_FOUND, "Recurso não disponível.");
     return false;
   }

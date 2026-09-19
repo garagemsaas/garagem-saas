@@ -27,7 +27,12 @@ test('identidade acompanha sessão e OWNER salva apenas configuração permitida
       }
       return send(companies[current]);
     }
-    expect(current).toBe('A'); // REVENDA não consulta endpoints de OFICINA.
+    // Cada empresa só pode falar com o que contratou. A Fase 10 deu telas à revenda, então B passa
+    // a ter chamadas legítimas — mas continuam sendo apenas as de /revenda, nunca as da oficina.
+    const revenda = path.includes('/api/v1/revenda/');
+    if (current === 'B') expect(revenda, `B não deve chamar ${path}`).toBe(true);
+    else expect(revenda, `A não deve chamar ${path}`).toBe(false);
+    if (path.endsWith('/revenda/dashboard')) return send({ emAvaliacao: 0, emPreparacao: 0, disponiveis: 0, reservados: 0, vendidos: 0, valorAquisicao: 0, custosPreparacao: 0, valorAnunciado: 0, margemPotencial: 0, mediaDiasEstoque: 0, leadsAbertos: 0, propostasAbertas: 0, vendasPeriodo: 0, valorVendido: 0, margemRealizada: 0 });
     if (path.endsWith('/dashboard')) return send({ emAndamento: 0, prontas: 0, porStatus: {}, orcamentosAguardandoDecisao: { total: 0, quantidade: 0 } });
     return send({ itens: [], pagina: 0, tamanho: 10, total: 0 });
   });
@@ -57,8 +62,11 @@ test('identidade acompanha sessão e OWNER salva apenas configuração permitida
   await expect(page).toHaveTitle(/Plataforma Automotiva/);
   await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', '/favicon.svg');
   await login('B'); await expect(page).toHaveTitle('Empresa Beta');
-  await expect(page.getByText('Nenhum módulo operacional está disponível', { exact: false })).toBeVisible();
+  // Até a Fase 9 uma empresa só de revenda caía numa tela neutra por não ter módulo com telas.
+  // Agora ela tem as suas, e o que segue valendo é a outra metade: as da oficina continuam fora.
+  await expect(page.getByRole('heading', { name: 'Visão geral da revenda' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Ordens de serviço', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Ir para oficina', exact: true })).toHaveCount(0);
   await expect(page.locator('img.company-logo')).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.style.getPropertyValue('--accent'))).toBe('#654321');
 });
