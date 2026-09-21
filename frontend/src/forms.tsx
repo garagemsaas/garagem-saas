@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ApiError } from './api';
 import { FormErrors } from './form-context';
 import type { FormEvent, ReactNode } from "react";
@@ -27,6 +27,12 @@ export function Form({
   const [pending, setPending] = useState<FormData | null>(null);
   const ref = useRef<HTMLFormElement>(null);
   const saving = useRef(false);
+  useEffect(() => {
+    if (!error || busy || pending) return;
+    const target = ref.current?.querySelector<HTMLElement>('[aria-invalid="true"]')
+      ?? ref.current?.querySelector<HTMLElement>('[role="alert"]');
+    target?.focus();
+  }, [error, fieldErrors, busy, pending]);
   async function persist(data: FormData) {
     if (saving.current) return;
     saving.current = true;
@@ -39,10 +45,6 @@ export function Form({
       setPending(null);
       setError(err instanceof Error ? err.message : 'Confira os dados informados.');
       if (err instanceof ApiError) setFieldErrors(Object.fromEntries(err.errors.map(item => [item.field, item.message])));
-      requestAnimationFrame(() => {
-        const target = ref.current?.querySelector<HTMLElement>('[aria-invalid="true"]') ?? ref.current?.querySelector<HTMLElement>('[role="alert"]');
-        target?.focus();
-      });
     } finally { saving.current = false; setBusy(false); }
   }
   async function onSubmit(e: FormEvent<HTMLFormElement>) {

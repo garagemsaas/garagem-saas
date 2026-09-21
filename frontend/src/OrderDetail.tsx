@@ -154,12 +154,13 @@ export default function OrderDetail({
     try {
       await action();
       committed = true;
-      setPanel(''); notify(event);
       const fresh = await loadOrder(order.id);
       await update({ ...fresh, link: revoke ? undefined : order.link });
+      setPanel(''); notify(event);
       return true;
     } catch (e) {
       if (committed) {
+        setPanel(''); notify(event);
         setError('A alteração foi salva, mas os dados não puderam ser recarregados. Clique em Atualizar dados antes de continuar.');
         return true;
       }
