@@ -15,6 +15,8 @@ test('identidade acompanha sessão e OWNER salva apenas configuração permitida
       return send({ accessToken: current, refreshToken: current, oficinaId: current, usuarioId: current, nome: 'Owner', papel: 'OWNER', expiresIn: 900 });
     }
     if (path.endsWith('/auth/logout')) return route.fulfill({ status: 204 });
+    // Navegador limpo não tem cookie de sessão: a tentativa de retomada no carregamento é 401.
+    if (path.endsWith('/auth/refresh')) return route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ detail: 'Sessão expirada.' }) });
     expect(request.headers().authorization).toBe(`Bearer ${current}`);
     if (path.includes('/empresa/imagens/')) {
       expect(current).toBe('A');

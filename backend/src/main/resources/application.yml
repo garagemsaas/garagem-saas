@@ -90,6 +90,13 @@ app:
     confiar-proxy: ${TRUST_PROXY:false}
   observability:
     slow-request-ms: ${SLOW_REQUEST_MS:1000}
+  auth:
+    # O refresh viaja em cookie HttpOnly. Frontend e API em domínios diferentes só trocam cookie com
+    # SameSite=None, que por sua vez exige Secure — por isso é este o padrão. Em desenvolvimento,
+    # tudo na mesma origem por http, use REFRESH_COOKIE_SECURE=false e REFRESH_COOKIE_SAME_SITE=Lax.
+    refresh-cookie:
+      secure: ${REFRESH_COOKIE_SECURE:true}
+      same-site: ${REFRESH_COOKIE_SAME_SITE:None}
   jwt:
     secret: ${JWT_SECRET}
     issuer: garagem-api

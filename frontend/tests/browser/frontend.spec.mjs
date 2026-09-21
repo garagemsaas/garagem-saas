@@ -11,7 +11,7 @@ async function fixture(context, role = 'OWNER') {
   const state = {
     clients: [], vehicles: [], orders: [], versions: [], diagnostics: [], photos: [], timeline: [], checklist: null,
     users: [{ id: 'mechanic', nome: 'Mecânico de teste', email: 'mechanic@example.test', papel: 'MECANICO', ativo: true }],
-    failClients: false, fieldError: false, expired: false, delay: 0, writes: [], statusConflict: false,
+    failClients: false, fieldError: false, expired: false, delay: 0, writes: [], statusConflict: false, autenticado: false,
   };
   const emit = description => state.timeline.push({ id: String(state.timeline.length), descricao: description, origem: 'USUARIO', criadoEm: new Date().toISOString() });
   await context.route('**/api/v1/**', async route => {
@@ -40,10 +40,12 @@ async function fixture(context, role = 'OWNER') {
       }
       return send({ numero: order.numero, status: order.status, veiculo: 'Fiat Uno · ABC1D23', previsaoEntrega: null, orcamento: state.versions.at(-1) ?? null });
     }
-    if (path === '/auth/login') return send({ ...session, papel: role });
+    if (path === '/auth/login') { state.autenticado = true; return send({ ...session, papel: role }); }
     if (path === '/auth/logout') return route.fulfill({ status: 204 });
     if (state.expired) return send({ detail: 'Sessão expirada.' }, 401);
-    if (path === '/auth/refresh') return send({ ...session, papel: role });
+    // O app tenta retomar a sessão pelo cookie ao carregar. Sem login prévio não há cookie, e um
+    // navegador limpo recebe 401 — devolver sessão aqui pularia a tela de entrada do teste.
+    if (path === '/auth/refresh') return state.autenticado ? send({ ...session, papel: role }) : send({ detail: 'Sessão expirada.' }, 401);
     expect(req.headers().authorization).toBe('Bearer test-access');
     if (path === '/empresa') return send(empresa);
     if (path === '/dashboard') return state.failClients ? send({ detail: 'Serviço indisponível.' }, 503) : send({ emAndamento: state.orders.filter(o => o.status !== 'PRONTO').length, prontas: state.orders.filter(o => o.status === 'PRONTO').length, porStatus: { AGUARDANDO_APROVACAO: state.orders.filter(o => o.status === 'AGUARDANDO_APROVACAO').length }, orcamentosAguardandoDecisao: { total: 0, quantidade: 0 } });
@@ -266,11 +268,20 @@ test('carregamento, erro recuperável, validação por campo, busca vazia e sess
   await expect(page.getByRole('alert')).toContainText('Sessão expirada');
 });
 
-test('login acessível, proteção após reload e link público inválido', async ({ page, context }) => {
-  await fixture(context);
-  await page.goto('/'); await accessible(page); await noOverflow(page);
+test('login acessível, sessão sobrevive ao reload e link público inválido', async ({ page, context }) => {
+  const state = await fixture(context);
+  // Navegador ainda sem cookie: a primeira coisa que se vê é a entrada, não a aplicação.
+  await page.goto('/'); await expect(page.getByRole('button', { name: 'Entrar', exact: true })).toBeVisible();
+  await accessible(page); await noOverflow(page);
   await login(page); await expect(page.getByRole('heading', { name: 'Um dia bem organizado.' })).toBeVisible();
-  await page.reload(); await expect(page.getByRole('button', { name: 'Entrar', exact: true })).toBeVisible();
+  // Recarregar deixou de deslogar: o access token morre com a página, o cookie de refresh não.
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Um dia bem organizado.' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Entrar', exact: true })).toHaveCount(0);
+  // E sair de verdade encerra: sem cookie válido, o reload volta para a entrada.
+  state.autenticado = false;
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Entrar', exact: true })).toBeVisible();
   await page.goto('/acompanhar#invalido');
   await expect(page.getByRole('heading', { name: 'Link indisponível' })).toBeVisible();
   await accessible(page); await noOverflow(page);

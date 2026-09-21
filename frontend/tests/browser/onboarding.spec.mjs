@@ -5,6 +5,8 @@ import AxeBuilder from '@axe-core/playwright';
 async function login(page, role) {
   await page.route('**/api/v1/**', route => {
     const path = new URL(route.request().url()).pathname;
+    // Sem cookie de sessão, a retomada do carregamento é recusada — como num navegador limpo.
+    if (path.endsWith('/auth/refresh')) return route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ detail: 'Sessão expirada.' }) });
     const body = path.endsWith('/empresa') ? empresa : path.endsWith('/auth/login')
       ? { accessToken: 'test', refreshToken: 'test', oficinaId: 'pilot-a', usuarioId: 'u', nome: 'Participante', papel: role, expiresIn: 900 }
       : path.endsWith('/dashboard')

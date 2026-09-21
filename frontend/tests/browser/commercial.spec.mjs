@@ -35,6 +35,8 @@ for (const role of ['OWNER', 'ATENDENTE', 'MECANICO']) {
       calls.push({ path, method: request.method() });
       const send = (body, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
     if (path.endsWith('/empresa')) return send(empresa);
+    // Sem cookie de sessão, a retomada do carregamento é recusada — como num navegador limpo.
+      if (path.endsWith('/auth/refresh')) return send({ detail: 'Sessão expirada.' }, 401);
       if (path.endsWith('/auth/login')) return send({ accessToken: 'a', refreshToken: 'r', oficinaId: 'a', usuarioId: 'u', nome: 'Teste', papel: role, expiresIn: 900 });
       if (path.endsWith('/dashboard')) return send({ emAndamento: 0, prontas: 0, porStatus: {}, orcamentosAguardandoDecisao: { total: 0, quantidade: 0 } });
       if (fail) return send({ detail: 'Falha de consulta' }, 503);

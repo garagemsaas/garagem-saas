@@ -69,9 +69,14 @@ public class SecurityConfig {
   }
 
   /**
-   * Origens explícitas, sem credenciais de navegador: a API autentica por cabeçalho Authorization,
-   * nunca por cookie, então não há por que ligar allowCredentials. Sem origens configuradas, nenhum
-   * cabeçalho CORS é emitido.
+   * Origens explícitas e credenciais ligadas. O access token continua viajando em {@code
+   * Authorization}, mas o refresh passou a morar num cookie {@code HttpOnly} — sem {@code
+   * allowCredentials} o navegador simplesmente não o enviaria, e a sessão morreria a cada
+   * recarregamento, que é o problema que o cookie existe para resolver.
+   *
+   * <p>Ligar credenciais só é seguro porque a lista de origens é explícita: {@link CorsProperties}
+   * recusa {@code *} na construção. Curinga com credenciais é proibido pela própria especificação,
+   * e aqui é impossível de configurar por engano. Sem origens, nenhum cabeçalho CORS é emitido.
    */
   @Bean
   CorsConfigurationSource corsSource(CorsProperties properties) {
@@ -80,7 +85,7 @@ public class SecurityConfig {
     config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
     config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
     config.setExposedHeaders(List.of("X-Request-Id"));
-    config.setAllowCredentials(false);
+    config.setAllowCredentials(true);
     config.setMaxAge(3600L);
     var source = new UrlBasedCorsConfigurationSource();
     if (!properties.allowedOrigins().isEmpty()) source.registerCorsConfiguration("/**", config);

@@ -58,6 +58,12 @@ services:
       # A documentação interativa descreve toda a superfície da API a quem não autenticou.
       - key: API_DOCS_ENABLED
         value: "false"
+      # Frontend e API em domínios diferentes: o cookie do refresh só atravessa com SameSite=None,
+      # e None sem Secure é recusado pelo navegador.
+      - key: REFRESH_COOKIE_SECURE
+        value: "true"
+      - key: REFRESH_COOKIE_SAME_SITE
+        value: None
       # Storage de fotos: preencher no painel antes do primeiro deploy (ver cabeçalho).
       - key: S3_ENDPOINT
         sync: false
