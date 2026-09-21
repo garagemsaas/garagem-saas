@@ -5,8 +5,13 @@
   "outputDirectory": "dist",
   "installCommand": "npm install",
   "rewrites": [
-    { "source": "/institucional", "destination": "/index.html" },
-    { "source": "/ajuda", "destination": "/index.html" },
-    { "source": "/acompanhar", "destination": "/index.html" }
+    {
+      "source": "/acompanhar",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/site/:slug",
+      "destination": "/index.html"
+    }
   ]
 }

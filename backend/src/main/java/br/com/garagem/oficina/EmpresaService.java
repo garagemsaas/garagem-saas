@@ -27,7 +27,29 @@ public class EmpresaService {
       UUID faviconId,
       long revisao) {}
 
-  public record Empresa(Branding branding, List<ModuloEmpresa> modulos, String status) {}
+  public record Empresa(
+      Branding branding,
+      List<ModuloEmpresa> modulos,
+      String status,
+      Site site,
+      UUID capaId,
+      // O dono precisa saber o endereço do próprio site para divulgá-lo.
+      String slug) {}
+
+  /**
+   * O que a empresa mostra ao público. Separado da identidade porque são decisões diferentes: cores
+   * e logo valem dentro do sistema mesmo sem site nenhum, e publicar é uma escolha à parte.
+   */
+  public record Site(
+      @Size(max = 160) String frase,
+      @Size(max = 2000) String sobre,
+      @Size(max = 1000) String servicos,
+      @Size(max = 300) String endereco,
+      @Size(max = 300) String horario,
+      @Pattern(regexp = "|[0-9]{10,15}") String whatsapp,
+      @Pattern(regexp = "|[A-Za-z0-9._]{1,30}") String instagram,
+      boolean publicado,
+      @NotNull @PositiveOrZero Long revisao) {}
 
   public record Edicao(
       @NotBlank @Size(max = 160) String nomeExibicao,
@@ -80,7 +102,71 @@ public class EmpresaService {
             (r, n) -> ModuloEmpresa.valueOf(r.getString(1)),
             TenantContext.current()),
         jdbc.queryForObject(
-            "select situacao from oficina where id=?", String.class, TenantContext.current()));
+            "select situacao from oficina where id=?", String.class, TenantContext.current()),
+        site(),
+        jdbc
+            .query(
+                "select id from empresa_imagem where oficina_id=? and tipo='capa'",
+                (r, n) -> r.getObject(1, UUID.class),
+                TenantContext.current())
+            .stream()
+            .findFirst()
+            .orElse(null),
+        jdbc.queryForObject(
+            "select slug from oficina where id=?", String.class, TenantContext.current()));
+  }
+
+  private Site site() {
+    return jdbc.queryForObject(
+        """
+      select site_frase,site_sobre,site_servicos,site_endereco,site_horario,site_whatsapp,
+             site_instagram,site_publicado,revisao_branding from oficina where id=?
+      """,
+        (r, n) ->
+            new Site(
+                r.getString("site_frase"),
+                r.getString("site_sobre"),
+                r.getString("site_servicos"),
+                r.getString("site_endereco"),
+                r.getString("site_horario"),
+                r.getString("site_whatsapp"),
+                r.getString("site_instagram"),
+                r.getBoolean("site_publicado"),
+                r.getLong("revisao_branding")),
+        TenantContext.current());
+  }
+
+  /**
+   * Publicar exige ter o que mostrar, e o banco recusa o contrário. A mensagem aqui existe para que
+   * o dono leia o que falta em vez de um erro de restrição — a regra continua sendo do banco.
+   */
+  public Empresa editarSite(Site s) {
+    if (jdbc.update(
+            """
+      update oficina set site_frase=?,site_sobre=?,site_servicos=?,site_endereco=?,site_horario=?,
+      site_whatsapp=?,site_instagram=?,site_publicado=?,revisao_branding=revisao_branding+1
+      where id=? and revisao_branding=?
+      """,
+            vazioComoNulo(s.frase()),
+            vazioComoNulo(s.sobre()),
+            vazioComoNulo(s.servicos()),
+            vazioComoNulo(s.endereco()),
+            vazioComoNulo(s.horario()),
+            vazioComoNulo(s.whatsapp()),
+            vazioComoNulo(s.instagram()),
+            s.publicado(),
+            TenantContext.current(),
+            s.revisao())
+        != 1) throw ApiException.conflict("A identidade mudou. Recarregue antes de salvar.");
+    return obter();
+  }
+
+  /**
+   * Campo em branco vindo de formulário é ausência, não string vazia — as restrições contam com
+   * isso.
+   */
+  private static String vazioComoNulo(String valor) {
+    return valor == null || valor.isBlank() ? null : valor.trim();
   }
 
   public Empresa editar(Edicao e) {
@@ -136,7 +222,9 @@ public class EmpresaService {
   }
 
   private static void tipo(String tipo) {
-    if (!Set.of("logo", "favicon").contains(tipo)) throw ApiException.missing();
+    // A capa é a imagem de abertura do site e passa pela mesma validação de logo e favicon:
+    // 2 MB, PNG ou JPEG de verdade, reescrita para PNG. Não há segundo caminho de upload.
+    if (!Set.of("logo", "favicon", "capa").contains(tipo)) throw ApiException.missing();
   }
 
   private static ApiException invalida() {

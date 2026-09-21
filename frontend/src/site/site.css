@@ -1,0 +1,193 @@
+/*
+ * Site público da empresa. Folha própria e isolada: nada aqui depende do design-system da
+ * aplicação, porque esta página é vista por quem nunca vai entrar no sistema.
+ *
+ * A cor da empresa entra por --empresa, definida em tempo de execução. Os tons neutros são fixos:
+ * é o que mantém a página elegante mesmo quando a cor escolhida pelo cliente não é.
+ */
+.site {
+  --empresa: #365b49;
+  --empresa-texto: #ffffff;
+  --empresa-escura: #17352b;
+  --tinta: #1a1f1c;
+  --suave: #5c665f;
+  --linha: #e4e7e1;
+  --papel: #ffffff;
+  --fundo: #faf9f6;
+  color: var(--tinta);
+  background: var(--papel);
+  font-size: 16px;
+  line-height: 1.6;
+}
+.site *,
+.site *::before,
+.site *::after { box-sizing: border-box; }
+.site h1,
+.site h2 { letter-spacing: -0.02em; line-height: 1.15; margin: 0; }
+.site p { margin: 0; }
+
+/* Topo ------------------------------------------------------------------ */
+.site-topo {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+  padding: 18px clamp(20px, 5vw, 64px);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--linha);
+}
+.site-marca {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 18px;
+  font-weight: 600;
+  color: inherit;
+  text-decoration: none;
+}
+.site-marca img { height: 34px; width: auto; max-width: 150px; object-fit: contain; }
+.site-topo nav { display: flex; gap: clamp(14px, 3vw, 30px); flex-wrap: wrap; }
+.site-topo nav a {
+  color: var(--suave);
+  text-decoration: none;
+  font-size: 15px;
+  padding: 4px 0;
+  border-bottom: 2px solid transparent;
+}
+.site-topo nav a:hover { color: var(--tinta); border-bottom-color: var(--empresa); }
+
+/* Início ---------------------------------------------------------------- */
+.site-inicio { position: relative; background: var(--empresa-escura); color: #fff; }
+/* A capa fica sob o texto com opacidade: qualquer foto que o cliente envie continua legível. */
+.site-capa {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.38;
+}
+.site-inicio-texto {
+  position: relative;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: clamp(72px, 14vw, 152px) clamp(20px, 5vw, 64px);
+  text-align: center;
+  display: grid;
+  gap: 22px;
+  justify-items: center;
+}
+.site-inicio h1 { font-size: clamp(34px, 6vw, 58px); font-weight: 600; }
+.site-frase { font-size: clamp(17px, 2.3vw, 21px); color: rgba(255, 255, 255, 0.86); max-width: 54ch; }
+.site-botao {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 26px;
+  border-radius: 8px;
+  background: var(--empresa);
+  color: var(--empresa-texto);
+  font-weight: 600;
+  text-decoration: none;
+}
+.site-botao:hover { filter: brightness(1.08); }
+.site-botao:focus-visible,
+.site a:focus-visible { outline: 3px solid var(--empresa); outline-offset: 3px; }
+
+/* Seções ---------------------------------------------------------------- */
+.site-secao {
+  max-width: 940px;
+  margin: 0 auto;
+  padding: clamp(56px, 9vw, 96px) clamp(20px, 5vw, 64px);
+  display: grid;
+  gap: 28px;
+}
+.site-secao h2 { font-size: clamp(24px, 3.4vw, 32px); font-weight: 600; }
+.site-secao + .site-secao { border-top: 1px solid var(--linha); }
+.site-sobre { background: var(--fundo); max-width: none; }
+.site-sobre h2,
+.site-sobre p { max-width: 940px; width: 100%; margin-inline: auto; }
+.site-sobre p { color: var(--suave); font-size: 17px; }
+.site-sobre { gap: 18px; }
+
+.site-servicos {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 14px;
+}
+.site-servicos li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 20px;
+  border: 1px solid var(--linha);
+  border-radius: 10px;
+  background: var(--papel);
+  font-weight: 500;
+}
+.site-servicos svg { color: var(--empresa); flex-shrink: 0; }
+
+.site-contato {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 26px;
+}
+.site-contato > div { display: grid; gap: 8px; align-content: start; }
+.site-contato dt {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--suave);
+}
+.site-contato dt svg { color: var(--empresa); }
+.site-contato dd { margin: 0; display: grid; gap: 6px; overflow-wrap: anywhere; }
+.site-contato a { color: var(--empresa); text-decoration: none; font-weight: 500; width: fit-content; }
+.site-contato a:hover { text-decoration: underline; }
+
+/* Rodapé ---------------------------------------------------------------- */
+.site-rodape {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 26px clamp(20px, 5vw, 64px);
+  border-top: 1px solid var(--linha);
+  background: var(--fundo);
+  font-size: 14px;
+  color: var(--suave);
+}
+/* Sem opacidade: em 12px o AA pede 4,5:1, e o véu derrubava a assinatura abaixo disso.
+   A discrição vem do tamanho e do peso, não de apagar o texto. */
+.site-assinatura { font-size: 12px; }
+
+/* Estados --------------------------------------------------------------- */
+.site-vazio {
+  min-height: 70vh;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 10px;
+  padding: 48px 20px;
+  text-align: center;
+  color: #5c665f;
+}
+.site-vazio h1 { font-size: 26px; color: #1a1f1c; margin: 0; }
+
+@media (max-width: 640px) {
+  .site-topo { padding-block: 14px; }
+  .site-topo nav { width: 100%; justify-content: space-between; }
+}

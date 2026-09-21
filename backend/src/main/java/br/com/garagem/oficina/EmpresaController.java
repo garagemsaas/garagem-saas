@@ -30,6 +30,12 @@ public class EmpresaController {
     return service.editar(input);
   }
 
+  @PutMapping("/empresa/site")
+  @PreAuthorize("hasRole('OWNER')")
+  public EmpresaService.Empresa editarSite(@Valid @RequestBody EmpresaService.Site input) {
+    return service.editarSite(input);
+  }
+
   @PostMapping(value = "/empresa/imagens/{tipo}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   @PreAuthorize("hasRole('OWNER')")
   public EmpresaService.Empresa upload(
