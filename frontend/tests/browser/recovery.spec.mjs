@@ -99,5 +99,5 @@ test('erro recuperável, valor desconhecido e conflito sem repetir escrita', asy
 test('mecânico não recebe ações nem consulta oportunidades', async ({ page }) => {
   await setup(page, 'MECANICO');
   await expect(page.getByRole('button', { name: 'Explorar oportunidades' })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Dinheiro Esquecido', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Retornos', exact: true })).toHaveCount(0);
 });

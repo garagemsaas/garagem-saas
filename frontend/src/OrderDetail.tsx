@@ -209,7 +209,7 @@ export default function OrderDetail({
       {syncError && <p role="status" className="notice">{syncError}</p>}
       <button className="back-link" onClick={back}>
         <Icon name="back" size={16} />
-        Ordens de Serviço
+        Serviços
       </button>
       <div className="page-heading">
         <div>

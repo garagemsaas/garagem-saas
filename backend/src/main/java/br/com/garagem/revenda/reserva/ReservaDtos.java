@@ -7,6 +7,14 @@ import java.util.UUID;
 public final class ReservaDtos {
   private ReservaDtos() {}
 
+  /** Situações que a listagem aceita filtrar. Valor desconhecido é recusado antes de virar SQL. */
+  public enum Situacao {
+    ATIVA,
+    CANCELADA,
+    EXPIRADA,
+    CONCLUIDA
+  }
+
   public record Nova(
       @NotNull UUID estoqueId,
       @NotNull UUID clienteId,

@@ -24,9 +24,10 @@ public class ReservaController {
   @GetMapping
   public Pagina<Item> listar(
       @RequestParam(required = false) UUID estoqueId,
+      @RequestParam(required = false) ReservaDtos.Situacao status,
       @RequestParam(defaultValue = "0") int pagina,
       @RequestParam(defaultValue = "20") int tamanho) {
-    return service.listar(estoqueId, pagina, tamanho);
+    return service.listar(estoqueId, status == null ? null : status.name(), pagina, tamanho);
   }
 
   @GetMapping("/{id}")

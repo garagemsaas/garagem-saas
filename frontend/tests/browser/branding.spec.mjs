@@ -66,7 +66,7 @@ test('identidade acompanha sessão e OWNER salva apenas configuração permitida
   await login('B'); await expect(page).toHaveTitle('Empresa Beta');
   // Até a Fase 9 uma empresa só de revenda caía numa tela neutra por não ter módulo com telas.
   // Agora ela tem as suas, e o que segue valendo é a outra metade: as da oficina continuam fora.
-  await expect(page.getByRole('heading', { name: 'Visão geral da revenda' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Início', level: 1 })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Ordens de serviço', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Ir para oficina', exact: true })).toHaveCount(0);
   await expect(page.locator('img.company-logo')).toHaveCount(0);

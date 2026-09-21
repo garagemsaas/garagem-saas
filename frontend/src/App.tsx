@@ -741,7 +741,7 @@ export default function App() {
           )}
         </Drawer>
       )}
-      {panel === "recovery" && canWrite && <Drawer title="Dinheiro Esquecido" close={() => setPanel("")} wide>
+      {panel === "recovery" && canWrite && <Drawer title="Retornos" close={() => setPanel("")} wide>
         <Recovery openOrder={openOrder} />
       </Drawer>}
       {panel === "company" && session.role === "OWNER" && <Drawer title="Identidade da empresa" close={() => setPanel("")} wide>

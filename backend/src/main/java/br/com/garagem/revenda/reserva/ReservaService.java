@@ -38,11 +38,15 @@ public class ReservaService {
         Map.of("id", id));
   }
 
-  public Pagina<Item> listar(UUID estoqueId, int pagina, int tamanho) {
+  /**
+   * O filtro por situação existe para a pergunta que se faz de fato: o que está reservado agora.
+   */
+  public Pagina<Item> listar(UUID estoqueId, String status, int pagina, int tamanho) {
     estoques.expirarReservas();
     var p = params();
     var sql = new StringBuilder("from revenda_reserva where oficina_id=:tenant");
     filter(sql, p, "estoque", "estoque_id=:estoque", estoqueId);
+    filter(sql, p, "status", "status=:status", status);
     return db.page(Item.class, "select *", sql.toString(), "criado_em desc,id", p, pagina, tamanho);
   }
 
