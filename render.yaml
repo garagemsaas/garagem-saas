@@ -1,0 +1,86 @@
+# Blueprint de publicação da API. Existe para que subir o backend seja um passo só depois que a
+# conta existir: `render.yaml` é lido do próprio repositório e cria serviço, banco e variáveis.
+#
+# O que este arquivo NÃO resolve, e por quê: fotos de OS vão para storage compatível com S3, e
+# `/actuator/health` agrega o storage — sem S3 alcançável a aplicação nunca fica saudável, de
+# propósito. Render não oferece S3. Preencha S3_ENDPOINT/S3_ACCESS_KEY/S3_SECRET_KEY com um bucket
+# compatível (R2, Backblaze B2, Wasabi, MinIO hospedado) antes do primeiro deploy.
+#
+# Ver docs/operations/publicacao-producao.md para o procedimento completo.
+databases:
+  - name: garagem-postgres
+    databaseName: garagem
+    user: garagem
+    plan: free
+    postgresMajorVersion: "17"
+
+services:
+  - type: web
+    name: garagem-api
+    runtime: docker
+    plan: free
+    region: oregon
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /actuator/health
+    autoDeploy: true
+    envVars:
+      # Render entrega a URL no formato postgres://; o driver JDBC precisa de jdbc:postgresql://
+      # com sslmode=require. Por isso host, porta e base entram separados.
+      - key: DATABASE_URL
+        fromDatabase:
+          name: garagem-postgres
+          property: connectionString
+      - key: DATABASE_USER
+        fromDatabase:
+          name: garagem-postgres
+          property: user
+      - key: DATABASE_PASSWORD
+        fromDatabase:
+          name: garagem-postgres
+          property: password
+      # Segredos gerados pelo provedor: não passam por este repositório em momento algum.
+      - key: JWT_SECRET
+        generateValue: true
+      - key: PAYMENT_WEBHOOK_SECRET
+        generateValue: true
+      # Origem exata do frontend. Sem curinga, e sem isto o navegador bloqueia toda chamada.
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://plataforma-automotiva.vercel.app
+      - key: PUBLIC_BASE_URL
+        value: https://plataforma-automotiva.vercel.app
+      # Atrás do proxy TLS do provedor: sem os dois juntos o IP auditado é o do proxy, o teto de
+      # requisições trata todos os clientes como um só e o HSTS nunca é emitido.
+      - key: TRUST_PROXY
+        value: "true"
+      - key: FORWARD_HEADERS_STRATEGY
+        value: framework
+      # A documentação interativa descreve toda a superfície da API a quem não autenticou.
+      - key: API_DOCS_ENABLED
+        value: "false"
+      # Storage de fotos: preencher no painel antes do primeiro deploy (ver cabeçalho).
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_REGION
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ACCESS_KEY
+        sync: false
+      - key: S3_SECRET_KEY
+        sync: false
+      # Provisionamento da primeira empresa. Ligar apenas no primeiro start e desligar em seguida.
+      - key: APP_BOOTSTRAP_ENABLED
+        value: "false"
+      - key: APP_BOOTSTRAP_SLUG
+        sync: false
+      - key: APP_BOOTSTRAP_NOME
+        sync: false
+      - key: APP_BOOTSTRAP_EMAIL
+        sync: false
+      - key: APP_BOOTSTRAP_SENHA
+        sync: false
+      - key: APP_BOOTSTRAP_MODULOS
+        value: OFICINA,REVENDA
+      - key: APP_BOOTSTRAP_OPERADOR
+        value: provisionamento-inicial
