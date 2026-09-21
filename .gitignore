@@ -1,5 +1,7 @@
 .tools/
 .env
+# Vínculo local com o projeto Vercel: contém ids da conta e o token OIDC baixado pelo CLI.
+.vercel/
 **/target/
 **/node_modules/
 **/dist/
