@@ -40,6 +40,8 @@ async function fixture(context, modulos, state = estado()) {
     const send = (data, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(data) });
     if (path === '/auth/login') return send(session);
     if (path === '/auth/logout') return route.fulfill({ status: 204 });
+    // Navegador limpo não tem cookie de sessão: a tentativa de retomada no carregamento é 401.
+    if (path === '/auth/refresh') return send({ detail: 'Sessão expirada.' }, 401);
     expect(req.headers().authorization).toBe('Bearer test-access');
     if (path === '/empresa') return send({ branding, modulos, status: 'ATIVA' });
     if (path.startsWith('/revenda/dashboard')) return send(resumo);

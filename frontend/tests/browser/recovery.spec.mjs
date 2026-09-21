@@ -14,6 +14,8 @@ async function setup(page, role = 'OWNER') {
     const req = route.request(), url = new URL(req.url()), path = url.pathname.replace('/api/v1', '');
     const send = (body, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
     if (path.endsWith('/empresa')) return send(empresa);
+    // Sem cookie de sessão, a retomada do carregamento é recusada — como num navegador limpo.
+    if (path === '/auth/refresh') return send({ detail: 'Sessão expirada.' }, 401);
     if (path === '/auth/login') return send({ accessToken: 'access', refreshToken: 'refresh', oficinaId: 'tenant', usuarioId: 'u', nome: 'Kauã', papel: role, expiresIn: 900 });
     if (path === '/dashboard') return send({ emAndamento: 0, prontas: 0, porStatus: {}, orcamentosAguardandoDecisao: { total: 0, quantidade: 0 } });
     if (!path.startsWith('/dinheiro-esquecido')) return send({ itens: [], pagina: 0, tamanho: 10, total: 0 });

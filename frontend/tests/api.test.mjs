@@ -70,7 +70,10 @@ test('leituras concorrentes renovam um refresh uma única vez e repetem com o no
   globalThis.fetch = async (path, options) => {
     if (path.endsWith('/auth/refresh')) {
       refreshes++;
-      assert.deepEqual(JSON.parse(options.body), { oficinaId: fakeSession.oficinaId, refreshToken: fakeSession.refreshToken });
+      // O refresh não viaja mais pelo corpo: quem o carrega é o cookie HttpOnly, que esta página
+      // não consegue ler nem enviar por conta própria. Daí a requisição ir vazia e com credenciais.
+      assert.equal(options.body, undefined);
+      assert.equal(options.credentials, 'include');
       await new Promise(resolve => setTimeout(resolve, 10));
       return response({ ...fakeSession, accessToken: 'renewed-test', refreshToken: 'rotated-test' });
     }

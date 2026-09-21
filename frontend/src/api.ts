@@ -35,7 +35,9 @@ async function request(path: string, method = 'GET', body?: unknown, retry = tru
   if (body !== undefined && !(body instanceof FormData)) headers['Content-Type'] = 'application/json';
   let response: Response;
   try {
-    response = await fetch(`${baseUrl}/api/v1${path}`, { method, headers, cache: 'no-store', signal: AbortSignal.timeout(30_000),
+    // `credentials: 'include'` existe pelo cookie HttpOnly do refresh: sem isto o navegador não o
+    // envia para outra origem, e a sessão morreria a cada recarregamento.
+    response = await fetch(`${baseUrl}/api/v1${path}`, { method, headers, cache: 'no-store', credentials: 'include', signal: AbortSignal.timeout(30_000),
       body: body === undefined ? undefined : body instanceof FormData ? body : JSON.stringify(body) });
   } catch { throw new ApiError(0, 'Não foi possível conectar à API. Verifique a conexão e tente novamente.'); }
   if (authenticated && start !== generation) throw new ApiError(401, 'A sessão foi encerrada.');
@@ -43,8 +45,8 @@ async function request(path: string, method = 'GET', body?: unknown, retry = tru
     // A slower request may return 401 after another request already rotated the token.
     if (accessToken !== session.accessToken) return request(path, method, body, false);
     if (!renewal) {
-      const previous = session;
-      renewal = api<Session>('/auth/refresh', 'POST', { oficinaId: previous.oficinaId, refreshToken: previous.refreshToken })
+      // Sem corpo: a credencial do refresh é o cookie HttpOnly, que esta página não consegue ler.
+      renewal = api<Session>('/auth/refresh', 'POST')
         .then(value => { if (start === generation) { session = value; if (typeof window !== 'undefined') window.dispatchEvent(new Event('session-updated')); } })
         .catch(error => { if (start === generation) { setApiSession(null); if (typeof window !== 'undefined') window.dispatchEvent(new Event('session-expired')); } throw error; })
         .finally(() => { if (start === generation) renewal = null; });
@@ -75,6 +77,23 @@ async function request(path: string, method = 'GET', body?: unknown, retry = tru
   }
   return response;
 }
+/**
+ * Tenta reabrir a sessão a partir do cookie HttpOnly. É o que faz um F5 não deslogar: o access
+ * token vive só em memória e morre com a página, mas o refresh sobrevive no cookie e vale uma
+ * rotação. Devolve null quando não há cookie, quando ele já foi revogado ou quando expirou — os
+ * três casos significam a mesma coisa para quem chama: mostre a tela de entrada.
+ */
+export async function restoreSession(): Promise<Session | null> {
+  try {
+    const value = await api<Session>('/auth/refresh', 'POST');
+    setApiSession(value);
+    return value;
+  } catch {
+    setApiSession(null);
+    return null;
+  }
+}
+
 export async function api<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
   const start = generation;
   const response = await request(path, method, body);

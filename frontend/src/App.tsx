@@ -14,7 +14,7 @@ import { useEmpresa } from './branding-context';
 import './Login.css';
 import { date, number, roles } from "./model";
 import type { Client, Order, Vehicle } from "./model";
-import { allPages, api, currentSession, emptyData, loadData, loadOrder, setApiSession } from "./api";
+import { allPages, api, currentSession, emptyData, loadData, loadOrder, restoreSession, setApiSession } from "./api";
 import { useSession, useToast, useToday } from "./hooks";
 import type { Session } from "./api";
 import "./App.css";
@@ -57,6 +57,16 @@ export default function App() {
     setLoginError('Sessão expirada. Entre novamente.');
   }, [setToast]);
   const [session, setSession] = useSession(limparSessao);
+  // O access token vive em memória e morre com a página. O refresh sobrevive num cookie HttpOnly,
+  // então recarregar deixa de deslogar: pede-se uma rotação antes de decidir mostrar a entrada.
+  const [restaurando, setRestaurando] = useState(true);
+  useEffect(() => {
+    let active = true;
+    restoreSession()
+      .then(value => { if (active && value) setSession({ ...value, role: value.papel, oficina: '' }); })
+      .finally(() => { if (active) setRestaurando(false); });
+    return () => { active = false; };
+  }, [setSession]);
   const company = useEmpresa(session?.usuarioId);
   const [context, setContext] = useState<"OFICINA" | "REVENDA">("OFICINA");
   const revendaEnabled = company.empresa?.modulos.includes("REVENDA") && session?.role !== "MECANICO";
@@ -160,6 +170,8 @@ export default function App() {
       .finally(() => { if (active) setDetailLoading(false); });
     return () => { active = false; };
   }, [selected, sessionId, detailAttempt]);
+  if (restaurando)
+    return <main className="public-order"><Brand /><PageState state="loading" title="Retomando sessão" /></main>;
   if (!session)
     return (
       <div className="login-page">
@@ -280,7 +292,7 @@ export default function App() {
   if (!oficinaEnabled) return <BrandingProvider branding={company.empresa.branding}><main className="public-order"><Brand /><h1>Empresa configurada</h1><p>Nenhum módulo operacional está disponível para esta empresa nesta versão.</p>{session.role === 'OWNER' && <CompanySettings empresa={company.empresa} update={company.update} />}<button onClick={logout}>Sair</button></main></BrandingProvider>;
   return (
     <BrandingProvider branding={company.empresa.branding}><Workspace page={page} navigate={navigate} role={session.role}
-      name={user?.nome ?? "Usuário"} workshop={session.oficina}
+      name={user?.nome ?? "Usuário"} workshop={session.oficina || company.empresa.branding.nomeExibicao}
       logout={logout} orders={data.ordens} clients={data.clientes} vehicles={data.veiculos} today={today}
       openOrder={openOrder}
       openClient={(c) => { navigate("clients"); setClient(c); setPanel("view-client"); }}
