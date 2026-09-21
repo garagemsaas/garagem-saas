@@ -1,0 +1,15 @@
+# Sobreposição do ambiente de demonstração. Só remapeia portas, para conviver com outras stacks
+# já em execução na mesma máquina — não há segredo aqui, e por isso este arquivo é versionado.
+#
+# `!override` porque o Compose SOMA listas de portas em vez de substituí-las: sem a tag, a stack
+# tentaria abrir também as portas originais e falharia com "port is already allocated".
+#
+# Todas as portas continuam presas a 127.0.0.1. Quem atravessa para a internet é apenas a API, e
+# somente pelo túnel que scripts/demo-publica.sh abre. Postgres e MinIO nunca saem da máquina.
+services:
+  postgres:
+    ports: !override ["127.0.0.1:5442:5432"]
+  minio:
+    ports: !override ["127.0.0.1:9010:9000", "127.0.0.1:9011:9001"]
+  api:
+    ports: !override ["127.0.0.1:8090:8080"]
