@@ -59,20 +59,19 @@ Com padrão, mas que precisam de valor real em produção: `DATABASE_URL`, `DATA
 `TRUST_PROXY` e `FORWARD_HEADERS_STRATEGY` andam juntos: ligados isoladamente, ou o IP auditado
 fica errado, ou qualquer cliente forja `X-Forwarded-For` e escapa do teto de requisições.
 
-## Limite conhecido do frontend: sessão não sobrevive ao recarregamento
+## Sessão que sobrevive ao recarregamento
 
-A sessão vive apenas em memória (`let session` em `frontend/src/api.ts`). Não há localStorage,
-sessionStorage nem cookie. O efeito é que **recarregar a página desloga**, em qualquer ambiente.
+O access token continua apenas em memória e morre com a página. Quem atravessa o F5 é o refresh,
+num cookie `HttpOnly; Secure; SameSite=None` com `Path=/api/v1/auth` — ilegível por JavaScript e
+restrito ao único caminho que o usa. Ao carregar, o frontend pede uma rotação antes de decidir
+mostrar a tela de entrada.
 
-Isso não se resolve publicando a API. As duas saídas honestas:
+`localStorage` foi descartado de propósito: resolveria o recarregamento entregando o refresh a
+qualquer XSS. Nenhuma defesa da Fase 8 mudou — rotação de uso único, revogação da família inteira
+ao detectar reuso e 401 para token revogado seguem valendo, cobertos por `SessaoPersistenteIT`.
 
-- **Cookie `HttpOnly` para o refresh token**, emitido pela API. Com frontend e API em domínios
-  diferentes exige `SameSite=None; Secure`, CORS com credenciais e a origem exata — nunca curinga.
-  É a opção correta e mexe no backend.
-- **Refresh token em `localStorage`**, que é mais simples e menos seguro: fica exposto a XSS. Foi
-  deliberadamente evitado até aqui.
-
-A decisão é de produto, não de infraestrutura, e por isso não foi tomada aqui.
+Com frontend e API em domínios diferentes, `REFRESH_COOKIE_SAME_SITE=None` e
+`REFRESH_COOKIE_SECURE=true` são obrigatórios, e o CORS precisa de credenciais com a origem exata.
 
 ## Ambiente temporário de demonstração
 
