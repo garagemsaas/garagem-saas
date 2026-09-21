@@ -48,7 +48,7 @@ export default function Dashboard({ summary, orders, vehicles, clients, today, c
 
     <section className="recovery-feature" aria-labelledby="recovery-title">
       <div className="recovery-copy"><span className="section-kicker"><Icon name="recovery" size={18} />RELACIONAMENTO QUE GERA RETORNO</span>
-        <h2 id="recovery-title">Dinheiro Esquecido</h2>
+        <h2 id="recovery-title">Retornos</h2>
         <p>Sua oficina já tem clientes.<br />Faça eles voltarem.</p>
         {canWrite && <button onClick={viewRecovery}>Explorar oportunidades<Icon name="forward" size={18} /></button>}
       </div>
@@ -77,7 +77,6 @@ export default function Dashboard({ summary, orders, vehicles, clients, today, c
             <time dateTime={order.criadoEm}>{new Date(order.criadoEm).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</time>
             <button onClick={() => openOrder(order.id)}><strong>{vehicleName(order)}</strong><span>{clients.find((c) => c.id === order.clienteId)?.nome ?? "Cliente não informado"} · OS #{order.numero}</span></button>
           </li>)}</ul>}
-        <footer className="surface-footer"><Icon name="info" size={15} /><span>Agendamentos futuros ainda não disponíveis.</span></footer>
       </section>
     </div>
     <section className="surface recent-orders" aria-labelledby="orders-title">

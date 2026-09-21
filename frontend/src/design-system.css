@@ -63,7 +63,9 @@ small { font-size: 12px; }
 .tenant-label { display: flex; gap: 10px; align-items: center; padding: 14px 12px; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 28px; color: var(--accent); }
 .tenant-label strong { display: block; color: var(--ink); font-size: 12px; }
 .tenant-label span { display: block; font-size: 10px; color: var(--muted); margin-top: 4px; }
-.navigation-caption { font-size: 9px; letter-spacing: 1.8px; color: var(--muted); margin: 0 12px 12px; font-weight: 600; }
+.navigation-caption { display: block; font-size: 9px; letter-spacing: 1.8px; color: var(--muted); margin: 0 12px 6px; font-weight: 600; }
+/* Os grupos da barra lateral: o respiro entre eles é o que faz a lista virar seções legíveis. */
+nav > div + div { margin-top: 18px; }
 .desktop-navigation nav, .mobile-navigation nav { display: grid; gap: 4px; margin-bottom: 25px; }
 .desktop-navigation nav button, .mobile-navigation nav button { width: 100%; justify-content: flex-start; border: 1px solid transparent; background: none; font-size: 12px; padding: 10px 11px; gap: 11px; color: #59645b; text-align: left; }
 .desktop-navigation nav button svg, .mobile-navigation nav button svg { width: 18px; height: 18px; }

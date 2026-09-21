@@ -84,23 +84,27 @@ test('empresa somente REVENDA opera estoque, leads, propostas e vendas com ident
   const erros = []; page.on('pageerror', e => erros.push(e.message));
   await entrar(page);
 
-  await expect(page.getByRole('heading', { name: 'Visão geral da revenda' })).toBeVisible();
-  // Indicadores vêm de uma consulta agregada só; a tela não soma estoque no navegador.
-  await expect(page.getByText('R$ 45.700,00')).toBeVisible();
-  await expect(page.getByText('12.5')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Início', level: 1 })).toBeVisible();
+  // Poucos números, e todos respondendo a uma pergunta da semana. Vêm de uma consulta agregada só;
+  // a tela não soma estoque no navegador.
+  for (const rotulo of ['Carros disponíveis', 'Reservados', 'Interessados abertos', 'Propostas abertas', 'Vendas no período'])
+    await expect(page.getByText(rotulo, { exact: true })).toBeVisible();
+  await expect(page.getByRole('definition').filter({ hasText: /^3$/ }).first()).toBeVisible();
+  // Nada de painel gigante: seis indicadores, não quinze.
+  expect(await page.locator('.dealer-metrics > div').count()).toBeLessThanOrEqual(6);
   await semTransbordo(page);
 
   // O branding da empresa acompanha as telas novas: nada de nome de produto fixo.
   await expect(page.getByText('Empresa de teste').first()).toBeVisible();
   await expect(page.getByText('Garagem SaaS')).toHaveCount(0);
 
-  await irPara(page, 'Estoque');
-  await expect(page.getByRole('heading', { name: 'Estoque', level: 1 })).toBeVisible();
+  await irPara(page, 'Carros');
+  await expect(page.getByRole('heading', { name: 'Carros', level: 1 })).toBeVisible();
   await expect(page.getByText('ABC1D23').first()).toBeVisible();
   await semTransbordo(page);
 
-  await irPara(page, 'Leads');
-  await expect(page.getByRole('heading', { name: 'Leads', level: 1 })).toBeVisible();
+  await irPara(page, 'Interessados');
+  await expect(page.getByRole('heading', { name: 'Interessados', level: 1 })).toBeVisible();
   await expect(page.getByText('Compradora Ana').first()).toBeVisible();
 
   await irPara(page, 'Propostas');
@@ -109,13 +113,17 @@ test('empresa somente REVENDA opera estoque, leads, propostas e vendas com ident
   await irPara(page, 'Vendas');
   await expect(page.getByRole('heading', { name: 'Vendas', level: 1 })).toBeVisible();
 
-  await irPara(page, 'Avaliações');
+  // Avaliação é etapa da compra de um carro, não área do menu: chega-se a ela por Carros.
+  await irPara(page, 'Carros');
+  await page.getByRole('button', { name: 'Avaliações', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Avaliações', level: 1 })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Navegação da revenda' })
+    .getByRole('button', { name: 'Avaliações', exact: true })).toHaveCount(0);
   await semTransbordo(page);
 
   // Nada de oficina aparece para quem não contratou o módulo.
   const menu = page.getByRole('navigation', { name: 'Navegação da revenda' });
-  await expect(menu.getByRole('button', { name: 'Ordens de Serviço' })).toHaveCount(0);
+  await expect(menu.getByRole('button', { name: 'Serviços' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Ir para oficina' })).toHaveCount(0);
   expect(state.escritas).toEqual([]);
   expect(erros).toEqual([]);
@@ -126,7 +134,7 @@ test('empresa somente OFICINA não recebe menu nem tela de revenda', async ({ pa
   await entrar(page);
   await expect(page.getByRole('heading', { name: 'Um dia bem organizado.' })).toBeVisible();
   await expect(page.getByRole('navigation', { name: 'Navegação da revenda' })).toHaveCount(0);
-  for (const nome of ['Estoque', 'Leads', 'Propostas', 'Vendas', 'Avaliações'])
+  for (const nome of ['Carros', 'Interessados', 'Propostas', 'Vendas', 'Reservas'])
     await expect(page.getByRole('button', { name: nome, exact: true })).toHaveCount(0);
 });
 
@@ -136,7 +144,7 @@ test('empresa híbrida transita entre oficina e revenda na mesma sessão', async
   await expect(page.getByRole('heading', { name: 'Um dia bem organizado.' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Ir para revenda', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Visão geral da revenda' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Início', level: 1 })).toBeVisible();
 
   await page.getByRole('button', { name: 'Ir para oficina', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Um dia bem organizado.' })).toBeVisible();
@@ -147,7 +155,7 @@ test('estoque vazio e falha de carregamento são informados sem quebrar a tela',
   const state = estado(); state.estoque = [];
   await fixture(context, ['REVENDA'], state);
   await entrar(page);
-  await irPara(page, 'Estoque');
+  await irPara(page, 'Carros');
   await expect(page.getByText('Nenhum registro encontrado.')).toBeVisible();
 
   // A partir daqui a API falha: a tela precisa dizer isso e oferecer nova tentativa.
@@ -159,8 +167,8 @@ test('estoque vazio e falha de carregamento são informados sem quebrar a tela',
 test('tela de revenda é acessível', async ({ page, context }) => {
   await fixture(context, ['REVENDA']);
   await entrar(page);
-  await irPara(page, 'Estoque');
-  await expect(page.getByRole('heading', { name: 'Estoque', level: 1 })).toBeVisible();
+  await irPara(page, 'Carros');
+  await expect(page.getByRole('heading', { name: 'Carros', level: 1 })).toBeVisible();
   const resultado = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
   expect(resultado.violations.map(v => ({ id: v.id, nodes: v.nodes.map(n => n.target) }))).toEqual([]);
 });

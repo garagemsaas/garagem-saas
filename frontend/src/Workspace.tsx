@@ -12,11 +12,6 @@ import GettingStarted from './GettingStarted';
 import { labels } from "./navigation";
 import type { Page } from "./navigation";
 type Panel = "menu" | "search" | "notifications" | "profile" | "settings" | "calendar" | "parking" | "parts" | "help" | null;
-const upcoming: { id: "calendar" | "parking" | "parts"; name: string; description: string }[] = [
-  { id: "calendar", name: "Agenda", description: "As entradas previstas e a capacidade diária serão exibidas quando os agendamentos estiverem disponíveis. Consulte os recebimentos já registrados na visão geral." },
-  { id: "parking", name: "Pátio", description: "A ocupação depende do cadastro de vagas e da localização dos veículos. A quantidade de OS abertas não é uma medida de ocupação." },
-  { id: "parts", name: "Peças", description: "O catálogo de peças ainda não está disponível. Você já pode consultar peças e valores nos orçamentos de cada ordem de serviço." },
-];
 
 interface WorkspaceProps {
   page: Page; navigate: (page: Page) => void; children: ReactNode;
@@ -75,20 +70,21 @@ export default function Workspace(props: WorkspaceProps) {
   const navigation = <>
     <div className="workspace-brand"><Brand /></div>
     <div className="tenant-label"><Icon name="security" size={18} /><div><strong>{workshop}</strong><span>Empresa autenticada</span></div></div>
-    <span className="navigation-caption">OPERAÇÃO</span>
+    {/* Uma landmark de navegação só, com grupos dentro: quem usa leitor de tela entra uma vez e
+        percorre tudo, em vez de encontrar cinco regiões de navegação na mesma barra. */}
     <nav aria-label="Navegação principal">
-      {navButton("overview")}{navButton("orders")}{navButton("clients")}{navButton("vehicles")}
-      {upcoming.map((item) => <button key={item.id} onClick={() => setPanel(item.id)}><Icon name={item.id} /><span>{item.name}</span><small>Em breve</small></button>)}
+      <div>{navButton("overview")}</div>
+      <div><span className="navigation-caption">CLIENTES</span>{navButton("clients")}{navButton("vehicles")}</div>
+      <div><span className="navigation-caption">OFICINA</span>{navButton("orders")}</div>
+      {role !== 'MECANICO' && <div><span className="navigation-caption">RETORNOS</span>
+        <button className="recovery-nav" onClick={() => { setPanel(null); openRecovery(); }}><Icon name="recovery" /><span>Retornos</span></button></div>}
     </nav>
-    <span className="navigation-caption">CRESCIMENTO</span>
-    {role !== 'MECANICO' && <nav aria-label="Crescimento"><button className="recovery-nav" onClick={() => { setPanel(null); openRecovery(); }}><Icon name="recovery" /><span>Dinheiro Esquecido</span></button></nav>}
-    <div className="navigation-bottom"><nav aria-label="Administração">
+    <div className="navigation-bottom"><nav aria-label="Gestão">
       {role === "OWNER" && navButton("team")}
       <button onClick={() => setPanel("help")}><Icon name="info" /><span>Primeiros passos</span></button>
       <button onClick={() => setPanel("settings")}><Icon name="settings" /><span>Configurações</span></button>
     </nav><button className="sidebar-profile" onClick={() => setPanel("profile")}><span className="avatar">{initials}</span><span><strong>{name}</strong><small>{roles[role]}</small></span><Icon name="arrow" size={16} /></button></div>
   </>;
-  const module = upcoming.find((item) => item.id === panel);
   return <div className="premium-shell">
     <a className="skip-link" href="#main-content">Pular para o conteúdo</a>
     <aside className="desktop-navigation">{navigation}</aside>
@@ -129,7 +125,6 @@ export default function Workspace(props: WorkspaceProps) {
       {role === "OWNER" && <button onClick={() => move("team")}><Icon name="team" />Gerenciar equipe</button>}
       <button className="session-logout" onClick={logout}><Icon name="logout" size={18} />Sair da oficina</button>
     </Drawer>}
-    {module && <Drawer title={module.name} close={() => setPanel(null)}><Empty title="Em preparação">{module.description}</Empty><button onClick={() => move(module.id === "parts" ? "orders" : "overview")}>Ir para {module.id === "parts" ? "ordens de serviço" : "visão geral"}<Icon name="forward" size={18} /></button></Drawer>}
     {panel === 'help' && <GettingStarted role={role} close={() => setPanel(null)} navigate={move} recovery={() => { setPanel(null); openRecovery(); }} />}
   </div>;
 }

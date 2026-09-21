@@ -35,7 +35,7 @@ for (const role of ['OWNER', 'ATENDENTE', 'MECANICO']) {
     const guide = page.getByRole('dialog', { name: 'Primeiros passos' });
     if (role === 'MECANICO') {
       await expect(guide.getByRole('button', { name: 'Abrir clientes', exact: true })).toHaveCount(0);
-      await expect(guide.getByRole('button', { name: 'Abrir oportunidades', exact: true })).toHaveCount(0);
+      await expect(guide.getByRole('button', { name: 'Abrir retornos', exact: true })).toHaveCount(0);
     } else {
       await expect(guide.getByText('Disponibilizar não envia uma mensagem.', { exact: false })).toBeVisible();
       await guide.getByRole('button', { name: 'Abrir clientes', exact: true }).click();
@@ -43,13 +43,15 @@ for (const role of ['OWNER', 'ATENDENTE', 'MECANICO']) {
       await expect(page.getByRole('dialog')).toHaveCount(0);
       await openGuide(page);
     }
-    await expect(guide.getByRole('heading', { name: 'O que ainda está em preparação' })).toBeVisible();
+    // O guia deixou de anunciar funções futuras: o que resta é o que fazer quando algo falha.
+    await expect(guide.getByRole('heading', { name: 'Se uma ação falhar' })).toBeVisible();
+    await expect(guide.getByText('Em breve', { exact: false })).toHaveCount(0);
     const report = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
     expect(report.violations).toEqual([]);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
     await guide.screenshot({ path: test.info().outputPath(`guia-${role}-${info.project.name}.png`) });
-    await guide.getByRole('button', { name: 'Abrir ordens de serviço', exact: true }).click();
-    await expect(page.getByRole('heading', { name: 'Ordens de Serviço', exact: true })).toBeVisible();
+    await guide.getByRole('button', { name: 'Abrir serviços', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Serviços', exact: true })).toBeVisible();
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(page.locator('#main-content')).toBeFocused();
     await openGuide(page);

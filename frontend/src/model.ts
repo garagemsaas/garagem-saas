@@ -4,14 +4,19 @@ export const roles: Record<Role, string> = {
   ATENDENTE: "Atendente",
   MECANICO: "Mecânico",
 };
+/**
+ * Como cada etapa do serviço se chama na tela. O backend mantém a máquina de estados inteira — ela
+ * existe por bons motivos —, mas quem atende no balcão não precisa distinguir "em teste" de "em
+ * manutenção" para saber o que responder ao cliente: o carro está em serviço.
+ */
 export const statuses = {
-  RECEBIDO: "Recebido",
-  DIAGNOSTICO: "Diagnóstico",
+  RECEBIDO: "Aguardando",
+  DIAGNOSTICO: "Avaliando",
   ORCAMENTO: "Orçamento",
   AGUARDANDO_APROVACAO: "Aguardando aprovação",
-  EM_MANUTENCAO: "Em manutenção",
+  EM_MANUTENCAO: "Em serviço",
   AGUARDANDO_PECA: "Aguardando peça",
-  TESTE: "Em teste",
+  TESTE: "Em serviço",
   PRONTO: "Pronto",
 };
 export type Status = keyof typeof statuses;

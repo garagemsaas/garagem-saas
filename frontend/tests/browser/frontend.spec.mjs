@@ -140,7 +140,7 @@ test('atualização automática preserva rascunho e recupera falha sem apagar a 
   state.clients = [{ id: 'c', nome: 'Cliente', telefone: '11912345678', email: '', revisao: 0 }];
   state.vehicles = [{ id: 'v', clienteId: 'c', placa: 'ABC1D23', marca: 'Fiat', modelo: 'Uno', ano: 2020, km: 100, cor: 'Prata', revisao: 0 }];
   state.orders = [{ id: 'os-1', numero: 1, clienteId: 'c', veiculoId: 'v', status: 'DIAGNOSTICO', kmEntrada: 100, relato: 'Ruído', revisao: 0, criadoEm: new Date().toISOString() }];
-  await login(page); await nav(page, 'Ordens de Serviço');
+  await login(page); await nav(page, 'Serviços');
   await page.getByRole('button', { name: 'Ver detalhes da OS 1' }).click();
   await page.getByRole('tab', { name: 'Diagnóstico', exact: true }).click();
   await page.getByRole('button', { name: 'Adicionar item', exact: true }).click();
@@ -189,7 +189,7 @@ test('fluxo completo: cliente, veículo, OS, checklist, diagnóstico, orçamento
   await page.getByRole('button', { name: 'Editar cadastro', exact: true }).click();
   await page.getByLabel('Cor *').fill('Preto'); await page.getByRole('button', { name: 'Salvar', exact: true }).click(); await saved(page);
   expect(state.vehicles[0].cor).toBe('Preto'); await noOverflow(page);
-  await nav(page, 'Ordens de Serviço'); await page.getByRole('button', { name: 'Abrir OS', exact: true }).click();
+  await nav(page, 'Serviços'); await page.getByRole('button', { name: 'Abrir OS', exact: true }).click();
   await page.getByLabel('Veículo *', { exact: true }).selectOption(state.vehicles[0].id);
   await page.getByLabel('Relato do cliente *').fill('Avaliar ruído do motor.');
   await page.getByRole('dialog').getByRole('button', { name: 'Abrir OS', exact: true }).click(); await saved(page);
@@ -236,7 +236,8 @@ test('fluxo completo: cliente, veículo, OS, checklist, diagnóstico, orçamento
   // The workshop receives the public decision without a manual reload.
   await page.bringToFront();
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
-  await expect(page.getByRole('heading', { name: /OS #1/ })).toContainText('Em manutenção');
+  // O backend distingue manutenção, peça e teste; quem atende só precisa saber que está em serviço.
+  await expect(page.getByRole('heading', { name: /OS #1/ })).toContainText('Em serviço');
   await status(page, 'TESTE'); await status(page, 'PRONTO');
   await expect(page.getByRole('button', { name: 'Atualizar status', exact: true })).toHaveCount(0);
   expect(errors).toEqual([]);
@@ -332,7 +333,7 @@ test('busca global consulta API e conflito de status permite revisão antes de t
   await page.getByRole('button', { name: /Fiat Uno/ }).click();
   await expect(page.getByRole('heading', { name: 'Cadastro do veículo' })).toBeVisible();
   await page.getByRole('button', { name: 'Fechar painel', exact: true }).click();
-  await nav(page, 'Ordens de Serviço');
+  await nav(page, 'Serviços');
   await page.getByRole('button', { name: 'Ver detalhes da OS 1' }).click();
   state.statusConflict = true;
   await page.getByRole('button', { name: 'Atualizar status', exact: true }).click();
