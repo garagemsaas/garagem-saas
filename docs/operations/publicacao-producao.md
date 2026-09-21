@@ -73,3 +73,23 @@ Isso não se resolve publicando a API. As duas saídas honestas:
   deliberadamente evitado até aqui.
 
 A decisão é de produto, não de infraestrutura, e por isso não foi tomada aqui.
+
+## Ambiente temporário de demonstração
+
+Enquanto não há host contratado, `scripts/demo-publica.sh` publica a stack local por um túnel HTTPS
+da Cloudflare e aponta o frontend da Vercel para ele:
+
+```bash
+bash scripts/demo-publica.sh
+```
+
+O script sobe Postgres, MinIO e API por Docker, espera a API ficar saudável, abre o túnel apenas
+para a porta da API, confere a saúde pela internet e — se o endereço tiver mudado — atualiza
+`VITE_API_BASE_URL` na Vercel e refaz o deploy de produção. Os segredos ficam em
+`.tools/prod/producao.env`, fora do Git.
+
+Só a API atravessa. Postgres e MinIO continuam presos a `127.0.0.1` pelo `compose.demo.yml`, e o
+túnel mapeia um endereço só. Uploads passam pela API, então o navegador nunca fala com o MinIO.
+
+**Isto não é produção.** O endereço é sorteado a cada execução, só responde com esta máquina ligada
+e não tem garantia nenhuma de disponibilidade. Serve para teste, homologação e apresentação.
