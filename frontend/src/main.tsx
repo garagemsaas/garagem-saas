@@ -7,10 +7,23 @@ import "./index.css";
 import App from "./App.tsx";
 import { PublicRoute } from './PublicOrder';
 import { AppBoundary } from "./PageState";
-import Marketing from './Marketing';
+import SitePage from './site/SitePage';
+
+/**
+ * Três destinos, decididos pelo caminho: o acompanhamento público de uma OS, o site de apresentação
+ * de uma empresa e o sistema. Não há institucional dentro do produto — o que é apresentação mora no
+ * site de cada empresa, e o sistema serve para trabalhar.
+ */
+function rota() {
+  const caminho = window.location.pathname;
+  if (caminho === '/acompanhar') return <PublicRoute />;
+  const site = /^\/site\/([a-z0-9-]{3,80})\/?$/.exec(caminho);
+  if (site) return <SitePage slug={site[1]} />;
+  return <App />;
+}
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <AppBoundary>{window.location.pathname === '/acompanhar' ? <PublicRoute /> : ['/institucional', '/ajuda'].includes(window.location.pathname) ? <Marketing helpPage={window.location.pathname === '/ajuda'} /> : <App />}</AppBoundary>
+    <AppBoundary>{rota()}</AppBoundary>
   </StrictMode>,
 );

@@ -7,25 +7,6 @@ async function accessible(page) {
   expect(report.violations.map(v => ({ id: v.id, nodes: v.nodes.map(n => n.target) }))).toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
 }
-test('institucional pública, venda direta e ajuda sem API', async ({ page }, info) => {
-  const calls = [];
-  await page.route('**/api/v1/**', route => { calls.push(route.request().url()); return route.abort(); });
-  await page.goto('/institucional');
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('Sua oficina já tem clientes.');
-  await accessible(page);
-  await page.screenshot({ path: test.info().outputPath(`institucional-${info.project.name}.png`), fullPage: true });
-  await page.getByRole('link', { name: 'Ver a proposta', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Condições sob consulta' })).toBeInViewport();
-  await expect(page.locator('video')).toHaveCount(0);
-  await expect(page.getByText('sem planos self-service ou cotas por plano.', { exact: false })).toBeVisible();
-  await page.goto('/ajuda');
-  await page.getByText('Como envio um orçamento?', { exact: true }).click();
-  await expect(page.getByText('Disponibilizar ou copiar não envia uma mensagem.', { exact: false })).toBeVisible();
-  await accessible(page); expect(calls).toEqual([]);
-  await page.getByRole('link', { name: 'Acessar minha oficina', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Entre na sua empresa' })).toBeVisible();
-});
-
 for (const role of ['OWNER', 'ATENDENTE', 'MECANICO']) {
   test(`preparação remota respeita perfil ${role} e recupera erro`, async ({ page }) => {
     let fail = false; let exists = false;

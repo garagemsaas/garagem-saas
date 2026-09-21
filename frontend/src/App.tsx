@@ -204,7 +204,6 @@ export default function App() {
             <span className="demo-label">PLATAFORMA AUTOMOTIVA · ACESSO DA EMPRESA</span>
             <h2>Entre na sua empresa</h2>
             <p>Seu espaço de trabalho começa aqui.</p>
-            <p><a href="/institucional">Conhecer a Plataforma Automotiva</a> · <a href="/ajuda">Ajuda para começar</a></p>
             <form
               onSubmit={async (e) => {
                 e.preventDefault();

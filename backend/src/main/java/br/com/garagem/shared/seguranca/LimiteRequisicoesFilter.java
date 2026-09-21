@@ -63,6 +63,8 @@ public class LimiteRequisicoesFilter extends OncePerRequestFilter {
                 new LimiteRequisicoes(tetoLogin, janela)),
             new Regra(
                 "publico", "/api/v1/publico/", null, new LimiteRequisicoes(tetoPublico, janela)),
+            // O site da empresa é anônimo como o acompanhamento público, e cai no mesmo teto.
+            new Regra("site", "/api/v1/site/", null, new LimiteRequisicoes(tetoPublico, janela)),
             new Regra(
                 "webhook",
                 "/api/v1/webhooks/",

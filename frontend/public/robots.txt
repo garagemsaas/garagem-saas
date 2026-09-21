@@ -1,11 +1,7 @@
-# Apenas as páginas institucionais são indexáveis. A aplicação da oficina e o link de
-# acompanhamento do cliente não são conteúdo público e não devem aparecer em buscador.
+# Indexável apenas o site de apresentação de cada empresa. O sistema e o acompanhamento do
+# cliente não são conteúdo público e não devem aparecer em buscador.
 User-agent: *
-Allow: /institucional
-Allow: /ajuda
+Allow: /site/
 Disallow: /acompanhar
-Disallow: /materiais/
 Disallow: /api/
 Disallow: /
-
-Sitemap: https://plataforma.example/sitemap.xml

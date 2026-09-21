@@ -1,11 +1,11 @@
 import { test, expect } from '@playwright/test';
-import { branding } from './company-fixture.mjs';
+import { branding, site } from './company-fixture.mjs';
 
 test('identidade acompanha sessão e OWNER salva apenas configuração permitida', async ({ page }) => {
   let current = 'A'; const writes = [];
   const companies = {
-    A: { branding: { ...branding, nomeExibicao: 'Empresa Alfa', corPrimaria: '#123456', logoId: 'logo-a', faviconId: 'favicon-a' }, modulos: ['OFICINA'], status: 'ATIVA' },
-    B: { branding: { ...branding, nomeExibicao: 'Empresa Beta', corPrimaria: '#654321' }, modulos: ['REVENDA'], status: 'ATIVA' },
+    A: { branding: { ...branding, nomeExibicao: 'Empresa Alfa', corPrimaria: '#123456', logoId: 'logo-a', faviconId: 'favicon-a' }, modulos: ['OFICINA'], status: 'ATIVA', site, capaId: null, slug: 'a' },
+    B: { branding: { ...branding, nomeExibicao: 'Empresa Beta', corPrimaria: '#654321' }, modulos: ['REVENDA'], status: 'ATIVA', site, capaId: null, slug: 'b' },
   };
   await page.route('**/api/v1/**', route => {
     const request = route.request(), path = new URL(request.url()).pathname;

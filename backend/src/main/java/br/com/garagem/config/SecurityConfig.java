@@ -112,6 +112,11 @@ public class SecurityConfig {
                 a.requestMatchers(
                         "/api/v1/auth/**",
                         "/api/v1/publico/**",
+                        // Site de apresentação da empresa: endereço divulgado por ela, sem sessão.
+                        // O serviço só devolve campos de vitrine, e só de empresa ativa e
+                        // publicada.
+                        "/api/v1/site/*",
+                        "/api/v1/site/*/imagens/**",
                         // O gateway não tem sessão: a autenticidade vem da assinatura HMAC do
                         // corpo, conferida em WebhookPagamentoController antes de qualquer efeito.
                         "/api/v1/webhooks/pagamento",

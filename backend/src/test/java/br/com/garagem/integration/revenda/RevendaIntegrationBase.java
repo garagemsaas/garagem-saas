@@ -82,7 +82,8 @@ public abstract class RevendaIntegrationBase extends IntegracaoBase {
           case "PUT" -> put("/api/v1" + path);
           default -> get("/api/v1" + path);
         };
-    request.header("Authorization", "Bearer " + e.token());
+    // Empresa nula é chamada anônima: o site público e as checagens de 401 precisam desse caminho.
+    if (e != null) request.header("Authorization", "Bearer " + e.token());
     if (body != null) request.contentType("application/json").content(json.writeValueAsBytes(body));
     return mvc.perform(request);
   }

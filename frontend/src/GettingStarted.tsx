@@ -24,7 +24,6 @@ export default function GettingStarted({ role, close, navigate, recovery }: {
       </>}
     </ol>
     <section className="getting-started-note" aria-label="Limites da versão">
-      <p><a href="/ajuda" target="_blank" rel="noreferrer">Abrir materiais de ajuda em outra aba</a></p>
       <h3>O que ainda está em preparação</h3>
       <p>Agenda, pátio, catálogo de peças e notificações em tempo real ainda não estão disponíveis. Os itens “Em breve” não representam funções contratadas.</p>
       <p>Se uma ação falhar, leia o aviso antes de repetir. Se houver conflito, atualize os dados e confira o que já foi salvo.</p>

@@ -5,7 +5,16 @@ export interface Branding {
   email: string | null; contato: string | null; corPrimaria: string; corSecundaria: string;
   logoId: string | null; faviconId: string | null; revisao: number;
 }
-export interface Empresa { branding: Branding; modulos: ('OFICINA' | 'REVENDA')[]; status: 'ATIVA' | 'INATIVA' }
+/** Conteúdo do site público. Só o OWNER edita, e publicar é uma decisão à parte da identidade. */
+export interface Site {
+  frase: string | null; sobre: string | null; servicos: string | null;
+  endereco: string | null; horario: string | null; whatsapp: string | null;
+  instagram: string | null; publicado: boolean; revisao: number;
+}
+export interface Empresa {
+  branding: Branding; modulos: ('OFICINA' | 'REVENDA')[]; status: 'ATIVA' | 'INATIVA';
+  site: Site; capaId: string | null; slug: string;
+}
 export const BrandingContext = createContext<{ branding?: Branding; logo?: string }>({});
 export function useBranding() { return useContext(BrandingContext); }
 export function useEmpresa(sessionId?: string) {
