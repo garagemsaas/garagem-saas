@@ -41,6 +41,8 @@ public final class VendaDtos {
       String observacoes,
       Instant criadoEm,
       String clienteNome,
+      // Para chamar no WhatsApp sem precisar abrir o cadastro do cliente.
+      String telefone,
       String veiculoDescricao) {}
 
   public record Filtro(Instant de, Instant ate, UUID vendedorId, UUID clienteId, UUID veiculoId) {}

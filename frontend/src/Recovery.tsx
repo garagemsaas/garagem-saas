@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { api, ApiError } from './api';
 import type { PageResult } from './api';
 import { Form } from './forms';
+import { WhatsApp } from './WhatsApp';
+import { convite } from './whatsapp-mensagem';
 import { Field, Icon, Pager } from './ui';
 import { PageState } from './PageState';
 import { date, money } from './model';
@@ -41,7 +43,7 @@ function origin(o: Opportunity) {
 }
 function ErrorText(e: unknown) { return e instanceof Error ? e.message : 'Não foi possível concluir a operação.'; }
 
-export default function Recovery({ openOrder }: { openOrder: (id: string) => void }) {
+export default function Recovery({ openOrder, empresa }: { openOrder: (id: string) => void; empresa: string }) {
   const [tipo, setTipo] = useState('');
   const [status, setStatus] = useState('');
   const [age, setAge] = useState('');
@@ -139,6 +141,7 @@ export default function Recovery({ openOrder }: { openOrder: (id: string) => voi
         <h2>{o.cliente.nome} · {o.veiculo.placa}</h2>
         <p>{o.veiculo.marca} {o.veiculo.modelo} · {types[o.tipo]} · {statuses[o.status]}</p>
         <p>{o.cliente.telefone} {o.cliente.email && `· ${o.cliente.email}`}</p>
+        <WhatsApp telefone={o.cliente.telefone} mensagem={convite(empresa, `Sobre o seu ${o.veiculo.marca} ${o.veiculo.modelo}: podemos conversar?`)} />
         <div className="recovery-source"><strong>Potencial: {o.valorPotencial === null ? 'Não avaliado' : money(o.valorPotencial)}</strong><p>{origin(o)}</p>
           {o.origem.orcamentoVersaoId && <p>Referência da versão: <code>{o.origem.orcamentoVersaoId}</code></p>}
           <button onClick={() => openOrder(o.origem.ordemServicoId)}>Consultar OS #{o.origem.numeroOs}</button>

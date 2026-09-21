@@ -335,6 +335,8 @@ export function OrderForm({
   users,
   save,
   close,
+  createClient,
+  createVehicle,
 }: {
   vehicles: Vehicle[];
   clients: Client[];
@@ -346,10 +348,18 @@ export function OrderForm({
     >,
   ) => void | Promise<void>;
   close: () => void | Promise<void>;
+  createClient: (c: Pick<Client, "nome" | "telefone">) => Promise<Client>;
+  createVehicle: (v: Omit<Vehicle, "id" | "revisao">) => Promise<Vehicle>;
 }) {
   const [vehicleId, setVehicleId] = useState("");
+  // Cadastrar sem sair daqui: quem está com o cliente na frente não deveria ter que abandonar a
+  // abertura do serviço, navegar até Veículos e voltar para recomeçar do zero.
+  const [cadastro, setCadastro] = useState<null | "veiculo">(null);
   const vehicle = vehicles.find((v) => v.id === vehicleId);
-  if (!vehicles.length) return <><Empty title="Cadastre um veículo primeiro">Abra Veículos e vincule um veículo ao cliente antes de abrir a ordem de serviço.</Empty><button onClick={close}>Voltar</button></>;
+  if (cadastro === "veiculo" || !vehicles.length)
+    return <NovoVeiculoInline clients={clients} createClient={createClient} createVehicle={createVehicle}
+      close={vehicles.length ? () => setCadastro(null) : close}
+      done={(v) => { setVehicleId(v.id); setCadastro(null); }} />;
   return (
     <Form
       close={close}
@@ -384,6 +394,9 @@ export function OrderForm({
           ))}
         </select>
       </Field>
+      <button type="button" className="text-button" onClick={() => setCadastro("veiculo")}>
+        O veículo não está na lista
+      </button>
       {vehicle && (
         <div className="context-box">
           <small>Cliente vinculado</small>
@@ -449,5 +462,68 @@ export function AddButton({
       <Icon name="plus" size={17} />
       {children}
     </button>
+  );
+}
+
+/**
+ * Cadastro de veículo — e, se preciso, do dono — sem sair da abertura do serviço.
+ *
+ * <p>O cliente é escolhido da lista ou criado aqui mesmo, em sequência: criar o cliente antes do
+ * veículo não é detalhe de implementação, é a regra do domínio (um veículo de cliente exige dono).
+ * Nada é duplicado: quem já existe é selecionado, não recriado.
+ */
+function NovoVeiculoInline({ clients, createClient, createVehicle, close, done }: {
+  clients: Client[];
+  createClient: (c: Pick<Client, "nome" | "telefone">) => Promise<Client>;
+  createVehicle: (v: Omit<Vehicle, "id" | "revisao">) => Promise<Vehicle>;
+  close: () => void | Promise<void>;
+  done: (v: Vehicle) => void;
+}) {
+  const [novoCliente, setNovoCliente] = useState(!clients.length);
+  return (
+    <Form
+      close={close}
+      submit="Cadastrar e continuar"
+      note="O veículo entra no serviço assim que for cadastrado."
+      save={async (f) => {
+        const clienteId = novoCliente
+          ? (await createClient({ nome: val(f, "nome"), telefone: val(f, "telefone") })).id
+          : val(f, "clienteId");
+        if (!clienteId) throw Error("Selecione ou cadastre o cliente.");
+        const veiculo = await createVehicle({
+          clienteId,
+          placa: val(f, "placa").replace(/[- ]/g, "").toUpperCase(),
+          marca: val(f, "marca"),
+          modelo: val(f, "modelo"),
+          ano: Number(f.get("ano")),
+          km: Number(f.get("km")),
+          cor: val(f, "cor"),
+        } as Omit<Vehicle, "id" | "revisao">);
+        done(veiculo);
+      }}
+    >
+      {clients.length > 0 && (
+        <Field label="Cliente *">
+          <select name="clienteId" required={!novoCliente} disabled={novoCliente} defaultValue="">
+            <option value="" disabled>Selecione o proprietário</option>
+            {clients.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+          </select>
+        </Field>
+      )}
+      <label className="company-switch">
+        <input type="checkbox" checked={novoCliente} disabled={!clients.length}
+          onChange={(e) => setNovoCliente(e.target.checked)} /> O cliente também é novo
+      </label>
+      {novoCliente && <>
+        <Field label="Nome do cliente *"><input name="nome" required maxLength={160} /></Field>
+        <Field label="Telefone *"><input name="telefone" required maxLength={30} inputMode="tel" /></Field>
+      </>}
+      <Field label="Placa *"><input name="placa" required maxLength={8} /></Field>
+      <Field label="Marca *"><input name="marca" required maxLength={80} /></Field>
+      <Field label="Modelo *"><input name="modelo" required maxLength={100} /></Field>
+      <Field label="Ano *"><input name="ano" type="number" required min={1886} max={2200} /></Field>
+      <Field label="Quilometragem *"><input name="km" type="number" required min={0} /></Field>
+      <Field label="Cor *"><input name="cor" required maxLength={60} /></Field>
+    </Form>
   );
 }

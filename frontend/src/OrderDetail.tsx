@@ -23,6 +23,8 @@ import type {
   Photo,
 } from "./model";
 import { Badge, Drawer, Empty, Field, Icon } from "./ui";
+import { WhatsApp } from './WhatsApp';
+import { convite } from './whatsapp-mensagem';
 import { Form } from "./forms";
 import { api, ApiError, diagnosisToApi, loadOrder } from "./api";
 import PrivatePhoto from "./PrivatePhoto";
@@ -88,6 +90,7 @@ export default function OrderDetail({
   order,
   vehicle,
   client,
+  empresa,
   users,
   role,
   update,
@@ -97,6 +100,7 @@ export default function OrderDetail({
   order: Order;
   vehicle: Vehicle;
   client?: Client;
+  empresa: string;
   users: User[];
   role: Role;
   update: (o: Order) => void | Promise<void>;
@@ -234,6 +238,8 @@ export default function OrderDetail({
         <div>
           <small>Cliente</small>
           <strong>{client?.nome || "Prepara??o interna da empresa"}</strong>
+          {client && <WhatsApp telefone={client.telefone} rotulo="Chamar no WhatsApp"
+            mensagem={convite(empresa, `Sobre o serviço #${order.numero} do seu veículo: podemos falar?`)} />}
         </div>
         <div>
           <small>Quilometragem</small>
@@ -578,6 +584,8 @@ export default function OrderDetail({
                         <>
                           <a href={order.link.url} target="_blank" rel="noreferrer">Visualizar como cliente</a>
                           <Field label="Link do cliente"><input readOnly value={order.link.url || ''} onFocus={e => e.target.select()} /></Field>
+                          {client && <WhatsApp telefone={client.telefone} rotulo="Enviar link no WhatsApp" titulo="Enviar orçamento no WhatsApp"
+                            mensagem={convite(empresa, `O orçamento do serviço #${order.numero} está pronto. Confira e responda por aqui: ${order.link.url}`)} />}
                           <button onClick={async () => {
                             try {
                               await navigator.clipboard.writeText(order.link?.url ?? '');

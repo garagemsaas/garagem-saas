@@ -380,3 +380,8 @@ td { font-size: 13px; }
 .company-settings label { display: grid; gap: 6px; margin: 12px 0; }
 button.primary, .workspace-brand .brand-mark { color: var(--brand-on-primary, #fff); }
 button.primary:hover:not(:disabled) { color: var(--brand-on-secondary, #fff); }
+
+/* Ação de WhatsApp: discreta onde aparece, porque não é a ação principal de nenhuma tela. */
+.whatsapp-action { display: inline-flex; align-items: center; gap: 7px; }
+.drawer-actions { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-4); }
+.drawer-actions > button { flex: 1 1 auto; }

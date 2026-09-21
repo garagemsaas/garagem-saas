@@ -27,7 +27,7 @@ public class PropostaService {
   private final RevendaReferencias referencias;
   private final Clock clock;
   private static final String SELECT =
-      "select p.*,pv.id versao_id,pv.preco_anunciado,pv.valor_negociado,pv.preco_anunciado-pv.valor_negociado desconto,pv.entrada,pv.avaliacao_troca_id,pv.valor_troca,pv.validade,pv.observacoes,c.nome cliente_nome,concat_ws(' ',v.marca,v.modelo,v.placa) veiculo_descricao ";
+      "select p.*,pv.id versao_id,pv.preco_anunciado,pv.valor_negociado,pv.preco_anunciado-pv.valor_negociado desconto,pv.entrada,pv.avaliacao_troca_id,pv.valor_troca,pv.validade,pv.observacoes,c.nome cliente_nome,c.telefone,concat_ws(' ',v.marca,v.modelo,v.placa) veiculo_descricao ";
   private static final String FROM =
       "from revenda_proposta p join revenda_proposta_versao pv on pv.proposta_id=p.id and pv.oficina_id=p.oficina_id and pv.numero=p.numero_versao join revenda_estoque e on e.id=p.estoque_id and e.oficina_id=p.oficina_id join veiculo v on v.id=e.veiculo_id and v.oficina_id=e.oficina_id join cliente c on c.id=p.cliente_id and c.oficina_id=p.oficina_id where p.oficina_id=:tenant";
 

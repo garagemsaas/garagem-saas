@@ -8,6 +8,8 @@ import Workspace from "./Workspace";
 import { labels } from "./navigation";
 import type { Page } from "./navigation";
 import Recovery from './Recovery';
+import { WhatsApp } from './WhatsApp';
+import { convite } from './whatsapp-mensagem';
 import CompanySettings from './CompanySettings';
 import { BrandingProvider } from './Branding';
 import { useEmpresa } from './branding-context';
@@ -310,6 +312,7 @@ export default function App() {
               order={order}
               vehicle={data.veiculos.find((v) => v.id === order.veiculoId)!}
               client={data.clientes.find((c) => c.id === order.clienteId)!}
+              empresa={company.empresa.branding.nomeExibicao}
               users={data.usuarios}
               role={session.role}
               update={updateOrder}
@@ -649,6 +652,18 @@ export default function App() {
             clients={options.clientes}
             users={options.usuarios}
             close={() => setPanel("")}
+            createClient={async c => {
+              const saved = await api<Client>('/clientes', 'POST', { nome: c.nome, telefone: c.telefone, email: null });
+              setOptions(o => ({ ...o, clientes: [...o.clientes, saved] }));
+              setData(d => ({ ...d, clientes: [...d.clientes, saved] }));
+              return saved;
+            }}
+            createVehicle={async v => {
+              const saved = await api<Vehicle>('/veiculos', 'POST', { ...v, clienteId: v.clienteId, placa: v.placa });
+              setOptions(o => ({ ...o, veiculos: [...o.veiculos, saved] }));
+              setData(d => ({ ...d, veiculos: [...d.veiculos, saved] }));
+              return saved;
+            }}
             save={async (input) => {
               const o = await api<Order>('/ordens-servico', 'POST', { ...input, mecanicoId: input.mecanicoId || null, previsaoEntrega: input.previsaoEntrega || null });
               setData(d => ({ ...d, ordens: [...d.ordens, { ...o, diagnosticos: [], versoes: [], fotos: [], timeline: [] }] }));
@@ -709,6 +724,7 @@ export default function App() {
             <dt>E-mail</dt>
             <dd>{client.email || "Não informado"}</dd>
           </dl>
+          <WhatsApp telefone={client.telefone} mensagem={convite(company.empresa.branding.nomeExibicao, 'Podemos falar sobre o seu veículo?')} />
           {canWrite && (
             <button onClick={() => setPanel("edit-client")}>
               Editar cadastro
@@ -742,7 +758,7 @@ export default function App() {
         </Drawer>
       )}
       {panel === "recovery" && canWrite && <Drawer title="Retornos" close={() => setPanel("")} wide>
-        <Recovery openOrder={openOrder} />
+        <Recovery openOrder={openOrder} empresa={company.empresa.branding.nomeExibicao} />
       </Drawer>}
       {panel === "company" && session.role === "OWNER" && <Drawer title="Identidade da empresa" close={() => setPanel("")} wide>
         <CompanySettings empresa={company.empresa} update={company.update} />

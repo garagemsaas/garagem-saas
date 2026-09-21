@@ -57,6 +57,8 @@ public final class PropostaDtos {
       Instant validade,
       String observacoes,
       String clienteNome,
+      // Para chamar no WhatsApp sem precisar abrir o cadastro do cliente.
+      String telefone,
       String veiculoDescricao) {}
 
   public record Versao(

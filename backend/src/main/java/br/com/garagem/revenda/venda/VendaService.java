@@ -28,7 +28,7 @@ public class VendaService {
   private final RevendaReferencias referencias;
   private final RevendaEventos eventos;
   private static final String SELECT =
-      "select s.*,e.veiculo_id,s.preco_anunciado-s.valor_vendido desconto,c.nome cliente_nome,concat_ws(' ',v.marca,v.modelo,v.placa) veiculo_descricao ";
+      "select s.*,e.veiculo_id,s.preco_anunciado-s.valor_vendido desconto,c.nome cliente_nome,c.telefone,concat_ws(' ',v.marca,v.modelo,v.placa) veiculo_descricao ";
   private static final String FROM =
       "from revenda_venda s join revenda_estoque e on e.id=s.estoque_id and e.oficina_id=s.oficina_id join veiculo v on v.id=e.veiculo_id and v.oficina_id=e.oficina_id join cliente c on c.id=s.cliente_id and c.oficina_id=s.oficina_id where s.oficina_id=:tenant";
 

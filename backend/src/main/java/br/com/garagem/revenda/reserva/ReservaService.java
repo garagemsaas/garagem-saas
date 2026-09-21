@@ -44,10 +44,27 @@ public class ReservaService {
   public Pagina<Item> listar(UUID estoqueId, String status, int pagina, int tamanho) {
     estoques.expirarReservas();
     var p = params();
-    var sql = new StringBuilder("from revenda_reserva where oficina_id=:tenant");
-    filter(sql, p, "estoque", "estoque_id=:estoque", estoqueId);
-    filter(sql, p, "status", "status=:status", status);
-    return db.page(Item.class, "select *", sql.toString(), "criado_em desc,id", p, pagina, tamanho);
+    // A tela lista reservas de vários carros: sem o nome e o telefone do cliente, cada linha
+    // exigiria abrir o carro só para descobrir com quem falar.
+    var sql =
+        new StringBuilder(
+            """
+        from revenda_reserva r
+        join cliente c on c.id=r.cliente_id and c.oficina_id=r.oficina_id
+        join revenda_estoque e on e.id=r.estoque_id and e.oficina_id=r.oficina_id
+        join veiculo v on v.id=e.veiculo_id and v.oficina_id=e.oficina_id
+        where r.oficina_id=:tenant
+        """);
+    filter(sql, p, "estoque", "r.estoque_id=:estoque", estoqueId);
+    filter(sql, p, "status", "r.status=:status", status);
+    return db.page(
+        Item.class,
+        "select r.*,c.nome cliente_nome,c.telefone,concat_ws(' ',v.marca,v.modelo,v.placa) veiculo_descricao",
+        sql.toString(),
+        "r.criado_em desc,r.id",
+        p,
+        pagina,
+        tamanho);
   }
 
   public Item criar(Nova n) {
