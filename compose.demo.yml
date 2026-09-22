@@ -5,7 +5,7 @@
 # tentaria abrir também as portas originais e falharia com "port is already allocated".
 #
 # Todas as portas continuam presas a 127.0.0.1. Quem atravessa para a internet é apenas a API, e
-# somente pelo túnel que scripts/demo-publica.sh abre. Postgres e MinIO nunca saem da máquina.
+# somente pelo túnel que scripts/demo/publicar.sh abre. Postgres e MinIO nunca saem da máquina.
 services:
   postgres:
     ports: !override ["127.0.0.1:5442:5432"]

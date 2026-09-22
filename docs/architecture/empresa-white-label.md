@@ -33,16 +33,16 @@ As imagens são decodificadas e regravadas como PNG, sem metadados enviados. O l
 
 Login, refresh e cada requisição autenticada consultam situação ATIVA. Sessões de empresa INATIVA são recusadas com 401; links públicos respondem 404. Não é necessário aguardar expiração do JWT. A inativação não apaga registros. Uma requisição já autorizada e em andamento pode terminar; esta fase não introduz cancelamento distribuído de transações.
 
-O core deixou de depender de `PlanoLimiteService`: usuários, veículos, ordens e fotos não consultam assinatura nem cotas comerciais. Limites técnicos de upload, paginação e rate limiting continuam.
+O core não consulta assinatura nem cotas comerciais em lugar nenhum: usuários, veículos, ordens e fotos são criados sem passar por cobrança. Limites técnicos de upload, paginação e rate limiting continuam.
 
 Classificação do legado:
 
 | Categoria | Destino |
 | --- | --- |
 | Interface de assinatura, planos, preços e aviso 402 | Removida do frontend |
-| Controllers e serviços de billing/webhook | Desativados por padrão; `app.legacy-billing.enabled=true` existe apenas para manutenção controlada e regressão histórica |
+| Controllers e serviços de billing/webhook | Removidos do código. `FronteirasDeModuloTest.billingLegadoNaoVoltaAoCodigo` impede que voltem |
 | Provedor manual e contratos internos | Retidos para o legado, sem gateway real novo |
-| Tabelas plano, assinatura, evento_cobranca e webhook | Preservadas com histórico e proteções de imutabilidade |
+| Tabelas plano, assinatura, evento_cobranca e webhook | Preservadas pelas migrations, com histórico e proteções de imutabilidade. Nenhum código as lê |
 | Gatilho de criação automática de trial | Desativado por V6, sem apagar contratos |
 | Dependências de billing em serviços operacionais | Removidas |
 

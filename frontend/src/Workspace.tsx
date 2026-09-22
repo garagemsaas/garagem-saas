@@ -4,25 +4,26 @@ import { Brand, Drawer, Empty, Icon, Search } from "./ui";
 import type { IconName } from "./icons";
 import { roles } from "./model";
 import type { Client, Order, Role, Vehicle } from "./model";
-import { getDashboard } from "./dashboard-model";
 import { listPage } from './api';
 import { PageState } from './PageState';
 import GettingStarted from './GettingStarted';
 
 import { labels } from "./navigation";
 import type { Page } from "./navigation";
-type Panel = "menu" | "search" | "notifications" | "profile" | "settings" | "calendar" | "parking" | "parts" | "help" | null;
+/* Os painéis que existem, e só eles. Carregava ainda "calendar", "parking" e "parts" de telas
+   removidas há tempo: valor de tipo que nenhum código produz é um convite a reabrir a tela. */
+type Panel = "menu" | "search" | "profile" | "help" | null;
 
 interface WorkspaceProps {
   page: Page; navigate: (page: Page) => void; children: ReactNode;
   role: Role; name: string; workshop: string; logout: () => void;
-  orders: Order[]; clients: Client[]; vehicles: Vehicle[]; today: Date;
+  clients: Client[]; today: Date;
   openOrder: (id: string) => void; openClient: (client: Client) => void;
   openVehicle: (vehicle: Vehicle) => void; openRecovery: () => void; openCompany: () => void;
 }
 
 export default function Workspace(props: WorkspaceProps) {
-  const { page, navigate, children, role, name, workshop, logout, orders, clients, today, openOrder, openClient, openVehicle, openRecovery, openCompany } = props;
+  const { page, navigate, children, role, name, workshop, logout, clients, today, openOrder, openClient, openVehicle, openRecovery, openCompany } = props;
   const [panel, setPanel] = useState<Panel>(null);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState({ orders: [] as Order[], clients: [] as Client[], vehicles: [] as Vehicle[], total: 0 });
@@ -62,7 +63,6 @@ export default function Workspace(props: WorkspaceProps) {
     requestAnimationFrame(() => mainRef.current?.focus());
   };
   const initials = name.split(" ").map((part) => part[0]).slice(0, 2).join("");
-  const dashboard = getDashboard(orders, today);
   const clean = query.trim().toLocaleLowerCase("pt-BR");
   const matchedOrders = results.orders, matchedClients = results.clients, matchedVehicles = results.vehicles;
   const total = results.total;
@@ -76,13 +76,14 @@ export default function Workspace(props: WorkspaceProps) {
       <div>{navButton("overview")}</div>
       <div><span className="navigation-caption">CLIENTES</span>{navButton("clients")}{navButton("vehicles")}</div>
       <div><span className="navigation-caption">OFICINA</span>{navButton("orders")}</div>
-      {role !== 'MECANICO' && <div><span className="navigation-caption">RETORNOS</span>
+      {role !== 'MECANICO' && <div>
         <button className="recovery-nav" onClick={() => { setPanel(null); openRecovery(); }}><Icon name="recovery" /><span>Retornos</span></button></div>}
     </nav>
+    {/* "Primeiros passos" saiu daqui: é um guia de estreia, e competia todos os dias com as
+        funções de trabalho. Continua a um clique, dentro da conta. */}
     <div className="navigation-bottom"><nav aria-label="Gestão">
       {role === "OWNER" && navButton("team")}
-      <button onClick={() => setPanel("help")}><Icon name="info" /><span>Primeiros passos</span></button>
-      <button onClick={() => setPanel("settings")}><Icon name="settings" /><span>Configurações</span></button>
+      {role === "OWNER" && <button onClick={() => { setPanel(null); openCompany(); }}><Icon name="settings" /><span>Configurações</span></button>}
     </nav><button className="sidebar-profile" onClick={() => setPanel("profile")}><span className="avatar">{initials}</span><span><strong>{name}</strong><small>{roles[role]}</small></span><Icon name="arrow" size={16} /></button></div>
   </>;
   return <div className="premium-shell">
@@ -96,11 +97,11 @@ export default function Workspace(props: WorkspaceProps) {
         <button ref={menuButtonRef} className="icon-button menu-trigger" aria-label="Abrir menu" aria-expanded={panel === "menu"} onClick={() => setPanel("menu")}><Icon name="menu" /></button>
         <span className="breadcrumb">Oficina<span>/</span><strong>{labels[page]}</strong></span>
         <button className="global-search-trigger" onClick={() => { setQuery(""); setPanel("search"); }}><Icon name="search" size={18} /><span>Buscar na oficina</span></button>
-        <div className="header-actions"><button className="icon-button" aria-label="Notificações" onClick={() => setPanel("notifications")}><Icon name="bell" /></button><span className="header-divider" /><button className="profile-trigger" aria-label="Abrir perfil" onClick={() => setPanel("profile")}><span className="avatar">{initials}</span></button></div>
+        <div className="header-actions"><button className="profile-trigger" aria-label="Abrir perfil" onClick={() => setPanel("profile")}><span className="avatar">{initials}</span></button></div>
       </header>
       <div className="context-strip"><span><Icon name="info" size={14} />Dados da oficina</span><time dateTime={today.toISOString()}>{today.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}</time></div>
       <main ref={mainRef} tabIndex={-1} id="main-content" className="premium-main">{children}</main>
-      <footer className="premium-footer"><span>Plataforma Automotiva <span>/</span> Gestão que cuida do seu negócio.</span><span>Operação da oficina</span></footer>
+      <footer className="premium-footer"><span>{workshop}</span></footer>
     </div>
     {panel === "search" && <Drawer title="Buscar na oficina" close={() => setPanel(null)}>
       <Search value={query} onChange={setQuery} placeholder="OS, placa, veículo ou cliente" />
@@ -114,15 +115,12 @@ export default function Workspace(props: WorkspaceProps) {
         {matchedVehicles.map((v) => <li key={v.id}><button onClick={() => { setPanel(null); openVehicle(v); }}><Icon name="vehicles" /><span><strong>{v.marca} {v.modelo}</strong><small>Veículo · {v.placa}</small></span><Icon name="arrow" size={16} /></button></li>)}
       </ul>}
     </Drawer>}
-    {panel === "notifications" && <Drawer title="Notificações" close={() => setPanel(null)}>
-      <p>Os avisos em tempo real ainda não estão disponíveis. Estas são as pendências identificadas nas OS carregadas.</p>
-      {dashboard.priorities.length === 0 ? <Empty title="Nenhuma pendência nas OS carregadas">Consulte a listagem de ordens de serviço para verificar os demais registros da oficina.</Empty> : <ul className="global-results">{dashboard.priorities.map(({ order, reason }) => <li key={order.id}><button onClick={() => { setPanel(null); openOrder(order.id); }}><Icon name="clock" /><span><strong>OS #{order.numero}</strong><small>{reason}</small></span><Icon name="arrow" size={16} /></button></li>)}</ul>}
-    </Drawer>}
-    {(panel === "profile" || panel === "settings") && <Drawer title={panel === "profile" ? "Seu perfil" : "Configurações"} close={() => setPanel(null)}>
+    {/* "Perfil" e "Configurações" abriam exatamente o mesmo painel, com dois nomes. Ficou um. */}
+    {panel === "profile" && <Drawer title="Sua conta" close={() => setPanel(null)}>
       <div className="profile-summary"><span className="avatar">{initials}</span><h3>{name}</h3><p>{roles[role]} · {workshop}</p></div>
       <p>Sua sessão está vinculada à sua empresa.</p>
-      {role === "OWNER" && <button onClick={() => { setPanel(null); openCompany(); }}><Icon name="security" />Identidade da empresa</button>}
-      {role === "OWNER" && <button onClick={() => move("team")}><Icon name="team" />Gerenciar equipe</button>}
+      {role === "OWNER" && <button onClick={() => move("team")}><Icon name="team" />Usuários</button>}
+      <button onClick={() => setPanel("help")}><Icon name="info" />Primeiros passos</button>
       <button className="session-logout" onClick={logout}><Icon name="logout" size={18} />Sair da oficina</button>
     </Drawer>}
     {panel === 'help' && <GettingStarted role={role} close={() => setPanel(null)} navigate={move} recovery={() => { setPanel(null); openRecovery(); }} />}

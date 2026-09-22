@@ -61,9 +61,9 @@ O módulo de oportunidades identifica situações que podem representar receita 
 
 ### Empresa e identidade visual
 
-Uma base de código atende empresas independentes com nome, logo, favicon, cores e contatos próprios. Módulos OFICINA e REVENDA podem ser combinados; somente OFICINA tem operação implementada nesta fase. O OWNER configura sua identidade, enquanto um operador autorizado provisiona módulos e situação ATIVA/INATIVA.
+Uma base de código atende empresas independentes com nome, logo, favicon, cores e contatos próprios. Módulos OFICINA e REVENDA podem ser combinados, e ambos têm operação completa. O OWNER configura sua identidade, enquanto um operador autorizado provisiona módulos e situação ATIVA/INATIVA.
 
-A venda é direta, sem planos self-service, cotas comerciais, checkout ou gateway obrigatório. Billing histórico permanece desativado e fora do core.
+A venda é direta, sem planos self-service, cotas comerciais, checkout ou gateway. O billing legado foi removido do código; as tabelas seguem no banco pelas migrations, sem nenhum consumidor.
 
 - [Arquitetura e contratos de branding](docs/architecture/empresa-white-label.md)
 - [Provisionamento administrativo](docs/operations/provisionamento-empresa.md)

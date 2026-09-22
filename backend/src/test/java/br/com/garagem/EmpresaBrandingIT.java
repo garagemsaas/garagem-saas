@@ -239,7 +239,9 @@ class EmpresaBrandingIT extends br.com.garagem.suporte.IntegracaoBase {
         .isZero();
     call(post("/api/v1/clientes"), ta, Map.of("nome", "Cliente", "telefone", "11999999999"), 201);
     call(get("/api/v1/assinatura"), ta, null, 404);
-    call(post("/api/v1/webhooks/pagamento"), null, Map.of(), 404);
+    // O webhook do gateway era a única rota anônima de escrita da API. Saiu junto com a cobrança:
+    // hoje o caminho não existe e, sem sessão, nem chega a ser resolvido.
+    call(post("/api/v1/webhooks/pagamento"), null, Map.of(), 401);
   }
 
   @Test

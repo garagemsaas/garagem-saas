@@ -1373,94 +1373,18 @@ Identificação serializa por OS; operações comerciais serializam por oportuni
 com revisão. Dois contatos enviados com a mesma revisão podem produzir 201 + 409;
 o rejeitado não é registrado. Após recarregar, o usuário pode registrar a outra
  tentativa. Não repetir gravação financeira automaticamente após conflito.
-## Fase 7 — Assinatura, planos e cobrança
+## Cobrança: removida da API
 
-Referência de arquitetura, gateway e webhooks: [fase7-caua.md](../archive/fase7-caua.md).
-Regras de acesso em [permissoes.md](../architecture/permissoes.md#fase-7--assinatura-planos-e-cobrança).
+A Fase 7 publicou sete endpoints de assinatura, planos, consumo, eventos de cobrança e um webhook
+de gateway. Nenhum deles existe: a venda é direta, a mensalidade é negociada em contrato e
+conduzida fora do sistema, e o código saiu junto com os três status `402`.
 
-A assinatura pertence à **oficina**, não ao usuário. Nenhum request recebe `oficinaId`: a oficina
-vem do token. Leitura para OWNER e ATENDENTE; decisão contratual só para OWNER; MECANICO 403.
+Consequências para quem integra:
 
-| Método/caminho | Entrada | Resposta |
-|---|---|---|
-| GET `/api/v1/assinatura` | — | 200 `AssinaturaDetalhe` |
-| GET `/api/v1/assinatura/consumo` | — | 200 `ConsumoSaida` |
-| PUT `/api/v1/assinatura/plano` | `{codigo, revisao}` | 200 `AssinaturaSaida` |
-| POST `/api/v1/assinatura/cancelamento` | `{imediato, motivo, revisao}` | 200 `AssinaturaSaida` |
-| POST `/api/v1/assinatura/reativacao` | `{revisao}` | 200 `AssinaturaSaida` |
-| GET `/api/v1/assinatura/eventos` | `pagina?`, `tamanho?` | 200 `Pagina<EventoCobrancaSaida>` |
-| POST `/api/v1/webhooks/pagamento` | corpo cru assinado | 200 `{status, eventoId}` |
+- `GET|PUT|POST /api/v1/assinatura/**` e `POST /api/v1/webhooks/pagamento` respondem como qualquer
+  caminho desconhecido — **404** com sessão, **401** sem ela.
+- Nenhuma resposta da API usa **402**. `PLAN_LIMIT_REACHED`, `STORAGE_LIMIT_REACHED` e
+  `SUBSCRIPTION_INACTIVE` não são mais emitidos e foram retirados de `ErrorCodes`.
+- Criar usuário, veículo, OS ou enviar foto não depende de estado financeiro nenhum.
 
-`revisao` é obrigatório em toda escrita e não negativo; a saída já traz a revisão persistida. Em
-409, recarregue antes de decidir de novo.
-
-### Estados da assinatura
-
-`TRIAL`, `ATIVA`, `INADIMPLENTE`, `SUSPENSA`, `CANCELADA` — equivalentes a TRIAL, ACTIVE, PAST_DUE,
-SUSPENDED e CANCELED. `permiteCrescer` é `true` nos três primeiros: inadimplência é o período de
-tolerância e não bloqueia a operação.
-
-### Consultar assinatura
-
-`AssinaturaDetalhe = {assinatura, consumo, planos}`. O campo `situacao` traz texto pronto para a
-tela, para o frontend não reimplementar a leitura do ciclo de vida. `periodoFim` é a próxima
-cobrança enquanto a assinatura estiver vigente; com cancelamento agendado, `cancelamentoEfetivoEm`
-é a data em que o acesso termina.
-
-A leitura normaliza o estado: tolerância vencida vira `SUSPENSA` e cancelamento agendado vencido
-vira `CANCELADA`, sem depender de rotina externa.
-
-### Consumo
-
-```json
-{
-  "geradoEm": "2026-09-17T13:00:00Z", "plano": "PROFISSIONAL", "status": "ATIVA",
-  "limites": [
-    { "chave": "usuarios", "rotulo": "Usuários ativos", "usado": 6, "limite": 10,
-      "usadoLegivel": "6", "limiteLegivel": "10", "percentual": 60, "atingido": false },
-    { "chave": "armazenamento", "rotulo": "Armazenamento", "usado": 4294967296, "limite": 10737418240,
-      "usadoLegivel": "4,0 GB", "limiteLegivel": "10,0 GB", "percentual": 40, "atingido": false }
-  ]
-}
-```
-
-`limite: null` com `limiteLegivel: "Ilimitado"` quando o plano não restringe — apresente como
-"ilimitado", nunca como zero. Chaves atuais: `usuarios`, `armazenamento`, `veiculos`,
-`ordensServicoMes`. Um limite novo no plano aparece aqui sozinho; trate a lista genericamente.
-
-`percentual` já vem limitado a 100. `atingido` indica que a próxima criação será recusada.
-
-### Mudar de plano
-
-`codigo` é o identificador do plano (`BASICO`, `PROFISSIONAL`, `PREMIUM`). Reduzir para um plano
-menor que o uso atual devolve **409 com `PLAN_LIMIT_REACHED`** e a lista do que excede — nenhum dado
-é apagado para viabilizar a redução.
-
-### Cancelamento e reativação
-
-`imediato: false` mantém o acesso até o fim do período pago e pode ser revogado pela reativação até
-a data efetiva. `imediato: true` encerra o acesso de criação na hora. `motivo` é obrigatório.
-Nenhum dado da oficina é removido em qualquer um dos dois.
-
-A reativação revoga cancelamento agendado imediatamente. A partir de `CANCELADA`, devolve a
-assinatura à tolerância: o acesso pleno volta na confirmação do pagamento, que é automática.
-
-### Histórico de cobrança
-
-Trilha imutável, mais recentes primeiro. Nenhum segredo, token ou número de cartão é gravado.
-Tipos em [fase7-caua.md](../archive/fase7-caua.md#12-como-consultar-logs-de-cobrança).
-
-### Webhook
-
-Sem JWT. Exige `X-Plataforma Automotiva-Signature` com o HMAC-SHA256 hexadecimal do **corpo cru** e o segredo do
-ambiente. Sem segredo configurado, todo evento é recusado com 401.
-
-Idempotente por `(provedor, id do evento)`. Evento duplicado ou de tipo desconhecido devolve **200**
-sem reprocessar — reentrega é comportamento normal de gateway. `status` vale `PROCESSADO`,
-`DUPLICADO` ou `IGNORADO`.
-
-### Erros do módulo
-
-`PLAN_LIMIT_REACHED`, `STORAGE_LIMIT_REACHED` e `SUBSCRIPTION_INACTIVE` respondem **402** e podem
-aparecer em endpoints de outras fases — criação de usuário, veículo, OS e upload de foto. Detalhes
-em [api-errors.md](../api/api-errors.md).
+O histórico das tabelas permanece no banco, pelas migrations; nenhum código as lê.

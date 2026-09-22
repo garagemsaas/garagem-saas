@@ -1,4 +1,4 @@
-> Atualização Fase 9: o tenant representa Empresa. Billing e cotas históricas estão desativados e fora do core. OWNER edita somente a própria identidade; situação e módulos são administrativos. Veja [modelo atualizado](/docs/architecture/empresa-white-label.md) e [provisionamento](/docs/operations/provisionamento-empresa.md). Referências a planos nas fases anteriores são históricas.
+> O tenant representa Empresa. Billing e cotas foram removidos do código. OWNER edita somente a própria identidade; situação e módulos são administrativos. Veja [modelo atualizado](/docs/architecture/empresa-white-label.md) e [provisionamento](/docs/operations/provisionamento-empresa.md). Referências a planos nas fases anteriores são históricas.
 
 # Matriz de permissões
 
@@ -131,38 +131,15 @@ A matriz nova e os dois tenants são exercitados em `Fase5IT`, incluindo todos o
 métodos para MECANICO e ausência de sessão, operações permitidas ao ATENDENTE,
 atribuição incompatível/inativa, referências cruzadas e relatórios isolados.
 
-## Fase 7 — Assinatura, planos e cobrança
+## Cobrança: não existe mais
 
-Leitura da área financeira para OWNER e ATENDENTE; decisões contratuais só para OWNER.
-MECANICO não acessa o módulo. A oficina vem sempre do contexto autenticado.
+A Fase 7 trouxe assinatura, planos, cotas e um webhook de gateway, com uma matriz de permissões
+própria e um segundo portão sobre a criação de registros (402 para assinatura suspensa). Tudo isso
+saiu do produto: a venda é direta, a mensalidade é negociada em contrato e conduzida fora do
+sistema, e nenhum papel tem permissão sobre cobrança porque não há cobrança.
 
-| Operação | OWNER | ATENDENTE | MECANICO |
-|---|:--:|:--:|:--:|
-| Consultar assinatura, consumo e planos | ✅ | ✅ | ❌ |
-| Consultar histórico de cobrança | ✅ | ✅ | ❌ |
-| Mudar de plano | ✅ | ❌ | ❌ |
-| Cancelar assinatura | ✅ | ❌ | ❌ |
-| Reativar assinatura | ✅ | ❌ | ❌ |
+O que sobrou é mais simples de explicar e de defender: **papel é a única porta**, e a empresa
+INATIVA é a única condição que bloqueia acesso. Nenhuma criação passa por estado financeiro, e
+`/api/v1/webhooks/pagamento` — a única rota anônima de escrita que a API já teve — não existe.
 
-Atendente lê para poder responder ao cliente e acompanhar o consumo do plano, mas não decide
-contrato: cancelar ou trocar plano é ato do dono da conta.
-
-`POST /api/v1/webhooks/pagamento` não tem papel: é o gateway, sem sessão. A autenticidade vem da
-assinatura HMAC do corpo, conferida antes de qualquer efeito, e sem segredo configurado nenhum
-evento é aceito.
-
-### Efeito da assinatura sobre as permissões existentes
-
-Papel continua sendo a primeira porta; a assinatura é uma segunda, e só sobre **criação**:
-
-| Estado da assinatura | Criar usuário, veículo, OS e enviar foto | Ler, exportar, área financeira |
-|---|:--:|:--:|
-| TRIAL, ATIVA, INADIMPLENTE | ✅ | ✅ |
-| SUSPENSA, CANCELADA | ❌ 402 | ✅ |
-
-Inadimplência não bloqueia: é o período de tolerância. Suspensão bloqueia criação e **nunca** remove
-dado, oculta registro ou impede login. Quem tinha permissão de leitura continua com ela integral.
-
-A matriz nova e os dois tenants são exercitados em `Fase7IT`, incluindo todos os métodos para
-MECANICO, ausência de sessão, leitura permitida ao ATENDENTE com escrita recusada, e isolamento de
-assinatura, consumo e eventos entre oficinas.
+As tabelas da cobrança seguem no banco, pelas migrations, sem nenhum código que as leia.

@@ -167,7 +167,7 @@ test('fluxo completo: cliente, veículo, OS, checklist, diagnóstico, orçamento
   test.setTimeout(120_000);
   const state = await fixture(context);
   const errors = []; page.on('pageerror', e => errors.push(e.message));
-  await login(page); await expect(page.getByRole('heading', { name: 'Um dia bem organizado.' })).toBeVisible();
+  await login(page); await expect(page.getByRole('heading', { name: 'Início', level: 1 })).toBeVisible();
   await noOverflow(page); await accessible(page);
   await nav(page, 'Clientes');
   await page.getByRole('button', { name: 'Cadastrar cliente', exact: true }).click();
@@ -250,7 +250,7 @@ test('carregamento, erro recuperável, validação por campo, busca vazia e sess
   state.failClients = false; state.delay = 200;
   await page.getByRole('button', { name: 'Tentar novamente', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Carregando dados da oficina' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Um dia bem organizado.' })).toBeVisible(); state.delay = 0;
+  await expect(page.getByRole('heading', { name: 'Início', level: 1 })).toBeVisible(); state.delay = 0;
   await nav(page, 'Clientes'); await page.getByRole('button', { name: 'Cadastrar cliente', exact: true }).click();
   await page.getByLabel('Nome completo *').fill('A'); await page.getByLabel('Telefone *').fill('11912345678');
   state.fieldError = true;
@@ -274,10 +274,10 @@ test('login acessível, sessão sobrevive ao reload e link público inválido', 
   // Navegador ainda sem cookie: a primeira coisa que se vê é a entrada, não a aplicação.
   await page.goto('/'); await expect(page.getByRole('button', { name: 'Entrar', exact: true })).toBeVisible();
   await accessible(page); await noOverflow(page);
-  await login(page); await expect(page.getByRole('heading', { name: 'Um dia bem organizado.' })).toBeVisible();
+  await login(page); await expect(page.getByRole('heading', { name: 'Início', level: 1 })).toBeVisible();
   // Recarregar deixou de deslogar: o access token morre com a página, o cookie de refresh não.
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'Um dia bem organizado.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Início', level: 1 })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Entrar', exact: true })).toHaveCount(0);
   // E sair de verdade encerra: sem cookie válido, o reload volta para a entrada.
   state.autenticado = false;
@@ -290,7 +290,7 @@ test('login acessível, sessão sobrevive ao reload e link público inválido', 
 
 test('mecânico consulta cadastros sem ações de escritório', async ({ page, context }) => {
   await fixture(context, 'MECANICO'); await login(page);
-  await expect(page.getByRole('heading', { name: 'Um dia bem organizado.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Início', level: 1 })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Abrir OS', exact: true })).toHaveCount(0);
   await nav(page, 'Clientes'); await expect(page.getByRole('button', { name: 'Cadastrar cliente', exact: true })).toHaveCount(0);
   await nav(page, 'Veículos'); await expect(page.getByRole('button', { name: 'Cadastrar veículo', exact: true })).toHaveCount(0);

@@ -28,11 +28,11 @@ for (const role of ['OWNER', 'ATENDENTE', 'MECANICO']) {
     await page.getByLabel('E-mail', { exact: true }).fill('a@example.test');
     await page.getByLabel('Senha', { exact: true }).fill('teste');
     await page.getByRole('button', { name: 'Entrar', exact: true }).click();
-    await expect(page.getByRole('heading', { name: 'Um dia bem organizado.' })).toBeVisible();
-    const menu = page.getByRole('button', { name: 'Abrir menu', exact: true });
-    if (await menu.isVisible()) await menu.click();
+    await expect(page.getByRole('heading', { name: 'Início', level: 1 })).toBeVisible();
     calls.length = 0;
     fail = role !== 'MECANICO';
+    // O guia mora dentro da conta desde que saiu do menu de trabalho.
+    await page.getByRole('button', { name: 'Abrir perfil', exact: true }).click();
     await page.getByRole('button', { name: 'Primeiros passos', exact: true }).click();
     const section = page.getByRole('region', { name: 'Preparação inicial da oficina' });
     if (role === 'MECANICO') {
@@ -47,7 +47,7 @@ for (const role of ['OWNER', 'ATENDENTE', 'MECANICO']) {
       expect(calls.some(c => c.path.endsWith('/usuarios'))).toBe(role === 'OWNER');
       await page.getByRole('button', { name: 'Fechar painel', exact: true }).click();
       exists = true;
-      if (await menu.isVisible()) await menu.click();
+      await page.getByRole('button', { name: 'Abrir perfil', exact: true }).click();
       await page.getByRole('button', { name: 'Primeiros passos', exact: true }).click();
       await expect(section.getByText('Registro encontrado — confira os dados', { exact: true })).toHaveCount(role === 'OWNER' ? 4 : 3);
       await section.getByRole('button', { name: 'Ir para veículos', exact: true }).click();
