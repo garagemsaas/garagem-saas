@@ -132,7 +132,7 @@ test('empresa somente REVENDA opera estoque, leads, propostas e vendas com ident
 test('empresa somente OFICINA não recebe menu nem tela de revenda', async ({ page, context }) => {
   await fixture(context, ['OFICINA']);
   await entrar(page);
-  await expect(page.getByRole('heading', { name: 'Um dia bem organizado.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Início', level: 1 })).toBeVisible();
   await expect(page.getByRole('navigation', { name: 'Navegação da revenda' })).toHaveCount(0);
   for (const nome of ['Carros', 'Interessados', 'Propostas', 'Vendas', 'Reservas'])
     await expect(page.getByRole('button', { name: nome, exact: true })).toHaveCount(0);
@@ -141,13 +141,13 @@ test('empresa somente OFICINA não recebe menu nem tela de revenda', async ({ pa
 test('empresa híbrida transita entre oficina e revenda na mesma sessão', async ({ page, context }) => {
   await fixture(context, ['OFICINA', 'REVENDA']);
   await entrar(page);
-  await expect(page.getByRole('heading', { name: 'Um dia bem organizado.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Início', level: 1 })).toBeVisible();
 
   await page.getByRole('button', { name: 'Ir para revenda', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Início', level: 1 })).toBeVisible();
 
   await page.getByRole('button', { name: 'Ir para oficina', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Um dia bem organizado.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Início', level: 1 })).toBeVisible();
   await semTransbordo(page);
 });
 

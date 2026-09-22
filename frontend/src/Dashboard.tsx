@@ -1,6 +1,6 @@
-import { Badge, Empty, Icon } from "./ui";
+import { Empty, Icon } from "./ui";
 import type { IconName } from "./icons";
-import { date, money } from "./model";
+import { money } from "./model";
 import type { Client, Order, Vehicle } from "./model";
 import { getDashboard } from "./dashboard-model";
 
@@ -34,30 +34,19 @@ export default function Dashboard({ summary, orders, vehicles, clients, today, c
   };
   return <div className="dashboard">
     <div className="page-heading">
-      <div><div className="eyebrow">SUA OFICINA, EM PERSPECTIVA</div>
-        <h1>Um dia bem organizado.</h1><p>O que precisa da sua atenção, em um só lugar.</p>
-      </div>
+      <div><h1>Início</h1><p>O que precisa da sua atenção hoje.</p></div>
       {canWrite && <button className="primary" onClick={newOrder}><Icon name="plus" size={18} />Abrir OS</button>}
     </div>
+    {/* Quatro números, e todos acionáveis. Um indicador que a oficina não consegue mudar hoje não
+        informa nada — o card de ocupação do pátio existia sem a capacidade que o alimentaria e
+        mostrava um travessão desde o primeiro dia. */}
     <dl className="metrics" aria-label="Indicadores da oficina">
       <Metric icon="work" label="OS em andamento" value={String(summary?.emAndamento ?? 0).padStart(2, "0")} detail="Do recebimento ao teste" />
       <Metric icon="clock" label="Aguardando aprovação" value={String(summary?.porStatus.AGUARDANDO_APROVACAO ?? 0).padStart(2, "0")} detail="Aguardam decisão do cliente" />
       <Metric icon="good" label="Veículos prontos" value={String(summary?.prontas ?? 0).padStart(2, "0")} detail="Serviços concluídos" />
-      <Metric icon="parking" label="Ocupação do pátio" value="—" detail="Capacidade não disponível" />
+      <Metric icon="recovery" label="Orçamentos sem resposta" value={String(summary?.orcamentosAguardandoDecisao.quantidade ?? 0).padStart(2, "0")} detail={`${money(summary?.orcamentosAguardandoDecisao.total ?? 0)} aguardando — não é receita`} />
     </dl>
-
-    <section className="recovery-feature" aria-labelledby="recovery-title">
-      <div className="recovery-copy"><span className="section-kicker"><Icon name="recovery" size={18} />RELACIONAMENTO QUE GERA RETORNO</span>
-        <h2 id="recovery-title">Retornos</h2>
-        <p>Sua oficina já tem clientes.<br />Faça eles voltarem.</p>
-        {canWrite && <button onClick={viewRecovery}>Explorar oportunidades<Icon name="forward" size={18} /></button>}
-      </div>
-      <div className="recovery-amount"><span>Potencial de recuperação</span>
-        <strong>Carteira de oportunidades</strong>
-        <p>Consulte origens, próximos contatos e valores recuperados no painel de oportunidades.</p>
-        <div className="pending-origin"><Icon name="orders" size={18} /><span><b>{money(summary?.orcamentosAguardandoDecisao.total ?? 0)}</b> em {summary?.orcamentosAguardandoDecisao.quantidade ?? 0} orçamento(s) aguardando resposta. <span>Esse valor não representa receita recuperada.</span></span></div>
-      </div>
-    </section>
+    {canWrite && <p className="list-help"><button className="text-action" onClick={viewRecovery}>Ver retornos<Icon name="forward" size={16} /></button></p>}
 
     <div className="dashboard-columns">
       <section className="surface priorities" aria-labelledby="priorities-title">
@@ -79,14 +68,5 @@ export default function Dashboard({ summary, orders, vehicles, clients, today, c
           </li>)}</ul>}
       </section>
     </div>
-    <section className="surface recent-orders" aria-labelledby="orders-title">
-      <header className="surface-heading"><div><h2 id="orders-title">A operação em movimento</h2><p>Consulte o andamento e a previsão de cada serviço.</p></div><button className="text-action" onClick={viewOrders}>Todas as OS<Icon name="arrow" size={16} /></button></header>
-      {orders.length === 0 ? <Empty title="Nenhuma ordem de serviço">Abra a primeira OS para acompanhar a operação.</Empty> :
-        <ul className="operation-list">{orders.slice(0, 4).map((order) => <li key={order.id}>
-          <button className="order-identity" onClick={() => openOrder(order.id)}><span className="item-eyebrow">#{order.numero}</span><strong>{vehicleName(order)}</strong><span>{vehicles.find((v) => v.id === order.veiculoId)?.placa}</span></button>
-          <Badge status={order.status} /><span className="delivery">Previsão <b>{date(order.previsaoEntrega, true)}</b></span>
-          <button className="icon-button" aria-label={`Consultar OS ${order.numero}`} onClick={() => openOrder(order.id)}><Icon name="arrow" size={17} /></button>
-        </li>)}</ul>}
-    </section>
   </div>;
 }

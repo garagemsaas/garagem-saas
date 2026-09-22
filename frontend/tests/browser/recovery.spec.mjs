@@ -45,10 +45,10 @@ async function setup(page, role = 'OWNER') {
   await page.getByLabel('E-mail', { exact: true }).fill('kaua@example.test');
   await page.getByLabel('Senha', { exact: true }).fill('senha-teste');
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Um dia bem organizado.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Início', level: 1 })).toBeVisible();
   return state;
 }
-async function open(page) { await page.getByRole('button', { name: 'Explorar oportunidades' }).click(); }
+async function open(page) { await page.getByRole('button', { name: 'Ver retornos' }).click(); }
 async function accessible(page) {
   const report = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
   expect(report.violations.map(v => ({ id: v.id, nodes: v.nodes.map(n => n.target) }))).toEqual([]);
@@ -98,6 +98,6 @@ test('erro recuperável, valor desconhecido e conflito sem repetir escrita', asy
 });
 test('mecânico não recebe ações nem consulta oportunidades', async ({ page }) => {
   await setup(page, 'MECANICO');
-  await expect(page.getByRole('button', { name: 'Explorar oportunidades' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Ver retornos' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Retornos', exact: true })).toHaveCount(0);
 });

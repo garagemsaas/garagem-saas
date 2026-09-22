@@ -44,8 +44,15 @@ test('site da empresa apresenta contato e identidade sem pedir nada ao visitante
   await expect(page).toHaveTitle('Oficina do Bairro');
 
   // A cor da empresa pinta a página: é o mesmo template para todo mundo.
-  expect(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--empresa').trim()))
+  //
+  // A leitura é no elemento que de fato desenha o site, não no <html>. A folha declara o padrão em
+  // `.site`; enquanto a cor era gravada no documento, a própria regra do elemento a sobrescrevia e
+  // todo cliente saía com a cor de exemplo — verde — com esta verificação passando assim mesmo.
+  expect(await page.evaluate(() => getComputedStyle(document.querySelector('.site')).getPropertyValue('--empresa').trim()))
     .toBe('#8a2b2b');
+  // E o texto sobre ela é escolhido pelo contraste, não pelo gosto: sobre vinho escuro, branco.
+  expect(await page.evaluate(() => getComputedStyle(document.querySelector('.site')).getPropertyValue('--empresa-texto').trim()))
+    .toBe('#ffffff');
 
   await expect(page.getByRole('heading', { name: 'Serviços' })).toBeVisible();
   for (const servico of site.servicos) await expect(page.getByText(servico, { exact: true })).toBeVisible();
@@ -102,4 +109,60 @@ test('site omite seções que a empresa não preencheu', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Contato' })).toBeVisible();
   await expect(page.getByText(site.endereco)).toBeVisible();
   await semTransbordo(page);
+});
+
+/**
+ * O critério que realmente importa para o modelo comercial: duas empresas completamente diferentes
+ * saem do mesmo código. Se este teste exigisse um componente, uma pasta ou um CSS por cliente, cada
+ * venda custaria um commit e um deploy — e o produto deixaria de ser configurável para virar um
+ * projeto sob encomenda por oficina.
+ */
+test('duas empresas diferentes saem do mesmo template, sem uma linha de código por cliente', async ({ page }) => {
+  const empresaA = {
+    ...site, nome: 'Oficina do Bairro', frase: 'Mecânica de confiança desde 2004',
+    servicos: ['Revisão', 'Freios'], corPrimaria: '#8a2b2b', corSecundaria: '#2b1616',
+    endereco: 'Rua das Oficinas, 100 - São Paulo', instagram: 'oficina.do.bairro',
+  };
+  const empresaB = {
+    ...site, nome: 'Garagem Litoral', frase: 'Seminovos revisados com garantia',
+    sobre: 'Loja de seminovos na orla.', servicos: ['Compra de usados', 'Financiamento'],
+    endereco: 'Avenida Beira-Mar, 900 - Santos', horario: 'Todos os dias, 9h às 19h',
+    telefone: '(13) 2222-1111', whatsapp: '5513911112222', instagram: 'garagem.litoral',
+    corPrimaria: '#f2c94c', corSecundaria: '#8a6d12',
+  };
+
+  await publicar(page, empresaA);
+  await page.goto('/site/oficina-do-bairro');
+  await expect(page.getByRole('heading', { name: 'Oficina do Bairro', level: 1 })).toBeVisible();
+  await expect(page.getByText('Mecânica de confiança desde 2004')).toBeVisible();
+  const identidadeA = await page.evaluate(() => {
+    const s = getComputedStyle(document.querySelector('.site'));
+    return { cor: s.getPropertyValue('--empresa').trim(), texto: s.getPropertyValue('--empresa-texto').trim() };
+  });
+  expect(identidadeA).toEqual({ cor: '#8a2b2b', texto: '#ffffff' });
+
+  await page.unrouteAll();
+  await publicar(page, empresaB);
+  await page.goto('/site/garagem-litoral');
+  await expect(page.getByRole('heading', { name: 'Garagem Litoral', level: 1 })).toBeVisible();
+  await expect(page.getByText('Seminovos revisados com garantia')).toBeVisible();
+  await expect(page.getByText('Compra de usados', { exact: true })).toBeVisible();
+  await expect(page.getByText('Avenida Beira-Mar, 900 - Santos')).toBeVisible();
+
+  // Nada da empresa A sobrevive na página da empresa B.
+  await expect(page.getByText('Oficina do Bairro')).toHaveCount(0);
+  await expect(page.getByText('Mecânica de confiança desde 2004')).toHaveCount(0);
+  await expect(page.getByText('Revisão', { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: '@oficina.do.bairro' })).toHaveCount(0);
+
+  // Sobre amarelo claro o texto vira escuro sozinho: o contraste não depende de quem escolhe a cor.
+  const identidadeB = await page.evaluate(() => {
+    const s = getComputedStyle(document.querySelector('.site'));
+    return { cor: s.getPropertyValue('--empresa').trim(), texto: s.getPropertyValue('--empresa-texto').trim() };
+  });
+  expect(identidadeB).toEqual({ cor: '#f2c94c', texto: '#151a17' });
+
+  await semTransbordo(page);
+  const relatorio = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
+  expect(relatorio.violations.map(v => ({ id: v.id, nodes: v.nodes.map(n => n.target) }))).toEqual([]);
 });

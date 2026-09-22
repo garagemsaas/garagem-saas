@@ -75,11 +75,11 @@ Com frontend e API em domínios diferentes, `REFRESH_COOKIE_SAME_SITE=None` e
 
 ## Ambiente temporário de demonstração
 
-Enquanto não há host contratado, `scripts/demo-publica.sh` publica a stack local por um túnel HTTPS
+Enquanto não há host contratado, `scripts/demo/publicar.sh` publica a stack local por um túnel HTTPS
 da Cloudflare e aponta o frontend da Vercel para ele:
 
 ```bash
-bash scripts/demo-publica.sh
+bash scripts/demo/publicar.sh
 ```
 
 O script sobe Postgres, MinIO e API por Docker, espera a API ficar saudável, abre o túnel apenas

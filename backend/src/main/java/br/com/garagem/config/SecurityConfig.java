@@ -117,9 +117,6 @@ public class SecurityConfig {
                         // publicada.
                         "/api/v1/site/*",
                         "/api/v1/site/*/imagens/**",
-                        // O gateway não tem sessão: a autenticidade vem da assinatura HMAC do
-                        // corpo, conferida em WebhookPagamentoController antes de qualquer efeito.
-                        "/api/v1/webhooks/pagamento",
                         "/v3/api-docs/**",
                         "/swagger-ui/**",
                         "/swagger-ui.html",

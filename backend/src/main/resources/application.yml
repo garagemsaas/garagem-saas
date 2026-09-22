@@ -83,7 +83,6 @@ app:
       habilitado: ${RATE_LIMIT_ENABLED:true}
       login: ${RATE_LIMIT_LOGIN:10}
       publico: ${RATE_LIMIT_PUBLIC:60}
-      webhook: ${RATE_LIMIT_WEBHOOK:120}
       janela: ${RATE_LIMIT_WINDOW:PT1M}
     # Só ligue atrás de um proxy que SOBRESCREVA X-Forwarded-For. Ligado com a porta exposta
     # direto, qualquer cliente forja o cabeçalho e escapa do teto.
@@ -107,14 +106,6 @@ app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:}
   public-base-url: ${PUBLIC_BASE_URL:http://localhost:5173}
-  pagamento:
-    # Nome do PagamentoProvider ativo. MANUAL opera sem gateway: a cobrança acontece fora do
-    # sistema e é confirmada pelo mesmo webhook assinado que um gateway usaria.
-    provedor: ${PAYMENT_PROVIDER:MANUAL}
-    # Segredo do HMAC do webhook. Vazio recusa todo evento: falhar fechado é o padrão.
-    webhook-secret: ${PAYMENT_WEBHOOK_SECRET:}
-    # Tolerância entre a falha de pagamento e a suspensão, em duração ISO-8601.
-    tolerancia: ${PAYMENT_GRACE_PERIOD:P7D}
   storage:
     endpoint: ${S3_ENDPOINT:http://localhost:9000}
     region: ${S3_REGION:us-east-1}

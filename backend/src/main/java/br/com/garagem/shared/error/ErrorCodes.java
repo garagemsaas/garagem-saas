@@ -23,14 +23,6 @@ public final class ErrorCodes {
   /** Teto de requisições da superfície anônima excedido. A resposta traz Retry-After. */
   public static final String RATE_LIMITED = "RATE_LIMITED";
 
-  /** Limite contratado atingido: a oficina precisa mudar de plano, não tentar de novo. */
-  public static final String PLAN_LIMIT_REACHED = "PLAN_LIMIT_REACHED";
-
-  public static final String STORAGE_LIMIT_REACHED = "STORAGE_LIMIT_REACHED";
-
-  /** Assinatura suspensa ou cancelada: leitura continua liberada, crescimento não. */
-  public static final String SUBSCRIPTION_INACTIVE = "SUBSCRIPTION_INACTIVE";
-
   public static final String INTERNAL_ERROR = "INTERNAL_ERROR";
 
   private ErrorCodes() {}

@@ -51,15 +51,16 @@ test('identidade acompanha sessão e OWNER salva apenas configuração permitida
   expect(await page.evaluate(() => document.documentElement.style.getPropertyValue('--accent'))).toBe('#123456');
   const menu = page.getByRole('button', { name: 'Abrir menu', exact: true });
   if (await menu.isVisible()) await menu.click();
+  // Configurações abre a configuração da empresa direto. Antes havia um painel intermediário que
+  // repetia o perfil e só então oferecia "Identidade da empresa".
   await page.getByRole('button', { name: 'Configurações', exact: true }).click();
-  await page.getByRole('button', { name: 'Identidade da empresa', exact: true }).click();
-  await page.getByLabel('Nome de exibição').fill('Alfa Automotiva');
-  await page.getByRole('button', { name: 'Salvar identidade' }).click();
+  await page.getByLabel('Nome exibido').fill('Alfa Automotiva');
+  await page.getByRole('button', { name: 'Salvar empresa' }).click();
   await expect(page).toHaveTitle('Alfa Automotiva');
   expect(writes[0]).not.toHaveProperty('oficinaId'); expect(writes[0]).not.toHaveProperty('modulos'); expect(writes[0]).not.toHaveProperty('status');
   await page.getByRole('button', { name: 'Fechar painel', exact: true }).click();
-  if (await menu.isVisible()) await menu.click();
-  await page.getByRole('button', { name: 'Configurações', exact: true }).click();
+  // Sair mora na conta, junto do nome e do papel — e não misturado à configuração da empresa.
+  await page.getByRole('button', { name: 'Abrir perfil', exact: true }).click();
   await page.getByRole('button', { name: 'Sair da oficina', exact: true }).click();
   await expect(page).toHaveTitle(/Plataforma Automotiva/);
   await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', '/favicon.svg');

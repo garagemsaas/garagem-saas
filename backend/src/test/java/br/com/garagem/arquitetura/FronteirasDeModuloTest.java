@@ -28,7 +28,6 @@ class FronteirasDeModuloTest {
       Set.of(
           "ordemservico",
           "dinheiroesquecido",
-          "assinatura",
           "cliente",
           "veiculo",
           "usuario",
@@ -123,13 +122,18 @@ class FronteirasDeModuloTest {
         && Files.readString(fonte, StandardCharsets.UTF_8).contains("public enum ");
   }
 
+  /**
+   * O billing legado — planos, cotas, assinatura e webhook de gateway — saiu do produto: a venda é
+   * direta e negociada fora do sistema, e o pacote inteiro já vinha desligado por configuração.
+   * Este teste existe para que ele não volte de carona: reintroduzir o import reabriria o ciclo que
+   * a auditoria encontrou e devolveria ao código uma cobrança que ninguém opera.
+   */
   @Test
-  void coreOperacionalNaoDependeDoBillingLegado() throws IOException {
+  void billingLegadoNaoVoltaAoCodigo() throws IOException {
     for (var arquivo : fontes())
-      if (MODULOS.contains(arquivo.modulo()) && !arquivo.modulo().equals("assinatura"))
-        assertThat(String.join("\n", arquivo.linhas()))
-            .as("%s deve operar sem assinatura ou cotas comerciais", arquivo.caminho())
-            .doesNotContain("br.com.garagem.assinatura.");
+      assertThat(String.join("\n", arquivo.linhas()))
+          .as("%s não deve depender de assinatura, planos ou cotas comerciais", arquivo.caminho())
+          .doesNotContain("br.com.garagem.assinatura.");
   }
 
   @Test

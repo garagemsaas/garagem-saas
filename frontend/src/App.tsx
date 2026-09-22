@@ -294,7 +294,7 @@ export default function App() {
   return (
     <BrandingProvider branding={company.empresa.branding}><Workspace page={page} navigate={navigate} role={session.role}
       name={user?.nome ?? "Usuário"} workshop={session.oficina || company.empresa.branding.nomeExibicao}
-      logout={logout} orders={data.ordens} clients={data.clientes} vehicles={data.veiculos} today={today}
+      logout={logout} clients={data.clientes} today={today}
       openOrder={openOrder}
       openClient={(c) => { navigate("clients"); setClient(c); setPanel("view-client"); }}
       openVehicle={(v) => { navigate("vehicles"); setVehicle(v); setPanel("view-vehicle"); }}

@@ -41,7 +41,7 @@ sem o fluxo de cadastro e contratação. A API continua sendo a autoridade de pe
 - [ ] Confirmar que o cliente consegue consultar o link em celular.
 - [ ] Explicar que versões e decisões têm histórico e não devem ser apagadas para esconder alterações.
 - [ ] Mostrar Dinheiro Esquecido e diferenciar valor potencial, valor recuperado e pagamento.
-- [ ] Mostrar `/ajuda` e como relatar erro sem senha, token ou link de cliente.
+- [ ] Mostrar "Primeiros passos", dentro da conta, e como relatar erro sem senha, token ou link de cliente.
 
 ## Encerramento do onboarding
 

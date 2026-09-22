@@ -19,11 +19,13 @@ async function login(page, role) {
   await page.getByLabel('E-mail', { exact: true }).fill('piloto@example.test');
   await page.getByLabel('Senha', { exact: true }).fill('teste');
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Um dia bem organizado.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Início', level: 1 })).toBeVisible();
 }
+// "Primeiros passos" é um guia de estreia e saiu do menu de trabalho: mora dentro da conta, a um
+// clique, onde não compete diariamente com clientes, veículos e serviços.
 async function openGuide(page) {
-  const menu = page.getByRole('button', { name: 'Abrir menu', exact: true });
-  if (await menu.isVisible()) await menu.click();
+  // O acesso à conta vive no cabeçalho, igual nos três tamanhos — não dentro do menu lateral.
+  await page.getByRole('button', { name: 'Abrir perfil', exact: true }).click();
   await page.getByRole('button', { name: 'Primeiros passos', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'Primeiros passos' })).toBeVisible();
 }

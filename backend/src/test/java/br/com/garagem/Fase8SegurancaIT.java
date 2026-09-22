@@ -154,9 +154,6 @@ class Fase8SegurancaIT extends br.com.garagem.suporte.IntegracaoBase {
             "/api/v1/ordens-servico",
             "/api/v1/usuarios",
             "/api/v1/dashboard",
-            "/api/v1/assinatura",
-            "/api/v1/assinatura/consumo",
-            "/api/v1/assinatura/eventos",
             "/api/v1/dinheiro-esquecido/oportunidades",
             "/api/v1/dinheiro-esquecido/resumo"))
       assertThat(get(path, null)).as(path).isEqualTo(401);

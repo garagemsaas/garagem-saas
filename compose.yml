@@ -80,16 +80,10 @@ services:
       APP_BOOTSTRAP_MODULOS: ${APP_BOOTSTRAP_MODULOS:-OFICINA}
       APP_BOOTSTRAP_OPERADOR: ${APP_BOOTSTRAP_OPERADOR:-}
       APP_BOOTSTRAP_SENHA: ${APP_BOOTSTRAP_SENHA:-}
-      # Cobrança. Sem PAYMENT_WEBHOOK_SECRET a aplicação recusa todo webhook, por desenho:
-      # é melhor não confirmar pagamento nenhum do que aceitar um evento não autenticado.
-      PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-MANUAL}
-      PAYMENT_WEBHOOK_SECRET: ${PAYMENT_WEBHOOK_SECRET:-}
-      PAYMENT_GRACE_PERIOD: ${PAYMENT_GRACE_PERIOD:-P7D}
       # Teto de requisições nas superfícies anônimas.
       RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
       RATE_LIMIT_LOGIN: ${RATE_LIMIT_LOGIN:-10}
       RATE_LIMIT_PUBLIC: ${RATE_LIMIT_PUBLIC:-60}
-      RATE_LIMIT_WEBHOOK: ${RATE_LIMIT_WEBHOOK:-120}
       RATE_LIMIT_WINDOW: ${RATE_LIMIT_WINDOW:-PT1M}
       # Atrás de proxy que sobrescreve X-Forwarded-For: liga a leitura do IP real e, junto,
       # faz o Spring reconhecer HTTPS — sem isso o HSTS nunca é emitido.

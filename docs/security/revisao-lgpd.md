@@ -53,9 +53,7 @@ Nenhum DTO de entrada da API possui campo `oficinaId`. Verificado por varredura.
 |---|---|
 | `Fase2IT#matrizDePermissoes` | Matriz completa de papéis por endpoint |
 | `Fase5IT#isolamentoLeituraEscritaReferenciasERelatorios` | Oficina A não lê, não escreve, não vincula nem relata dados de B |
-| `Fase7IT#oficinaNaoVeAssinaturaNemConsumoNemEventosDaOutra` | Assinatura, consumo e histórico financeiro isolados |
-| `Fase7IT#webhookNaoDeixaOPayloadEscolherAOficinaAlvo` | Payload assinado não escolhe o tenant alvo |
-| `Fase7IT#mecanicoNaoAcessaAreaFinanceiraESemSessaoTambemNao` | 403 por papel, 401 sem sessão |
+| `EmpresaBrandingIT#empresaNovaOperaSemAssinaturaEBillingNaoEstaExposto` | Nenhuma rota de cobrança responde, e a anônima devolve 401 |
 
 ## 2. Broken Access Control e IDOR
 
@@ -79,18 +77,16 @@ Nenhum DTO de entrada da API possui campo `oficinaId`. Verificado por varredura.
 | Link público de OS | Token aleatório de 43 caracteres, armazenado **somente como hash**, com expiração e revogação; ausente/expirado/revogado responde 404 indistinguível |
 | Vazamento do token na resposta de erro | Tratado: `ApiErrors` substitui o `instance` por `/api/v1/publico/oculto` |
 
-## 4. Superfície nova da Fase 7
+## 4. Superfície de cobrança: eliminada
 
-| Item | Avaliação |
-|---|---|
-| `POST /api/v1/webhooks/pagamento` sem JWT | Necessário: gateway não tem sessão. Compensado por HMAC-SHA256 do corpo cru, comparado em tempo constante (`MessageDigest.isEqual`) |
-| Segredo ausente | **Falha fechado**: sem `PAYMENT_WEBHOOK_SECRET` nenhum evento é aceito |
-| Replay | Unicidade `(provedor, provider_event_id)` no banco; reentrega devolve 200 sem reprocessar |
-| Escolha do tenant pelo payload | O tenant é resolvido pelo `provider_subscription_id` já cadastrado. Assinatura externa desconhecida → evento registrado e **ignorado** |
-| Corpo adulterado após assinar | Recusado com 401; nada é gravado |
-| Segredo no frontend | Nenhum. `PAYMENT_WEBHOOK_SECRET`, `PAYMENT_API_KEY` e `JWT_SECRET` só existem no servidor, por variável de ambiente |
-| Dado sensível em log financeiro | `CobrancaService.higienizar` descarta metadado cuja chave contenha senha, token, segredo, autorização, cartão, CVV, chave de API ou assinatura. Testado em `Fase7IT#logDeCobrancaNaoGuardaSegredo` |
-| Trilha financeira adulterável | Travada no banco por gatilho; `UPDATE`/`DELETE` falham |
+A revisão anterior avaliou `POST /api/v1/webhooks/pagamento` — a única rota anônima de **escrita**
+que a API já teve, protegida por HMAC-SHA256 do corpo cru. Essa superfície não existe mais: a
+cobrança saiu do produto, e com ela o endpoint, o segredo `PAYMENT_WEBHOOK_SECRET` e o tratamento
+de payload de terceiro. Toda escrita na API exige sessão.
+
+As tabelas financeiras permanecem no banco pelas migrations, com os gatilhos de imutabilidade
+intactos, e nenhum código as lê ou escreve.
+
 
 ## 5. Princípios da LGPD
 

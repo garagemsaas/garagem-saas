@@ -47,7 +47,6 @@ public class LimiteRequisicoesFilter extends OncePerRequestFilter {
       @Value("${app.seguranca.rate-limit.habilitado:true}") boolean habilitado,
       @Value("${app.seguranca.rate-limit.login:10}") int tetoLogin,
       @Value("${app.seguranca.rate-limit.publico:60}") int tetoPublico,
-      @Value("${app.seguranca.rate-limit.webhook:120}") int tetoWebhook,
       @Value("${app.seguranca.rate-limit.janela:PT1M}") Duration janela,
       @Value("${app.seguranca.confiar-proxy:false}") boolean confiarProxy) {
     this.habilitado = habilitado;
@@ -64,12 +63,7 @@ public class LimiteRequisicoesFilter extends OncePerRequestFilter {
             new Regra(
                 "publico", "/api/v1/publico/", null, new LimiteRequisicoes(tetoPublico, janela)),
             // O site da empresa é anônimo como o acompanhamento público, e cai no mesmo teto.
-            new Regra("site", "/api/v1/site/", null, new LimiteRequisicoes(tetoPublico, janela)),
-            new Regra(
-                "webhook",
-                "/api/v1/webhooks/",
-                "POST",
-                new LimiteRequisicoes(tetoWebhook, janela)));
+            new Regra("site", "/api/v1/site/", null, new LimiteRequisicoes(tetoPublico, janela)));
     LoggerFactory.getLogger(LimiteRequisicoesFilter.class)
         .atInfo()
         .addKeyValue("rate_limit_habilitado", habilitado)

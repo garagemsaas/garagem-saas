@@ -7,7 +7,7 @@
 #
 # Nenhum segredo mora aqui. Eles ficam em .tools/prod/producao.env, que o .gitignore cobre.
 #
-#   bash scripts/demo-publica.sh
+#   bash scripts/demo/publicar.sh
 #
 # Ao final o script imprime a URL pública e a grava em .tools/prod/api-url.txt. Se ela tiver mudado
 # desde a última vez, o script atualiza a variável na Vercel e refaz o deploy de produção sozinho.
