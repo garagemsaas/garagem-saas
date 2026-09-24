@@ -138,18 +138,7 @@ test('empresa somente OFICINA não recebe menu nem tela de revenda', async ({ pa
     await expect(page.getByRole('button', { name: nome, exact: true })).toHaveCount(0);
 });
 
-test('empresa híbrida transita entre oficina e revenda na mesma sessão', async ({ page, context }) => {
-  await fixture(context, ['OFICINA', 'REVENDA']);
-  await entrar(page);
-  await expect(page.getByRole('heading', { name: 'Início', level: 1 })).toBeVisible();
 
-  await page.getByRole('button', { name: 'Ir para revenda', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Início', level: 1 })).toBeVisible();
-
-  await page.getByRole('button', { name: 'Ir para oficina', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Início', level: 1 })).toBeVisible();
-  await semTransbordo(page);
-});
 
 test('estoque vazio e falha de carregamento são informados sem quebrar a tela', async ({ page, context }) => {
   const state = estado(); state.estoque = [];

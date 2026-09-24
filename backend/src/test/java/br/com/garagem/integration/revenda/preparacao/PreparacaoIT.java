@@ -8,86 +8,34 @@ import org.junit.jupiter.api.Test;
 
 class PreparacaoIT extends RevendaIntegrationBase {
   @Test
-  void osInternaSemClienteFicticioCustoImportadoUmaVez() throws Exception {
-    var e = empresa("OFICINA", "REVENDA");
+  void preparacaoComCustosSemAcessoAOficina() throws Exception {
+    var e = empresa("REVENDA");
     var s = estoque(e, false);
     String path = "/revenda/estoque/" + s.path("id").asText();
+    ok(
+        e,
+        "POST",
+        path + "/preparacao/oficina",
+        Map.of("revisao", 0, "km", 10000, "relato", "Preparar"),
+        404);
+    ok(e, "POST", path + "/preparacao/concluir", Map.of("revisao", 0), 404);
     s =
         ok(
             e,
             "POST",
-            path + "/preparacao/oficina",
-            Map.of("revisao", 0, "km", 10000, "relato", "Revisão para revenda"),
+            path + "/custos",
+            Map.of(
+                "revisao",
+                s.path("revisao").asLong(),
+                "descricao",
+                "Revisao externa",
+                "categoria",
+                "MECANICA",
+                "valor",
+                600.25,
+                "data",
+                java.time.LocalDate.now().toString()),
             201);
-    String os = "/ordens-servico/" + s.path("ordemServicoId").asText();
-    var o = ok(e, "GET", os, null, 200);
-    assertThat(o.path("clienteId").isNull()).isTrue();
-    assertThat(o.path("tipo").asText()).isEqualTo("INTERNA");
-    ok(e, "GET", "/ordens-servico?veiculoId=" + s.path("veiculoId").asText(), null, 200);
-    ok(
-        e,
-        "PUT",
-        path + "/status",
-        Map.of("revisao", s.path("revisao").asLong(), "status", "DISPONIVEL"),
-        409);
-    ok(e, "POST", os + "/links", Map.of(), 409);
-    for (String status : List.of("DIAGNOSTICO", "ORCAMENTO")) {
-      ok(
-          e,
-          "POST",
-          os + "/status",
-          Map.of("revisao", o.path("revisao").asLong(), "status", status),
-          200);
-      o = ok(e, "GET", os, null, 200);
-    }
-    ok(
-        e,
-        "POST",
-        os + "/orcamento/versoes",
-        Map.of(
-            "itens",
-            List.of(
-                Map.of(
-                    "tipo",
-                    "SERVICO",
-                    "descricao",
-                    "Revisão",
-                    "quantidade",
-                    "1.000",
-                    "valorUnitario",
-                    "600.25"))),
-        201);
-    o = ok(e, "GET", os, null, 200);
-    ok(
-        e,
-        "POST",
-        os + "/status",
-        Map.of("revisao", o.path("revisao").asLong(), "status", "AGUARDANDO_APROVACAO"),
-        409);
-    for (String status : List.of("EM_MANUTENCAO", "TESTE", "PRONTO")) {
-      ok(
-          e,
-          "POST",
-          os + "/status",
-          Map.of("revisao", o.path("revisao").asLong(), "status", status),
-          200);
-      o = ok(e, "GET", os, null, 200);
-    }
-    s =
-        ok(
-            e,
-            "POST",
-            path + "/preparacao/concluir",
-            Map.of("revisao", s.path("revisao").asLong()),
-            200);
-    assertThat(s.path("custosPreparacao").decimalValue()).isEqualByComparingTo("600.25");
-    s =
-        ok(
-            e,
-            "POST",
-            path + "/preparacao/concluir",
-            Map.of("revisao", s.path("revisao").asLong()),
-            200);
     assertThat(s.path("custosPreparacao").decimalValue()).isEqualByComparingTo("600.25");
     ok(
         e,

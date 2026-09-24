@@ -45,21 +45,23 @@ public class AuthService {
     dummy = passwords.encode(Tokens.novo());
   }
 
-  private record Account(UUID id, UUID oficinaId, String nome, String senha, String papel) {}
+  private record Account(
+      UUID id, UUID oficinaId, String nome, String senha, String papel, long versao) {}
 
   @Transactional
   public Sessao login(Login input) {
     // Control-plane lookup: tenant slug + email, no cross-tenant user lookup.
     var accounts =
         jdbc.query(
-            "select u.id,u.oficina_id,u.nome,u.senha_hash,u.papel from usuario u join oficina o on o.id=u.oficina_id where o.slug=? and u.email=? and u.ativo=true and o.situacao='ATIVA'",
+            "select u.id,u.oficina_id,u.nome,u.senha_hash,u.papel,u.versao_sessao from usuario u join oficina o on o.id=u.oficina_id where o.slug=? and u.email=? and u.ativo=true and o.situacao='ATIVA'",
             (rs, n) ->
                 new Account(
                     rs.getObject(1, UUID.class),
                     rs.getObject(2, UUID.class),
                     rs.getString(3),
                     rs.getString(4),
-                    rs.getString(5)),
+                    rs.getString(5),
+                    rs.getLong(6)),
             input.oficina().trim().toLowerCase(Locale.ROOT),
             input.email().trim().toLowerCase(Locale.ROOT));
     String hash = accounts.isEmpty() ? dummy : accounts.getFirst().senha();
@@ -74,14 +76,15 @@ public class AuthService {
   public Sessao refresh(Refresh input) {
     var accounts =
         jdbc.query(
-            "select u.id,u.oficina_id,u.nome,u.senha_hash,u.papel from refresh_token r join usuario u on u.id=r.usuario_id and u.oficina_id=r.oficina_id join oficina o on o.id=u.oficina_id where r.oficina_id=? and r.token_hash=? and r.revogado_em is null and r.expira_em>now() and u.ativo=true and o.situacao='ATIVA' for update of r",
+            "select u.id,u.oficina_id,u.nome,u.senha_hash,u.papel,u.versao_sessao from refresh_token r join usuario u on u.id=r.usuario_id and u.oficina_id=r.oficina_id join oficina o on o.id=u.oficina_id where r.oficina_id=? and r.token_hash=? and r.revogado_em is null and r.expira_em>now() and u.ativo=true and o.situacao='ATIVA' for update of r",
             (rs, n) ->
                 new Account(
                     rs.getObject(1, UUID.class),
                     rs.getObject(2, UUID.class),
                     rs.getString(3),
                     rs.getString(4),
-                    rs.getString(5)),
+                    rs.getString(5),
+                    rs.getLong(6)),
             input.oficinaId(),
             Tokens.hash(input.refreshToken()));
     if (accounts.isEmpty()) {
@@ -160,6 +163,7 @@ public class AuthService {
             .expiresAt(now.plus(accessTtl))
             .claim("oficina_id", account.oficinaId().toString())
             .claim("papel", account.papel())
+            .claim("versao", account.versao())
             .build();
     String access =
         encoder

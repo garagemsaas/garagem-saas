@@ -3,8 +3,8 @@ import { ApiError } from './api';
 import { FormErrors } from './form-context';
 import type { FormEvent, ReactNode } from "react";
 import { Empty, Field, Icon } from "./ui";
-import { roles, uid, val } from "./model";
-import type { Client, Vehicle, User, Order, Role } from "./model";
+import { uid, val } from "./model";
+import type { Client, Vehicle, User, Order } from "./model";
 
 export function Form({
   children,
@@ -265,67 +265,6 @@ export function VehicleForm({
         <Field label="Combustível"><input name="combustivel" maxLength={40} defaultValue={current?.combustivel || ''} /></Field>
         <Field label="Câmbio"><input name="cambio" maxLength={40} defaultValue={current?.cambio || ''} /></Field>
       </div><Field label="Observações"><textarea name="observacoes" maxLength={4000} defaultValue={current?.observacoes || ''} /></Field>
-    </Form>
-  );
-}
-export function UserForm({
-  users,
-  save,
-  close,
-}: {
-  users: User[];
-  save: (u: User & { senha: string }) => void | Promise<void>;
-  close: () => void | Promise<void>;
-}) {
-  return (
-    <Form
-      close={close}
-      note="O novo usuário terá acesso à oficina atual conforme o papel escolhido."
-      save={(f) => {
-        if (!val(f, "nome")) throw Error("Preencha o nome.");
-        if (new TextEncoder().encode(String(f.get("senha"))).length > 72)
-          throw Error("A senha excede o limite de 72 bytes.");
-        const email = val(f, "email").toLowerCase();
-        if (users.some((u) => u.email.toLowerCase() === email))
-          throw Error("Este e-mail já está cadastrado.");
-        return save({
-          id: uid(),
-          nome: val(f, "nome"),
-          email,
-          papel: val(f, "papel") as Role,
-          ativo: true,
-          senha: String(f.get("senha")),
-        });
-      }}
-    >
-      <Field label="Nome *">
-        <input name="nome" required maxLength={160} />
-      </Field>
-      <Field label="E-mail *">
-        <input name="email" type="email" required maxLength={254} />
-      </Field>
-      <Field label="Papel *">
-        <select name="papel" defaultValue="MECANICO">
-          {Object.entries(roles).map(([k, label]) => (
-            <option key={k} value={k}>
-              {label}
-            </option>
-          ))}
-        </select>
-      </Field>
-      <Field
-        label="Senha inicial *"
-        hint="De 12 a 72 caracteres; limite de 72 bytes."
-      >
-        <input
-          name="senha"
-          type="password"
-          autoComplete="new-password"
-          required
-          minLength={12}
-          maxLength={72}
-        />
-      </Field>
     </Form>
   );
 }

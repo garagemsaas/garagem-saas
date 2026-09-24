@@ -61,7 +61,8 @@ O módulo de oportunidades identifica situações que podem representar receita 
 
 ### Empresa e identidade visual
 
-Uma base de código atende empresas independentes com nome, logo, favicon, cores e contatos próprios. Módulos OFICINA e REVENDA podem ser combinados, e ambos têm operação completa. O OWNER configura sua identidade, enquanto um operador autorizado provisiona módulos e situação ATIVA/INATIVA.
+Uma base atende empresas independentes, cada uma com nome, logotipo e contatos. Cada empresa opera exclusivamente como OFICINA ou REVENDA. A equipe da plataforma administra empresas em `/administracao`; somente desenvolvedores editam identidade e imagens. Proprietarios administram apenas usuarios e operacoes da propria empresa. Veja [configuracao e migracao](docs/operations/polimento-produto.md).
+
 
 A venda é direta, sem planos self-service, cotas comerciais, checkout ou gateway. O billing legado foi removido do código; as tabelas seguem no banco pelas migrations, sem nenhum consumidor.
 

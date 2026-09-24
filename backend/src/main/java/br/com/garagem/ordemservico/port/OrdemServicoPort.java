@@ -17,17 +17,6 @@ import java.util.UUID;
  * sempre em termos de negócio — nunca devolvendo entidade gerenciada para alguém de fora mexer.
  */
 public interface OrdemServicoPort {
-  record Preparacao(
-      UUID ordemServicoId,
-      UUID veiculoId,
-      UUID versaoId,
-      java.math.BigDecimal custo,
-      boolean concluida) {}
-
-  UUID iniciarPreparacao(UUID veiculoId, UUID mecanicoId, long km, String relato);
-
-  Preparacao preparacao(UUID ordemServicoId, UUID veiculoId);
-
   /** Dados de OS que interessam a quem está fora do módulo. */
   record ResumoOs(
       UUID id,

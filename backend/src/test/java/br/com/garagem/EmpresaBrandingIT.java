@@ -25,11 +25,26 @@ class EmpresaBrandingIT extends br.com.garagem.suporte.IntegracaoBase {
   @Autowired ObjectMapper json;
   @Autowired PasswordEncoder encoder;
   UUID a, b;
-  String ta, tb, tm, slugA, refresh;
+  String ta, tb, tm, td, slugA, refresh;
   static final String SENHA = "SenhaSegura123!";
 
   @BeforeEach
   void preparar() throws Exception {
+    UUID dev = UUID.randomUUID();
+    jdbc.update(
+        "insert into plataforma_usuario(id,nome,email,senha_hash,papel) values(?,?,?,?, 'DESENVOLVEDOR')",
+        dev,
+        "Dev",
+        dev + "@test.local",
+        encoder.encode(SENHA));
+    td =
+        call(
+                post("/api/v1/plataforma/auth/login"),
+                null,
+                Map.of("email", dev + "@test.local", "senha", SENHA),
+                200)
+            .path("accessToken")
+            .asText();
     a = UUID.randomUUID();
     b = UUID.randomUUID();
     slugA = "a-" + a;
@@ -73,57 +88,23 @@ class EmpresaBrandingIT extends br.com.garagem.suporte.IntegracaoBase {
   }
 
   Map<String, Object> edicao(String nome, long revision) {
-    return new HashMap<>(
-        Map.of(
-            "nomeExibicao",
-            nome,
-            "corPrimaria",
-            "#123456",
-            "corSecundaria",
-            "#654321",
-            "revisao",
-            revision));
+    return new HashMap<>(Map.of("nomeExibicao", nome, "revisao", revision));
   }
 
   @Test
-  void brandingEEdicaoSaoIsoladosEPayloadNaoTrocaTenant() throws Exception {
+  void identidadeSomenteDesenvolvedorELeiturasIsoladas() throws Exception {
+    call(put("/api/v1/empresa"), ta, edicao("Proibido", 0), 405);
+    call(put("/api/v1/plataforma/empresas/" + a + "/identidade"), ta, edicao("Proibido", 0), 403);
+    call(put("/api/v1/plataforma/empresas/" + a + "/identidade"), tm, edicao("Proibido", 0), 403);
+    call(put("/api/v1/plataforma/empresas/" + a + "/identidade"), td, edicao("Alterada", 0), 200);
+    call(put("/api/v1/plataforma/empresas/" + a + "/identidade"), td, edicao("Obsoleta", 0), 409);
     assertThat(call(get("/api/v1/empresa"), ta, null, 200).at("/branding/nomeExibicao").asText())
-        .isEqualTo("Empresa A");
+        .isEqualTo("Alterada");
     assertThat(call(get("/api/v1/empresa"), tb, null, 200).at("/branding/nomeExibicao").asText())
         .isEqualTo("Empresa B");
-    var input = edicao("A alterada", 0);
-    input.put("oficinaId", b);
-    input.put("empresaId", b);
-    input.put("modulos", List.of("REVENDA"));
-    input.put("status", "INATIVA");
-    var response = call(put("/api/v1/empresa"), ta, input, 200);
-    assertThat(response.at("/branding/nomeExibicao").asText()).isEqualTo("A alterada");
-    assertThat(response.path("status").asText()).isEqualTo("ATIVA");
-    assertThat(response.path("modulos").toString()).isEqualTo("[\"OFICINA\"]");
-    assertThat(
-            call(get("/api/v1/empresa?oficinaId=" + b), ta, null, 200)
-                .at("/branding/nomeExibicao")
-                .asText())
-        .isEqualTo("A alterada");
-    assertThat(call(get("/api/v1/empresa"), tb, null, 200).at("/branding/nomeExibicao").asText())
-        .isEqualTo("Empresa B");
-    call(get("/api/v1/empresa/" + b), ta, null, 404);
-    call(put("/api/v1/empresa/" + b), ta, edicao("B invadida", 0), 404);
-    call(put("/api/v1/empresa"), tm, edicao("Proibido", 1), 403);
-    call(put("/api/v1/empresa"), ta, edicao("Obsoleta", 0), 409);
-    call(
-        put("/api/v1/empresa"),
-        ta,
-        Map.of(
-            "nomeExibicao",
-            "A",
-            "corPrimaria",
-            "url(https://x)",
-            "corSecundaria",
-            "#111111",
-            "revisao",
-            1),
-        400);
+    assertThat(call(get("/api/v1/empresa"), ta, null, 200).at("/branding").has("corPrimaria"))
+        .isFalse();
+    call(get("/api/v1/clientes"), td, null, 404);
   }
 
   MockMultipartFile png(String filename) throws Exception {
@@ -139,10 +120,10 @@ class EmpresaBrandingIT extends br.com.garagem.suporte.IntegracaoBase {
   void imagensPrivadasEPublicasPertencemAoTenantDoToken() throws Exception {
     var result =
         mvc.perform(
-                multipart("/api/v1/empresa/imagens/logo")
+                multipart("/api/v1/plataforma/empresas/" + a + "/imagens/logo")
                     .file(png("../../logo.png"))
                     .param("revisao", "0")
-                    .header("Authorization", "Bearer " + ta))
+                    .header("Authorization", "Bearer " + td))
             .andExpect(status().isOk())
             .andReturn();
     String id =
@@ -168,11 +149,31 @@ class EmpresaBrandingIT extends br.com.garagem.suporte.IntegracaoBase {
     call(get("/api/v1/publico/" + publico(b) + "/empresa/imagens/logo/" + id), null, null, 404);
     call(get("/api/v1/publico/" + "x".repeat(43) + "/empresa"), null, null, 404);
     mvc.perform(
-            multipart("/api/v1/empresa/imagens/logo")
+            multipart("/api/v1/plataforma/empresas/" + a + "/imagens/logo")
                 .file(png("logo.png"))
                 .param("revisao", "1")
                 .header("Authorization", "Bearer " + tm))
         .andExpect(status().isForbidden());
+    var removed =
+        call(delete("/api/v1/plataforma/empresas/" + a + "/imagens/logo?revisao=1"), td, null, 200);
+    assertThat(removed.at("/branding/logoId").isNull()).isTrue();
+    call(get("/api/v1/empresa/imagens/logo/" + id), ta, null, 404);
+    var replaced =
+        mvc.perform(
+                multipart("/api/v1/plataforma/empresas/" + a + "/imagens/logo")
+                    .file(png("nova.png"))
+                    .param("revisao", "2")
+                    .header("Authorization", "Bearer " + td))
+            .andExpect(status().isOk())
+            .andReturn();
+    String newId =
+        json.readTree(replaced.getResponse().getContentAsByteArray())
+            .at("/branding/logoId")
+            .asText();
+    assertThat(newId).isNotEqualTo(id);
+    mvc.perform(
+            get("/api/v1/empresa/imagens/logo/" + newId).header("Authorization", "Bearer " + ta))
+        .andExpect(status().isOk());
   }
 
   @Test
@@ -183,16 +184,16 @@ class EmpresaBrandingIT extends br.com.garagem.suporte.IntegracaoBase {
             new MockMultipartFile("arquivo", "x.png", "image/png", "<script/>".getBytes()),
             new MockMultipartFile("arquivo", "x.jpg", "image/jpeg", png("x.png").getBytes())))
       mvc.perform(
-              multipart("/api/v1/empresa/imagens/logo")
+              multipart("/api/v1/plataforma/empresas/" + a + "/imagens/logo")
                   .file(file)
                   .param("revisao", "0")
-                  .header("Authorization", "Bearer " + ta))
+                  .header("Authorization", "Bearer " + td))
           .andExpect(status().isUnsupportedMediaType());
     mvc.perform(
-            multipart("/api/v1/empresa/imagens/logo")
+            multipart("/api/v1/plataforma/empresas/" + a + "/imagens/logo")
                 .file(new MockMultipartFile("arquivo", "x.png", "image/png", new byte[2097153]))
                 .param("revisao", "0")
-                .header("Authorization", "Bearer " + ta))
+                .header("Authorization", "Bearer " + td))
         .andExpect(status().isPayloadTooLarge());
   }
 
@@ -211,8 +212,8 @@ class EmpresaBrandingIT extends br.com.garagem.suporte.IntegracaoBase {
       call(get("/api/v1" + path + "?modulo=OFICINA"), ta, null, 404);
     call(get("/api/v1/publico/" + token + "/empresa"), null, null, 404);
     call(get("/api/v1/empresa"), ta, null, 200);
-    jdbc.update("insert into empresa_modulo values(?,'OFICINA')", a);
-    assertThat(call(get("/api/v1/empresa"), ta, null, 200).path("modulos")).hasSize(2);
+    jdbc.update("update empresa_modulo set modulo='OFICINA' where oficina_id=?", a);
+    assertThat(call(get("/api/v1/empresa"), ta, null, 200).path("modulos")).hasSize(1);
     call(get("/api/v1/ordens-servico"), ta, null, 200);
     var session = login(slugA, "owner@test.local");
     jdbc.update("update oficina set situacao='INATIVA' where id=?", a);
@@ -256,8 +257,8 @@ class EmpresaBrandingIT extends br.com.garagem.suporte.IntegracaoBase {
                 () -> {
                   start.await();
                   return mvc.perform(
-                          put("/api/v1/empresa")
-                              .header("Authorization", "Bearer " + ta)
+                          put("/api/v1/plataforma/empresas/" + a + "/identidade")
+                              .header("Authorization", "Bearer " + td)
                               .contentType("application/json")
                               .content(json.writeValueAsBytes(edicao("Nome " + index, 0))))
                       .andReturn()

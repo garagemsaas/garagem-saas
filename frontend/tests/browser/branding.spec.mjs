@@ -1,11 +1,11 @@
 import { test, expect } from '@playwright/test';
-import { branding, site } from './company-fixture.mjs';
+import { branding } from './company-fixture.mjs';
 
-test('identidade acompanha sessão e OWNER salva apenas configuração permitida', async ({ page }) => {
+test('identidade acompanha sessão e OWNER nao tem configuracao interna', async ({ page }) => {
   let current = 'A'; const writes = [];
   const companies = {
-    A: { branding: { ...branding, nomeExibicao: 'Empresa Alfa', corPrimaria: '#123456', logoId: 'logo-a', faviconId: 'favicon-a' }, modulos: ['OFICINA'], status: 'ATIVA', site, capaId: null, slug: 'a' },
-    B: { branding: { ...branding, nomeExibicao: 'Empresa Beta', corPrimaria: '#654321' }, modulos: ['REVENDA'], status: 'ATIVA', site, capaId: null, slug: 'b' },
+    A: { branding: { ...branding, nomeExibicao: 'Empresa Alfa', corPrimaria: '#123456', logoId: 'logo-a', faviconId: 'favicon-a' }, modulos: ['OFICINA'], status: 'ATIVA', slug: 'a' },
+    B: { branding: { ...branding, nomeExibicao: 'Empresa Beta', corPrimaria: '#654321' }, modulos: ['REVENDA'], status: 'ATIVA', slug: 'b' },
   };
   await page.route('**/api/v1/**', route => {
     const request = route.request(), path = new URL(request.url()).pathname;
@@ -48,17 +48,12 @@ test('identidade acompanha sessão e OWNER salva apenas configuração permitida
   await expect(page).toHaveTitle('Empresa Alfa');
   await expect(page.locator('img.company-logo').first()).toHaveAttribute('src', /^blob:/);
   await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', /^blob:/);
-  expect(await page.evaluate(() => document.documentElement.style.getPropertyValue('--accent'))).toBe('#123456');
+  expect(await page.evaluate(() => document.documentElement.style.getPropertyValue('--accent'))).toBe('');
   const menu = page.getByRole('button', { name: 'Abrir menu', exact: true });
   if (await menu.isVisible()) await menu.click();
-  // Configurações abre a configuração da empresa direto. Antes havia um painel intermediário que
-  // repetia o perfil e só então oferecia "Identidade da empresa".
-  await page.getByRole('button', { name: 'Configurações', exact: true }).click();
-  await page.getByLabel('Nome exibido').fill('Alfa Automotiva');
-  await page.getByRole('button', { name: 'Salvar empresa' }).click();
-  await expect(page).toHaveTitle('Alfa Automotiva');
-  expect(writes[0]).not.toHaveProperty('oficinaId'); expect(writes[0]).not.toHaveProperty('modulos'); expect(writes[0]).not.toHaveProperty('status');
-  await page.getByRole('button', { name: 'Fechar painel', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Configura\u00e7\u00f5es', exact: true })).toHaveCount(0);
+  expect(writes).toHaveLength(0);
+  if (await page.getByRole('button', { name: 'Fechar menu', exact: true }).isVisible()) await page.getByRole('button', { name: 'Fechar menu', exact: true }).click();
   // Sair mora na conta, junto do nome e do papel — e não misturado à configuração da empresa.
   await page.getByRole('button', { name: 'Abrir perfil', exact: true }).click();
   await page.getByRole('button', { name: 'Sair da oficina', exact: true }).click();
@@ -71,7 +66,7 @@ test('identidade acompanha sessão e OWNER salva apenas configuração permitida
   await expect(page.getByRole('button', { name: 'Ordens de serviço', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Ir para oficina', exact: true })).toHaveCount(0);
   await expect(page.locator('img.company-logo')).toHaveCount(0);
-  expect(await page.evaluate(() => document.documentElement.style.getPropertyValue('--accent'))).toBe('#654321');
+  expect(await page.evaluate(() => document.documentElement.style.getPropertyValue('--accent'))).toBe('');
 });
 
 test('página pública recebe branding pelo token sem autoridade de tenant no navegador', async ({ page }) => {

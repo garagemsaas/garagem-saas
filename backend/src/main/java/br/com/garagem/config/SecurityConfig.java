@@ -112,17 +112,15 @@ public class SecurityConfig {
                 a.requestMatchers(
                         "/api/v1/auth/**",
                         "/api/v1/publico/**",
-                        // Site de apresentação da empresa: endereço divulgado por ela, sem sessão.
-                        // O serviço só devolve campos de vitrine, e só de empresa ativa e
-                        // publicada.
-                        "/api/v1/site/*",
-                        "/api/v1/site/*/imagens/**",
+                        "/api/v1/plataforma/auth/login",
                         "/v3/api-docs/**",
                         "/swagger-ui/**",
                         "/swagger-ui.html",
                         "/actuator/health",
                         "/actuator/health/**")
                     .permitAll()
+                    .requestMatchers("/api/v1/plataforma/**")
+                    .hasAnyRole("DESENVOLVEDOR", "ADMIN_PLATAFORMA")
                     .anyRequest()
                     .authenticated())
         .exceptionHandling(

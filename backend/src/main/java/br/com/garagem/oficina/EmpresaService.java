@@ -15,49 +15,27 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 @Transactional
 public class EmpresaService {
+  @io.swagger.v3.oas.annotations.media.Schema(name = "EmpresaIdentidade")
   public record Branding(
       String nomeEmpresarial,
       String nomeExibicao,
       String telefone,
       String email,
       String contato,
-      String corPrimaria,
-      String corSecundaria,
       UUID logoId,
       UUID faviconId,
       long revisao) {}
 
+  @io.swagger.v3.oas.annotations.media.Schema(name = "EmpresaSaida")
   public record Empresa(
-      Branding branding,
-      List<ModuloEmpresa> modulos,
-      String status,
-      Site site,
-      UUID capaId,
-      // O dono precisa saber o endereço do próprio site para divulgá-lo.
-      String slug) {}
+      Branding branding, List<ModuloEmpresa> modulos, String status, String slug) {}
 
-  /**
-   * O que a empresa mostra ao público. Separado da identidade porque são decisões diferentes: cores
-   * e logo valem dentro do sistema mesmo sem site nenhum, e publicar é uma escolha à parte.
-   */
-  public record Site(
-      @Size(max = 160) String frase,
-      @Size(max = 2000) String sobre,
-      @Size(max = 1000) String servicos,
-      @Size(max = 300) String endereco,
-      @Size(max = 300) String horario,
-      @Pattern(regexp = "|[0-9]{10,15}") String whatsapp,
-      @Pattern(regexp = "|[A-Za-z0-9._]{1,30}") String instagram,
-      boolean publicado,
-      @NotNull @PositiveOrZero Long revisao) {}
-
+  @io.swagger.v3.oas.annotations.media.Schema(name = "EmpresaIdentidadeEdicao")
   public record Edicao(
       @NotBlank @Size(max = 160) String nomeExibicao,
       @Size(max = 40) String telefone,
       @Email @Size(max = 254) String email,
       @Size(max = 500) String contato,
-      @NotNull @Pattern(regexp = "#[0-9a-fA-F]{6}") String corPrimaria,
-      @NotNull @Pattern(regexp = "#[0-9a-fA-F]{6}") String corSecundaria,
       @NotNull @PositiveOrZero Long revisao) {}
 
   private final JdbcTemplate jdbc;
@@ -68,6 +46,10 @@ public class EmpresaService {
 
   @Transactional(readOnly = true)
   public Branding branding() {
+    return branding(TenantContext.current());
+  }
+
+  public Branding branding(UUID empresaId) {
     var rows =
         jdbc.query(
             """
@@ -83,116 +65,52 @@ public class EmpresaService {
                     r.getString("telefone"),
                     r.getString("email"),
                     r.getString("contato"),
-                    r.getString("cor_primaria"),
-                    r.getString("cor_secundaria"),
                     r.getObject("logo_id", UUID.class),
                     r.getObject("favicon_id", UUID.class),
                     r.getLong("revisao_branding")),
-            TenantContext.current());
+            empresaId);
     if (rows.isEmpty()) throw ApiException.missing();
     return rows.getFirst();
   }
 
   @Transactional(readOnly = true)
   public Empresa obter() {
+    return obter(TenantContext.current());
+  }
+
+  public Empresa obter(UUID empresaId) {
     return new Empresa(
-        branding(),
+        branding(empresaId),
         jdbc.query(
             "select modulo from empresa_modulo where oficina_id=? order by modulo",
             (r, n) -> ModuloEmpresa.valueOf(r.getString(1)),
-            TenantContext.current()),
-        jdbc.queryForObject(
-            "select situacao from oficina where id=?", String.class, TenantContext.current()),
-        site(),
-        jdbc
-            .query(
-                "select id from empresa_imagem where oficina_id=? and tipo='capa'",
-                (r, n) -> r.getObject(1, UUID.class),
-                TenantContext.current())
-            .stream()
-            .findFirst()
-            .orElse(null),
-        jdbc.queryForObject(
-            "select slug from oficina where id=?", String.class, TenantContext.current()));
+            empresaId),
+        jdbc.queryForObject("select situacao from oficina where id=?", String.class, empresaId),
+        jdbc.queryForObject("select slug from oficina where id=?", String.class, empresaId));
   }
 
-  private Site site() {
-    return jdbc.queryForObject(
-        """
-      select site_frase,site_sobre,site_servicos,site_endereco,site_horario,site_whatsapp,
-             site_instagram,site_publicado,revisao_branding from oficina where id=?
-      """,
-        (r, n) ->
-            new Site(
-                r.getString("site_frase"),
-                r.getString("site_sobre"),
-                r.getString("site_servicos"),
-                r.getString("site_endereco"),
-                r.getString("site_horario"),
-                r.getString("site_whatsapp"),
-                r.getString("site_instagram"),
-                r.getBoolean("site_publicado"),
-                r.getLong("revisao_branding")),
-        TenantContext.current());
-  }
-
-  /**
-   * Publicar exige ter o que mostrar, e o banco recusa o contrário. A mensagem aqui existe para que
-   * o dono leia o que falta em vez de um erro de restrição — a regra continua sendo do banco.
-   */
-  public Empresa editarSite(Site s) {
+  public Empresa editar(UUID empresaId, Edicao e) {
     if (jdbc.update(
             """
-      update oficina set site_frase=?,site_sobre=?,site_servicos=?,site_endereco=?,site_horario=?,
-      site_whatsapp=?,site_instagram=?,site_publicado=?,revisao_branding=revisao_branding+1
-      where id=? and revisao_branding=?
-      """,
-            vazioComoNulo(s.frase()),
-            vazioComoNulo(s.sobre()),
-            vazioComoNulo(s.servicos()),
-            vazioComoNulo(s.endereco()),
-            vazioComoNulo(s.horario()),
-            vazioComoNulo(s.whatsapp()),
-            vazioComoNulo(s.instagram()),
-            s.publicado(),
-            TenantContext.current(),
-            s.revisao())
-        != 1) throw ApiException.conflict("A identidade mudou. Recarregue antes de salvar.");
-    return obter();
-  }
-
-  /**
-   * Campo em branco vindo de formulário é ausência, não string vazia — as restrições contam com
-   * isso.
-   */
-  private static String vazioComoNulo(String valor) {
-    return valor == null || valor.isBlank() ? null : valor.trim();
-  }
-
-  public Empresa editar(Edicao e) {
-    if (jdbc.update(
-            """
-      update oficina set nome_exibicao=?,telefone=?,email=?,contato=?,cor_primaria=?,cor_secundaria=?,
+      update oficina set nome_exibicao=?,telefone=?,email=?,contato=?,
       revisao_branding=revisao_branding+1 where id=? and revisao_branding=?
       """,
             e.nomeExibicao().trim(),
             e.telefone(),
             e.email(),
             e.contato(),
-            e.corPrimaria(),
-            e.corSecundaria(),
-            TenantContext.current(),
+            empresaId,
             e.revisao())
         != 1) throw ApiException.conflict("A identidade mudou. Recarregue antes de salvar.");
-    return obter();
+    return obter(empresaId);
   }
 
-  public Empresa imagem(String tipo, MultipartFile arquivo, long revisao) {
+  public Empresa imagem(UUID empresaId, String tipo, MultipartFile arquivo, long revisao) {
     tipo(tipo);
     byte[] bytes = raster(arquivo);
     if (jdbc.update(
             "update oficina set revisao_branding=revisao_branding+1 where id=? and revisao_branding=?",
-            TenantContext.current(),
+            empresaId,
             revisao)
         != 1) throw ApiException.conflict("A identidade mudou. Recarregue antes de salvar.");
     jdbc.update(
@@ -200,31 +118,44 @@ public class EmpresaService {
       insert into empresa_imagem(oficina_id,tipo,id,conteudo) values(?,?,?,?)
       on conflict(oficina_id,tipo) do update set id=excluded.id,conteudo=excluded.conteudo
       """,
-        TenantContext.current(),
+        empresaId,
         tipo,
         UUID.randomUUID(),
         bytes);
-    return obter();
+    return obter(empresaId);
   }
 
   @Transactional(readOnly = true)
   public byte[] imagem(String tipo, UUID id) {
+    return imagem(TenantContext.current(), tipo, id);
+  }
+
+  public byte[] imagem(UUID empresaId, String tipo, UUID id) {
     tipo(tipo);
     var rows =
         jdbc.query(
             "select conteudo from empresa_imagem where oficina_id=? and tipo=? and id=?",
             (r, n) -> r.getBytes(1),
-            TenantContext.current(),
+            empresaId,
             tipo,
             id);
     if (rows.isEmpty()) throw ApiException.missing();
     return rows.getFirst();
   }
 
+  public Empresa removerImagem(UUID empresaId, String tipo, long revisao) {
+    tipo(tipo);
+    if (jdbc.update(
+            "update oficina set revisao_branding=revisao_branding+1 where id=? and revisao_branding=?",
+            empresaId,
+            revisao)
+        != 1) throw ApiException.conflict("A identidade mudou. Recarregue antes de salvar.");
+    jdbc.update("delete from empresa_imagem where oficina_id=? and tipo=?", empresaId, tipo);
+    return obter(empresaId);
+  }
+
   private static void tipo(String tipo) {
-    // A capa é a imagem de abertura do site e passa pela mesma validação de logo e favicon:
-    // 2 MB, PNG ou JPEG de verdade, reescrita para PNG. Não há segundo caminho de upload.
-    if (!Set.of("logo", "favicon", "capa").contains(tipo)) throw ApiException.missing();
+    if (!Set.of("logo", "favicon").contains(tipo)) throw ApiException.missing();
   }
 
   private static ApiException invalida() {

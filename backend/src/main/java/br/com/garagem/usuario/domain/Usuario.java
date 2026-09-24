@@ -14,4 +14,5 @@ public class Usuario extends TenantEntity {
   public Papel papel;
 
   public boolean ativo = true;
+  public long versaoSessao;
 }

@@ -1,4 +1,4 @@
-/* Tela de entrada. Estilo junto da tela que ele veste, como em Recovery.css. */
+/* Tela de entrada. Estilo junto da tela que ele veste, sem depender de outras telas. */
 .login-page {
   display: grid;
   grid-template-columns: 45% 55%;
@@ -33,17 +33,6 @@
 .login-story > small {
   color: #869c87;
   font-size: 11px;
-}
-.login-process {
-  border-top: 1px solid #465b44;
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  max-width: 390px;
-  margin-top: 40px;
-  padding-top: 18px;
-  font-size: 10px;
-  color: #afc49f;
 }
 .login-main {
   display: flex;

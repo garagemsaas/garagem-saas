@@ -1,20 +1,20 @@
 import { TableRegion } from './TableRegion';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Badge, Brand, Drawer, Empty, Field, Icon, Pager, Search } from "./ui";
-import { ClientForm, OrderForm, UserForm, VehicleForm } from "./forms";
+import { ClientForm, OrderForm, VehicleForm } from "./forms";
 import OrderDetail from "./OrderDetail";
 import { PageState } from "./PageState";
 import Workspace from "./Workspace";
 import { labels } from "./navigation";
 import type { Page } from "./navigation";
-import Recovery from './Recovery';
+import Retornos from './Retornos';
+import TeamPage from './TeamPage';
 import { WhatsApp } from './WhatsApp';
 import { convite } from './whatsapp-mensagem';
-import CompanySettings from './CompanySettings';
 import { BrandingProvider } from './Branding';
 import { useEmpresa } from './branding-context';
 import './Login.css';
-import { date, number, roles } from "./model";
+import { date, number } from "./model";
 import type { Client, Order, Vehicle } from "./model";
 import { allPages, api, currentSession, emptyData, loadData, loadOrder, restoreSession, setApiSession } from "./api";
 import { useSession, useToast, useToday } from "./hooks";
@@ -70,9 +70,8 @@ export default function App() {
     return () => { active = false; };
   }, [setSession]);
   const company = useEmpresa(session?.usuarioId);
-  const [context, setContext] = useState<"OFICINA" | "REVENDA">("OFICINA");
   const revendaEnabled = company.empresa?.modulos.includes("REVENDA") && session?.role !== "MECANICO";
-  const dealerActive = revendaEnabled && (context === "REVENDA" || !company.empresa?.modulos.includes("OFICINA"));
+  const dealerActive = revendaEnabled;
   const oficinaEnabled = company.empresa?.modulos.includes("OFICINA") ?? false;
   function setSelected(value: string) {
     setSelectedId(value);
@@ -180,32 +179,16 @@ export default function App() {
         <section className="login-story">
           <Brand />
           <div>
-            <div className="eyebrow">A ROTINA DA OFICINA, ORGANIZADA.</div>
-            <h1>
-              Cada veículo.
-              <br />
-              Cada serviço.
-              <br />
-              Tudo no lugar.
-            </h1>
-            <p>
-              Do primeiro relato à entrega das chaves, uma visão clara do
-              trabalho da sua equipe.
-            </p>
-            <div className="login-process">
-              <span>Receber</span>
-              <span>Diagnosticar</span>
-              <span>Executar</span>
-              <span>Entregar</span>
-            </div>
+            <h1>Acesso da empresa</h1>
+            <p>Informe o identificador da empresa e suas credenciais para entrar.</p>
           </div>
-          <small>Plataforma Automotiva · Núcleo operacional</small>
+          <small>Plataforma Automotiva</small>
         </section>
         <main className="login-main">
           <div className="login-form">
-            <span className="demo-label">PLATAFORMA AUTOMOTIVA · ACESSO DA EMPRESA</span>
+            <span className="login-label">PLATAFORMA AUTOMOTIVA · ACESSO DA EMPRESA</span>
             <h2>Entre na sua empresa</h2>
-            <p>Seu espaço de trabalho começa aqui.</p>
+            <p>Use os dados de acesso fornecidos pelo administrador.</p>
             <form
               onSubmit={async (e) => {
                 e.preventDefault();
@@ -289,20 +272,18 @@ export default function App() {
       </div>
     );
   if (!company.empresa) return <main className="public-order"><Brand /><PageState state={company.error ? 'error' : 'loading'} title="Identidade da empresa" retry={company.retry}>{company.error || 'Carregando configuração…'}</PageState><button onClick={logout}>Sair</button></main>;
-  if (dealerActive) return <BrandingProvider branding={company.empresa.branding}><Suspense fallback={<PageState state="loading" title="Abrindo revenda" />}><RevendaApp key={session.usuarioId} empresa={company.empresa} update={company.update} userId={session.usuarioId} role={session.role} logout={logout} switchOffice={id => { setContext("OFICINA"); if (id) openOrder(id); else navigate("overview"); }} /></Suspense></BrandingProvider>;
-  if (!oficinaEnabled) return <BrandingProvider branding={company.empresa.branding}><main className="public-order"><Brand /><h1>Empresa configurada</h1><p>Nenhum módulo operacional está disponível para esta empresa nesta versão.</p>{session.role === 'OWNER' && <CompanySettings empresa={company.empresa} update={company.update} />}<button onClick={logout}>Sair</button></main></BrandingProvider>;
+  if (dealerActive) return <BrandingProvider branding={company.empresa.branding}><Suspense fallback={<PageState state="loading" title="Abrindo revenda" />}><RevendaApp key={session.usuarioId} empresa={company.empresa} userId={session.usuarioId} role={session.role} logout={logout} /></Suspense></BrandingProvider>;
+  if (!oficinaEnabled) return <main className="public-order"><h1>Acesso indisponível</h1><p>Solicite ao responsável da empresa a revisão do seu perfil de acesso.</p><button onClick={logout}>Sair</button></main>;
   return (
     <BrandingProvider branding={company.empresa.branding}><Workspace page={page} navigate={navigate} role={session.role}
-      name={user?.nome ?? "Usuário"} workshop={session.oficina || company.empresa.branding.nomeExibicao}
+      name={user?.nome ?? "Usuário"} workshop={company.empresa.branding.nomeExibicao}
       logout={logout} clients={data.clientes} today={today}
       openOrder={openOrder}
       openClient={(c) => { navigate("clients"); setClient(c); setPanel("view-client"); }}
       openVehicle={(v) => { navigate("vehicles"); setVehicle(v); setPanel("view-vehicle"); }}
-      openRecovery={() => setPanel("recovery")}
-      openCompany={() => setPanel("company")}>
-          {revendaEnabled && <button onClick={() => { setSelected(""); setContext("REVENDA"); }}>Ir para revenda</button>}
+      openRecovery={() => setPanel("recovery")}>
           <button className="text-button" disabled={dataLoading || detailLoading} onClick={() => { setDataError(''); if (selected) { setDetailLoading(true); setDetailAttempt(n => n + 1); } else setReload(n => n + 1); }}>{dataLoading ? 'Atualizando…' : 'Atualizar dados'}</button>
-          {dataLoading && !query ? <PageState state="loading" title="Carregando dados da oficina" /> : detailLoading ? <PageState state="loading" title="Carregando ordem de serviço" /> : dataError ? <PageState state="error" title="Não foi possível carregar os dados" retry={() => { setDataError(''); if (selected) { setDetailLoading(true); setDetailAttempt(n => n + 1); } else setReload(n => n + 1); }}>{dataError}</PageState> : page === "overview" ? <Suspense fallback={<PageState state="loading" title="Preparando sua visão geral" />}><Dashboard summary={data.dashboard} orders={data.ordens} clients={data.clientes} vehicles={data.veiculos}
+          {dataLoading && !query ? <PageState state="loading" title="Carregando dados da oficina" /> : detailLoading ? <PageState state="loading" title="Carregando ordem de serviço" /> : dataError ? <PageState state="error" title="Não foi possível carregar os dados" retry={() => { setDataError(''); if (selected) { setDetailLoading(true); setDetailAttempt(n => n + 1); } else setReload(n => n + 1); }}>{dataError}</PageState> : page === "team" && session.role === "OWNER" ? <TeamPage userId={session.usuarioId} /> : page === "overview" ? <Suspense fallback={<PageState state="loading" title="Preparando sua visão geral" />}><Dashboard summary={data.dashboard} orders={data.ordens} clients={data.clientes} vehicles={data.veiculos}
             today={today} canWrite={canWrite} openOrder={openOrder}
             newOrder={() => { navigate("orders"); setPanel("new-orders"); }}
             viewOrders={() => navigate("orders")} viewRecovery={() => setPanel("recovery")} /></Suspense> :
@@ -578,38 +559,6 @@ export default function App() {
                         </tbody>
                       </table>
                     )}
-                    {page === "team" && (
-                      <table>
-                        <thead>
-                          <tr>
-                            <th scope="col">Nome</th>
-                            <th scope="col">E-mail</th>
-                            <th scope="col">Papel</th>
-                            <th scope="col">Situação</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {data.usuarios
-
-                            .map((u) => (
-                              <tr key={u.id}>
-                                <td data-label="Nome">
-                                  <strong>{u.nome}</strong>
-                                </td>
-                                <td data-label="E-mail">{u.email}</td>
-                                <td data-label="Papel">{roles[u.papel]}</td>
-                                <td data-label="Situação">
-                                  <span
-                                    className={`classification ${u.ativo ? "ok" : ""}`}
-                                  >
-                                    {u.ativo ? "Ativo" : "Inativo"}
-                                  </span>
-                                </td>
-                              </tr>
-                            ))}
-                        </tbody>
-                      </table>
-                    )}
                   </TableRegion>
                 )}
                 <Pager
@@ -622,12 +571,6 @@ export default function App() {
                 <p className="list-help">
                   Abra uma OS para consultar o checklist, diagnóstico, orçamento
                   e histórico do serviço.
-                </p>
-              )}
-              {page === "team" && (
-                <p className="list-help">
-                  O papel define as ações disponíveis. Apenas o proprietário
-                  pode cadastrar usuários.
                 </p>
               )}
             </>
@@ -703,18 +646,6 @@ export default function App() {
           />}
         </Drawer>
       )}
-      {panel === "new-team" && (
-        <Drawer title="Cadastrar usuário" close={() => setPanel("")}>
-          <UserForm
-            users={data.usuarios}
-            close={() => setPanel("")}
-            save={async (u) => {
-              const saved = await api<typeof u>('/usuarios', 'POST', { nome: u.nome, email: u.email, senha: u.senha, papel: u.papel });
-              setData(d => ({ ...d, usuarios: [...d.usuarios, saved] })); finish('Usuário cadastrado.'); setReload(n => n + 1);
-            }}
-          />
-        </Drawer>
-      )}
       {panel === "view-client" && client && (
         <Drawer title="Cadastro do cliente" close={() => setPanel("")}>
           <h2>{client.nome}</h2>
@@ -758,10 +689,7 @@ export default function App() {
         </Drawer>
       )}
       {panel === "recovery" && canWrite && <Drawer title="Retornos" close={() => setPanel("")} wide>
-        <Recovery openOrder={openOrder} empresa={company.empresa.branding.nomeExibicao} />
-      </Drawer>}
-      {panel === "company" && session.role === "OWNER" && <Drawer title="Identidade da empresa" close={() => setPanel("")} wide>
-        <CompanySettings empresa={company.empresa} update={company.update} />
+        <Retornos empresa={company.empresa.branding.nomeExibicao} />
       </Drawer>}
     </Workspace></BrandingProvider>
   );

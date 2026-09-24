@@ -51,7 +51,9 @@ class Fase1IT extends br.com.garagem.suporte.IntegracaoBase {
             .withCommand("server", "/data")
             .waitingFor(
                 org.testcontainers.containers.wait.strategy.Wait.forHttp("/minio/health/ready")
-                    .forPort(9000));
+                    .forPort(9000)
+                    // A primeira formatação pode ultrapassar 60s no Docker Desktop.
+                    .withStartupTimeout(java.time.Duration.ofMinutes(3)));
     minio.start();
     String endpoint = "http://" + minio.getHost() + ":" + minio.getMappedPort(9000);
     r.add("app.storage.endpoint", () -> endpoint);

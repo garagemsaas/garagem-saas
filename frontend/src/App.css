@@ -169,27 +169,6 @@
   font-size: 12px;
   font-weight: 400;
 }
-.demo-ribbon {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 9px 34px;
-  background: #eef1e7;
-  border-bottom: 1px solid #e1e7d7;
-  font-size: 10px;
-  color: #677255;
-  letter-spacing: 0.1px;
-}
-.demo-ribbon > span:last-child {
-  margin-left: auto;
-  color: #707964;
-}
-.demo-dot {
-  height: 5px;
-  width: 5px;
-  border-radius: 50%;
-  background: #8a9870;
-}
 .main-content {
   padding: 37px 34px 40px;
   width: 100%;
@@ -608,7 +587,7 @@
 .toast .icon-button {
   color: #c1d1b1;
 }
-.demo-label {
+.login-label {
   font-size: 9px;
   font-weight: 600;
   letter-spacing: 1.3px;
@@ -649,30 +628,6 @@
   font-size: 10px;
   padding: 9px;
   font-weight: 500;
-}
-.demo-controls {
-  padding-top: 23px;
-  margin-top: 25px;
-  border-top: 1px solid #e0e6d7;
-}
-.demo-controls .field {
-  margin-bottom: 12px;
-}
-.demo-controls .field > span {
-  font-size: 10px;
-  color: #68795c;
-  font-weight: 500;
-}
-.demo-controls select {
-  min-height: 36px;
-  padding: 8px;
-  font-size: 11px;
-  background: #f4f6ef;
-}
-.demo-controls p {
-  font-size: 10px;
-  color: #8a957e;
-  line-height: 1.75;
 }
 .login-main > footer {
   margin-top: 40px;
@@ -801,9 +756,6 @@
   .topbar {
     padding: 0 23px;
   }
-  .demo-ribbon {
-    padding: 9px 23px;
-  }
   .orders-table {
     min-width: 950px;
   }
@@ -876,9 +828,6 @@
   .login-story h1 {
     font-size: 36px;
   }
-  .login-process {
-    flex-wrap: wrap;
-  }
   .login-main {
     padding: 35px 25px;
   }
@@ -887,9 +836,6 @@
   }
   .toast {
     left: calc(50% + 38px);
-  }
-  .demo-ribbon > span:last-child {
-    display: none;
   }
   .version-bar {
     flex-wrap: wrap;
@@ -931,10 +877,6 @@
   }
   .topbar .workshop strong {
     font-size: 11px;
-  }
-  .demo-ribbon {
-    padding: 8px 12px;
-    font-size: 9px;
   }
   .main-content {
     padding: 24px 13px;

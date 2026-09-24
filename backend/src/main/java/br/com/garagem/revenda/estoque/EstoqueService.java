@@ -177,14 +177,6 @@ public class EstoqueService {
           default -> false;
         };
     if (!allowed) throw ApiException.conflict("Transição de estoque inválida.");
-    if (n.status() == Status.DISPONIVEL
-        && e.ordemServicoId() != null
-        && db.count(
-                "select count(*) from revenda_custo where oficina_id=:tenant and estoque_id=:id and ordem_servico_id=:os",
-                params("id", id, "os", e.ordemServicoId()))
-            == 0)
-      throw ApiException.conflict(
-          "Conclua a OS interna e importe o custo antes de disponibilizar.");
     status(id, n.status().name(), "Situação alterada para " + n.status());
     return obter(id);
   }

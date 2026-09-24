@@ -23,6 +23,7 @@ export class ApiError extends Error {
 let session: Session | null = null;
 let generation = 0;
 let renewal: Promise<void> | null = null;
+let restoration: Promise<Session | null> | null = null;
 export function setApiSession(value: Session | null) { generation++; session = value; renewal = null; }
 export function currentSession() { return session; }
 
@@ -83,15 +84,20 @@ async function request(path: string, method = 'GET', body?: unknown, retry = tru
  * rotação. Devolve null quando não há cookie, quando ele já foi revogado ou quando expirou — os
  * três casos significam a mesma coisa para quem chama: mostre a tela de entrada.
  */
-export async function restoreSession(): Promise<Session | null> {
-  try {
-    const value = await api<Session>('/auth/refresh', 'POST');
-    setApiSession(value);
-    return value;
-  } catch {
-    setApiSession(null);
-    return null;
+export function restoreSession(): Promise<Session | null> {
+  if (!restoration) {
+    const start = generation;
+    // StrictMode e consumidores simultâneos compartilham uma única rotação do cookie.
+    restoration = api<Session>('/auth/refresh', 'POST')
+      .then(value => {
+        if (start !== generation) return null;
+        setApiSession(value);
+        return value;
+      })
+      .catch(() => { if (start === generation) setApiSession(null); return null; })
+      .finally(() => { restoration = null; });
   }
+  return restoration;
 }
 
 export async function api<T>(path: string, method = 'GET', body?: unknown): Promise<T> {

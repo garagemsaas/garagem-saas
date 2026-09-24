@@ -2,18 +2,12 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { api } from './api';
 export interface Branding {
   nomeEmpresarial: string; nomeExibicao: string; telefone: string | null;
-  email: string | null; contato: string | null; corPrimaria: string; corSecundaria: string;
+  email: string | null; contato: string | null;
   logoId: string | null; faviconId: string | null; revisao: number;
 }
-/** Conteúdo do site público. Só o OWNER edita, e publicar é uma decisão à parte da identidade. */
-export interface Site {
-  frase: string | null; sobre: string | null; servicos: string | null;
-  endereco: string | null; horario: string | null; whatsapp: string | null;
-  instagram: string | null; publicado: boolean; revisao: number;
-}
 export interface Empresa {
-  branding: Branding; modulos: ('OFICINA' | 'REVENDA')[]; status: 'ATIVA' | 'INATIVA';
-  site: Site; capaId: string | null; slug: string;
+  branding: Branding; modulos: ('OFICINA' | 'REVENDA')[]; status: 'ATIVA' | 'SUSPENSA' | 'INATIVA';
+  slug: string;
 }
 export const BrandingContext = createContext<{ branding?: Branding; logo?: string }>({});
 export function useBranding() { return useContext(BrandingContext); }

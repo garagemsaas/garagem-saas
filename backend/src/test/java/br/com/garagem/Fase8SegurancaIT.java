@@ -519,7 +519,6 @@ class Fase8SegurancaIT extends br.com.garagem.suporte.IntegracaoBase {
 
   @Test
   void papelNaoEscalaPeloCorpoDaRequisicao() throws Exception {
-    // Não existe endpoint de troca de papel; e criar usuário é exclusivo do proprietário.
     assertThat(
             envia(
                 "POST",
@@ -531,9 +530,9 @@ class Fase8SegurancaIT extends br.com.garagem.suporte.IntegracaoBase {
             envia(
                 "PUT",
                 "/api/v1/usuarios/" + mecanicoA,
-                tokenOwnerA,
-                Map.of("papel", "OWNER", "ativo", true)))
-        .isEqualTo(404);
+                tokenAtendenteA,
+                Map.of("nome", "Tentativa", "email", "teste@a.test", "papel", "OWNER")))
+        .isEqualTo(403);
   }
 
   @Test

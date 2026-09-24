@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { branding, site } from './company-fixture.mjs';
+import { branding } from './company-fixture.mjs';
 
 /**
  * As três pendências da simplificação: chamar no WhatsApp com confirmação, cadastrar cliente e
@@ -16,7 +16,7 @@ async function fixture(context, modulos, estado) {
     if (caminho === '/auth/login') return send(sessao);
     if (caminho === '/auth/logout') return route.fulfill({ status: 204 });
     if (caminho === '/auth/refresh') return send({ detail: 'Sessão expirada.' }, 401);
-    if (caminho === '/empresa') return send({ branding, modulos, status: 'ATIVA', site, capaId: null, slug: 'e' });
+    if (caminho === '/empresa') return send({ branding, modulos, status: 'ATIVA', slug: 'e' });
     if (req.method() === 'POST' || req.method() === 'PUT') {
       const corpo = req.postDataJSON?.() ?? {};
       estado.escritas.push({ caminho, corpo });
@@ -25,7 +25,7 @@ async function fixture(context, modulos, estado) {
       if (caminho === '/ordens-servico') return send({ id: 'os-1', numero: 1, ...corpo, status: 'RECEBIDO', revisao: 0, criadoEm: new Date().toISOString() }, 201);
       return send({ id: 'x', revisao: 1 }, 201);
     }
-    if (caminho === '/revenda/retornos') return send(estado.retornos);
+    if (caminho === '/retornos') return send(pagina(estado.retornos));
     if (caminho === '/dinheiro-esquecido/resumo') return send({ oportunidadesAbertas: 0, valorPotencialConhecido: 0, valorRecuperado: 0, quantidadeRecuperada: 0 });
     if (caminho.startsWith('/revenda/dashboard')) return send({ emAvaliacao: 0, emPreparacao: 0, disponiveis: 0, reservados: 0, vendidos: 0, valorAquisicao: 0, custosPreparacao: 0, valorAnunciado: 0, margemPotencial: 0, mediaDiasEstoque: 0, leadsAbertos: 0, propostasAbertas: 0, vendasPeriodo: 0, valorVendido: 0, margemRealizada: 0 });
     if (caminho === '/clientes') return send(pagina(estado.clientes));
@@ -39,7 +39,7 @@ async function fixture(context, modulos, estado) {
 function estadoInicial() {
   return {
     escritas: [], clientes: [], veiculos: [],
-    retornos: [{ tipo: 'INTERESSADO_SEM_RETORNO', id: 'r1', cliente: 'Marina Alves', telefone: '5511988887777', veiculo: 'Fiat Argo ABC1D23', detalhe: 'Sem contato desde a abertura', desde: '2026-09-01T12:00:00Z' }],
+    retornos: [{ tipo: 'INTERESSADO_SEM_RETORNO', id: 'r1', cliente: 'Marina Alves', telefone: '5511988887777', veiculo: 'Fiat Argo ABC1D23', motivo: 'Sem contato desde a abertura', responsavel: 'Ana', responsavelId: 'u', clienteId: 'c', prioridade: 'NORMAL', status: 'PENDENTE', revisao: 0, agendadoEm: '2026-09-01T12:00:00Z' }],
   };
 }
 
@@ -71,7 +71,7 @@ test('Retornos existe para empresa somente REVENDA e o WhatsApp confirma antes d
 
   await irPara(page, 'Retornos');
   await expect(page.getByRole('heading', { name: 'Retornos', level: 1 })).toBeVisible();
-  await expect(page.getByText('Interessado sem retorno')).toBeVisible();
+  await expect(page.getByText('Sem contato desde a abertura')).toBeVisible();
   await expect(page.getByText('Marina Alves')).toBeVisible();
 
   // Nada é aberto antes da confirmação: primeiro o telefone e o texto ficam à vista.

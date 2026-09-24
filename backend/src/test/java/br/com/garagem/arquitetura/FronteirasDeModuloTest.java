@@ -34,7 +34,9 @@ class FronteirasDeModuloTest {
           "auth",
           "dashboard",
           "revenda",
-          "oficina");
+          "oficina",
+          "plataforma",
+          "retorno");
 
   private static final Pattern IMPORT =
       Pattern.compile("^import (?:static )?br\\.com\\.garagem\\.([a-z]+)\\.([A-Za-z0-9_.]+);");

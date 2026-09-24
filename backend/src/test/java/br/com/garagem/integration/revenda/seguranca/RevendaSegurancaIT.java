@@ -11,7 +11,7 @@ class RevendaSegurancaIT extends RevendaIntegrationBase {
   void modulosInatividadeEPapeisProtegemTodosDominios() throws Exception {
     var oficina = empresa("OFICINA");
     var revenda = empresa("REVENDA");
-    var hibrida = empresa("OFICINA", "REVENDA");
+    var outraRevenda = empresa("REVENDA");
     for (String path :
         List.of(
             "/revenda/estoque",
@@ -23,7 +23,7 @@ class RevendaSegurancaIT extends RevendaIntegrationBase {
             "/revenda/dashboard")) {
       ok(oficina, "GET", path, null, 404);
       ok(revenda, "GET", path, null, 200);
-      ok(hibrida, "GET", path, null, 200);
+      ok(outraRevenda, "GET", path, null, 200);
     }
     ok(revenda, "GET", "/ordens-servico", null, 404);
     var s = estoque(revenda, false);
@@ -36,7 +36,7 @@ class RevendaSegurancaIT extends RevendaIntegrationBase {
     jdbc.update("update usuario set papel='MECANICO' where id=?", revenda.usuario());
     // Existing JWT's role no longer matches the active user: rejected before authorization.
     ok(revenda, "GET", "/revenda/estoque", null, 401);
-    jdbc.update("update oficina set situacao='INATIVA' where id=?", hibrida.id());
+    jdbc.update("update oficina set situacao='INATIVA' where id=?", outraRevenda.id());
     for (String path :
         List.of(
             "/revenda/estoque",
@@ -45,7 +45,7 @@ class RevendaSegurancaIT extends RevendaIntegrationBase {
             "/revenda/propostas",
             "/revenda/reservas",
             "/revenda/vendas",
-            "/revenda/dashboard")) ok(hibrida, "GET", path, null, 401);
+            "/revenda/dashboard")) ok(outraRevenda, "GET", path, null, 401);
   }
 
   @Test

@@ -77,19 +77,17 @@ class ModuloEProvisionamentoIT extends br.com.garagem.suporte.IntegracaoBase {
   void exigenciaAcompanhaEndpointNovoSemListaCentral() throws Exception {
     String oficina = token(provisionar("OFICINA"));
     String revenda = token(provisionar("REVENDA"));
-    String hibrida = token(provisionar("OFICINA", "REVENDA"));
+    assertThatThrownBy(() -> provisionar("OFICINA", "REVENDA"))
+        .isInstanceOf(org.springframework.dao.DataAccessException.class);
 
     mvc.perform(
             get("/api/v1/endpoint-inedito-de-oficina").header("Authorization", "Bearer " + oficina))
-        .andExpect(status().isOk());
-    mvc.perform(
-            get("/api/v1/endpoint-inedito-de-oficina").header("Authorization", "Bearer " + hibrida))
         .andExpect(status().isOk());
     // Empresa de revenda não recebe 403: para ela a funcionalidade não existe.
     mvc.perform(
             get("/api/v1/endpoint-inedito-de-oficina").header("Authorization", "Bearer " + revenda))
         .andExpect(status().isNotFound());
-    for (String sessao : List.of(oficina, revenda, hibrida))
+    for (String sessao : List.of(oficina, revenda))
       mvc.perform(get("/api/v1/endpoint-inedito-comum").header("Authorization", "Bearer " + sessao))
           .andExpect(status().isOk());
     // Sem sessão continua sendo 401 da autenticação, não 404 do módulo.
@@ -132,14 +130,6 @@ class ModuloEProvisionamentoIT extends br.com.garagem.suporte.IntegracaoBase {
   }
 
   @Test
-  void empresaHibridaNasceComOsDoisModulos() throws Exception {
-    UUID id = provisionar("OFICINA", "REVENDA");
-    assertThat(modulos(id)).containsExactly("OFICINA", "REVENDA");
-    mvc.perform(get("/api/v1/ordens-servico").header("Authorization", "Bearer " + token(id)))
-        .andExpect(status().isOk());
-  }
-
-  @Test
   void provisionamentoRejeitaModuloInvalidoEEhIdempotentePorSlug() {
     assertThatThrownBy(() -> provisionar("ESTOQUE"))
         .isInstanceOf(org.springframework.dao.DataAccessException.class);
@@ -165,32 +155,12 @@ class ModuloEProvisionamentoIT extends br.com.garagem.suporte.IntegracaoBase {
   void ownerNaoAlteraOsProprioModulos() throws Exception {
     UUID id = provisionar("REVENDA");
     String sessao = token(id);
-    var edicao =
-        new HashMap<String, Object>(
-            Map.of(
-                "nomeExibicao",
-                "Revenda",
-                "corPrimaria",
-                "#123456",
-                "corSecundaria",
-                "#654321",
-                "revisao",
-                0));
-    edicao.put("modulos", List.of("OFICINA", "REVENDA"));
-    edicao.put("status", "INATIVA");
-    var resposta =
-        json.readTree(
-            mvc.perform(
-                    put("/api/v1/empresa")
-                        .header("Authorization", "Bearer " + sessao)
-                        .contentType("application/json")
-                        .content(json.writeValueAsBytes(edicao)))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsByteArray());
-    assertThat(resposta.path("modulos").toString()).isEqualTo("[\"REVENDA\"]");
-    assertThat(resposta.path("status").asText()).isEqualTo("ATIVA");
+    mvc.perform(
+            put("/api/v1/plataforma/empresas/" + id)
+                .header("Authorization", "Bearer " + sessao)
+                .contentType("application/json")
+                .content("{}"))
+        .andExpect(status().isForbidden());
     assertThat(modulos(id)).containsExactly("REVENDA");
     // E não existe endpoint algum para tentar: módulo é decisão administrativa, feita no banco.
     mvc.perform(

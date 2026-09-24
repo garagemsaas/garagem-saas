@@ -2,12 +2,9 @@ package br.com.garagem.oficina;
 
 import br.com.garagem.tenancy.RequerModulo;
 import br.com.garagem.tenancy.SemModulo;
-import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.http.*;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @SemModulo
@@ -22,25 +19,6 @@ public class EmpresaController {
   @GetMapping("/empresa")
   public EmpresaService.Empresa obter() {
     return service.obter();
-  }
-
-  @PutMapping("/empresa")
-  @PreAuthorize("hasRole('OWNER')")
-  public EmpresaService.Empresa editar(@Valid @RequestBody EmpresaService.Edicao input) {
-    return service.editar(input);
-  }
-
-  @PutMapping("/empresa/site")
-  @PreAuthorize("hasRole('OWNER')")
-  public EmpresaService.Empresa editarSite(@Valid @RequestBody EmpresaService.Site input) {
-    return service.editarSite(input);
-  }
-
-  @PostMapping(value = "/empresa/imagens/{tipo}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-  @PreAuthorize("hasRole('OWNER')")
-  public EmpresaService.Empresa upload(
-      @PathVariable String tipo, @RequestParam MultipartFile arquivo, @RequestParam long revisao) {
-    return service.imagem(tipo, arquivo, revisao);
   }
 
   /**
