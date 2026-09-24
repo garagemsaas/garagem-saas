@@ -65,17 +65,4 @@ public class EstoqueController {
   public Item custo(@PathVariable UUID id, @Valid @RequestBody NovoCusto n) {
     return preparacao.custo(id, n);
   }
-
-  @PostMapping("/{id}/preparacao/oficina")
-  @RequerModulo(ModuloEmpresa.OFICINA)
-  @ResponseStatus(HttpStatus.CREATED)
-  public Item preparar(@PathVariable UUID id, @Valid @RequestBody Preparar n) {
-    return preparacao.iniciar(id, n);
-  }
-
-  @PostMapping("/{id}/preparacao/concluir")
-  @RequerModulo(ModuloEmpresa.OFICINA)
-  public Item concluir(@PathVariable UUID id, @Valid @RequestBody Revisao n) {
-    return preparacao.concluir(id, n);
-  }
 }

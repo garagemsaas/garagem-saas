@@ -60,7 +60,7 @@ public class BootstrapOficina implements ApplicationRunner {
       // vazar o nome do enum do Java para quem está subindo o ambiente.
       throw new IllegalArgumentException("Configuração de bootstrap inválida");
     }
-    if (modulos.length == 0)
+    if (modulos.length != 1)
       throw new IllegalArgumentException("Configuração de bootstrap inválida");
     String operadorAuditado = operador;
     // A empresa nasce com os módulos contratados, não com OFICINA para ser corrigida depois: uma

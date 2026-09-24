@@ -39,6 +39,76 @@ public class UsuarioController {
       @NotBlank @Size(min = 12, max = 72) String senha,
       @NotNull Papel papel) {}
 
+  @io.swagger.v3.oas.annotations.media.Schema(name = "UsuarioEdicao")
+  public record Edicao(
+      @NotBlank @Size(max = 160) String nome,
+      @NotBlank @Email @Size(max = 254) String email,
+      @Size(min = 12, max = 72) String senha,
+      @NotNull Papel papel) {}
+
+  @PutMapping("/{id}")
+  @Transactional
+  @PreAuthorize("hasRole('OWNER')")
+  public Saida editar(@PathVariable UUID id, @Valid @RequestBody Edicao input) {
+    bloquearEmpresa();
+    validarPerfil(input.papel());
+    var alvo =
+        repo.findByIdAndOficinaId(id, TenantContext.current()).orElseThrow(ApiException::missing);
+    if (alvo.id.equals(UsuarioAutenticado.id()) && alvo.papel != input.papel())
+      throw ApiException.conflict("Você não pode alterar o próprio perfil de acesso.");
+    if (alvo.ativo
+        && alvo.papel == Papel.OWNER
+        && input.papel() != Papel.OWNER
+        && ownersAtivos() <= 1)
+      throw ApiException.conflict("Mantenha pelo menos um proprietário ativo.");
+    if (input.senha() != null) {
+      if (input.senha().getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 72)
+        throw ApiException.invalid("Escolha uma senha de até 72 bytes.");
+      alvo.senhaHash = encoder.encode(input.senha());
+    }
+    alvo.versaoSessao++;
+    alvo.nome = input.nome().trim();
+    alvo.email = input.email().trim().toLowerCase(Locale.ROOT);
+    alvo.papel = input.papel();
+    jdbc.update(
+        "update refresh_token set revogado_em=now(),motivo_revogacao='DESATIVACAO' where oficina_id=? and usuario_id=? and revogado_em is null",
+        TenantContext.current(),
+        id);
+    auditar(
+        id,
+        "USUARIO_EDITADO",
+        "Cadastro e perfil atualizados para "
+            + input.papel().name()
+            + (input.senha() != null ? "; senha redefinida." : "."));
+    return Saida.de(alvo);
+  }
+
+  private void bloquearEmpresa() {
+    jdbc.queryForObject(
+        "select id from oficina where id=? for update", UUID.class, TenantContext.current());
+  }
+
+  private void validarPerfil(Papel papel) {
+    if (papel == Papel.MECANICO
+        && "REVENDA"
+            .equals(
+                jdbc.queryForObject(
+                    "select modulo from empresa_modulo where oficina_id=?",
+                    String.class,
+                    TenantContext.current())))
+      throw ApiException.invalid("Escolha um perfil disponível para esta operação.");
+  }
+
+  private void auditar(UUID id, String acao, String descricao) {
+    jdbc.update(
+        "insert into usuario_auditoria(oficina_id,autor_id,usuario_id,acao,descricao) values(?,?,?,?,?)",
+        TenantContext.current(),
+        UsuarioAutenticado.id(),
+        id,
+        acao,
+        descricao);
+  }
+
   @io.swagger.v3.oas.annotations.media.Schema(name = "UsuarioSituacaoEntrada")
   public record SituacaoEntrada(
       @io.swagger.v3.oas.annotations.media.Schema(
@@ -63,6 +133,7 @@ public class UsuarioController {
       summary = "Listar equipe da oficina",
       description = "Somente dados públicos da equipe. Nenhuma senha ou hash é retornado.")
   public Pagina<Saida> listar(
+      @RequestParam(defaultValue = "") String busca,
       @Parameter(description = "Restringe a um papel") @RequestParam(required = false) Papel papel,
       @Parameter(description = "true lista apenas quem pode acessar")
           @RequestParam(required = false)
@@ -76,11 +147,13 @@ public class UsuarioController {
               example = "nome,asc")
           @RequestParam(required = false)
           String ordenacao) {
+    if (busca.length() > 160) throw ApiException.invalid("A busca deve ter até 160 caracteres.");
     return Pagina.de(
         repo.filtrar(
                 TenantContext.current(),
                 papel,
                 ativo,
+                "%" + busca.trim().toLowerCase(Locale.ROOT) + "%",
                 Pagina.request(pagina, tamanho, ordenacao, ORDENACAO))
             .map(Saida::de));
   }
@@ -91,6 +164,8 @@ public class UsuarioController {
   @ResponseStatus(org.springframework.http.HttpStatus.CREATED)
   @Operation(summary = "Cadastrar usuário na oficina atual")
   public Saida criar(@Valid @RequestBody Entrada input) {
+    bloquearEmpresa();
+    validarPerfil(input.papel());
     // Limite do plano antes de qualquer trabalho: desativar, editar e excluir seguem livres, só a
     // criação consome vaga. A contagem é de usuários ativos, feita no banco.
 
@@ -102,6 +177,8 @@ public class UsuarioController {
     u.senhaHash = encoder.encode(input.senha());
     u.papel = input.papel();
     repo.save(u);
+    repo.flush();
+    auditar(u.id, "USUARIO_CRIADO", "Usuario cadastrado com perfil " + u.papel.name());
     org.slf4j.LoggerFactory.getLogger(UsuarioController.class)
         .atInfo()
         .addKeyValue("novo_usuario_id", u.id)
@@ -119,6 +196,7 @@ public class UsuarioController {
               + " banco a cada requisição, e os refresh tokens do usuário são revogados na hora."
               + " Nenhum dado do usuário é apagado, e a autoria dos registros é preservada.")
   public Saida situacao(@PathVariable UUID id, @Valid @RequestBody SituacaoEntrada input) {
+    bloquearEmpresa();
     var alvo =
         repo.findByIdAndOficinaId(id, TenantContext.current()).orElseThrow(ApiException::missing);
     if (alvo.ativo == input.ativo()) return Saida.de(alvo);
@@ -131,7 +209,9 @@ public class UsuarioController {
         throw ApiException.conflict(
             "Esta é a última pessoa com acesso de proprietário. Promova outra antes de desativar.");
     }
+    alvo.versaoSessao++;
     alvo.ativo = input.ativo();
+    auditar(id, "ACESSO_ALTERADO", input.ativo() ? "Acesso ativado." : "Acesso desativado.");
     if (!input.ativo())
       jdbc.update(
           "update refresh_token set revogado_em=now(), motivo_revogacao='DESATIVACAO' where oficina_id=? and usuario_id=? and revogado_em is null",

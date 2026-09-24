@@ -199,10 +199,8 @@ td { font-size: 13px; }
 .login-story .eyebrow { color: var(--accent); }
 .login-main { background: var(--canvas); }
 .login-form h2 { font-weight: 500; }
-.login-process span { background: transparent; color: var(--accent); border-color: #c2cfb9; }
 .field > span { color: var(--ink); font-size: 13px; }
-.demo-label { color: var(--accent); background: var(--sage); }
-.demo-controls { border-color: var(--line); }
+.login-label { color: var(--accent); background: var(--sage); }
 .empty h3 { color: var(--ink); font-size: 15px; }
 .empty p { font-size: 13px; }
 /* Keep operational content readable at normal display scaling. */

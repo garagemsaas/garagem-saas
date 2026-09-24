@@ -122,27 +122,16 @@ public class OsService {
   }
 
   public OsSaida criar(NovaOs input) {
-    return criar(input, false);
-  }
-
-  public OsSaida criarInterna(NovaOs input) {
-    return criar(input, true);
-  }
-
-  private OsSaida criar(NovaOs input, boolean interna) {
     var v = veiculos.buscar(input.veiculoId()).orElseThrow(ApiException::missing);
-    if (interna && !"EMPRESA".equals(v.propriedade()))
-      throw ApiException.conflict("Preparação interna exige veículo da empresa.");
-    if (!interna && v.clienteId() == null)
-      throw ApiException.invalid(
-          "A OS de atendimento exige proprietário cliente. Use preparação interna para veículo da empresa.");
+    if (v.clienteId() == null)
+      throw ApiException.invalid("A OS de atendimento exige um veículo vinculado a um cliente.");
     if (input.kmEntrada() < v.km())
       throw ApiException.invalid("KM de entrada inferior à quilometragem cadastrada.");
     if (input.mecanicoId() != null) validarMecanico(input.mecanicoId());
     OrdemServico o = new OrdemServico();
     o.veiculoId = v.id();
     o.clienteId = v.clienteId();
-    o.tipo = interna ? "INTERNA" : "CLIENTE";
+    o.tipo = "CLIENTE";
     o.mecanicoId = input.mecanicoId();
     o.kmEntrada = input.kmEntrada();
     o.relato = input.relato().trim();
@@ -154,11 +143,7 @@ public class OsService {
             TenantContext.current());
     veiculos.atualizarQuilometragem(v.id(), input.kmEntrada());
     ordens.save(o);
-    evento(
-        o.id,
-        "OS_ABERTA",
-        interna ? "Preparação interna da empresa iniciada." : "OS recebida na oficina.",
-        UsuarioAutenticado.id());
+    evento(o.id, "OS_ABERTA", "OS recebida na oficina.", UsuarioAutenticado.id());
     return OsSaida.de(o);
   }
 

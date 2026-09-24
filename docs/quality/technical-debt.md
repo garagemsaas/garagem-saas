@@ -1,4 +1,4 @@
-> O tenant representa Empresa. Billing e cotas foram removidos do código. OWNER edita somente a própria identidade; situação e módulos são administrativos. Veja [modelo atualizado](/docs/architecture/empresa-white-label.md) e [provisionamento](/docs/operations/provisionamento-empresa.md). Referências a planos nas fases anteriores são históricas.
+> O tenant representa Empresa. Billing e cotas foram removidos do código. Identidade e imagens são exclusivas do desenvolvedor da plataforma; situação e operação são administrativas. Veja [modelo atualizado](/docs/architecture/empresa-white-label.md) e [provisionamento](/docs/operations/provisionamento-empresa.md). Referências a planos nas fases anteriores são históricas.
 
 # Dívida técnica em aberto
 

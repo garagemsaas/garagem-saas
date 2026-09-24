@@ -105,10 +105,16 @@ class MigracaoRevendaIT extends RevendaIntegrationBase {
         .containsEntry("status", "RECEBIDO");
     assertThat(
             jdbc.queryForMap(
-                "select nome_exibicao,cor_primaria from " + schema + ".oficina where id=?",
+                "select nome_exibicao from " + schema + ".oficina where id=?", empresa))
+        .containsEntry("nome_exibicao", "Fantasia");
+    assertThat(
+            jdbc.queryForObject(
+                "select configuracao->>'corPrimaria' from "
+                    + schema
+                    + ".empresa_configuracao_arquivada where oficina_id=?",
+                String.class,
                 empresa))
-        .containsEntry("nome_exibicao", "Fantasia")
-        .containsEntry("cor_primaria", "#abcdef");
+        .isEqualTo("#abcdef");
     assertThat(
             jdbc.queryForObject(
                 "select modulo from " + schema + ".empresa_modulo where oficina_id=?",

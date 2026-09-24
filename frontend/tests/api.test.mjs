@@ -1,11 +1,32 @@
 import test, { afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { api, allPages, listPage, loadData, currentSession, setApiSession, photoBlob, ApiError } from '../src/api.ts';
+import { api, allPages, listPage, loadData, currentSession, setApiSession, photoBlob, ApiError, restoreSession } from '../src/api.ts';
 
 const originalFetch = globalThis.fetch;
 const originalWindow = globalThis.window;
 const fakeSession = { accessToken: 'access-test', refreshToken: 'refresh-test', oficinaId: 'oficina-test', usuarioId: 'user-test', nome: 'Teste', papel: 'OWNER', expiresIn: 900 };
 const response = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+
+test('restaurações simultâneas compartilham uma única rotação do cookie', async () => {
+  let calls = 0, finish;
+  globalThis.fetch = () => { calls++; return new Promise(resolve => { finish = resolve; }); };
+  const first = restoreSession(), second = restoreSession();
+  assert.equal(calls, 1);
+  finish(response(fakeSession));
+  assert.deepEqual(await Promise.all([first, second]), [fakeSession, fakeSession]);
+  assert.equal(currentSession().accessToken, fakeSession.accessToken);
+});
+
+for (const status of [200, 401]) test(`restauração antiga (${status}) não altera login posterior`, async () => {
+  let finish;
+  globalThis.fetch = () => new Promise(resolve => { finish = resolve; });
+  const pending = restoreSession();
+  const newer = { ...fakeSession, accessToken: 'new-login', oficinaId: 'new-company' };
+  setApiSession(newer);
+  finish(response(fakeSession, status));
+  assert.equal(await pending, null);
+  assert.deepEqual(currentSession(), newer);
+});
 test('listagem solicita somente a página e codifica busca sem criar parâmetros', async () => {
   let calls = 0;
   globalThis.fetch = async path => {

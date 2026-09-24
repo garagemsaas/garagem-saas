@@ -4,7 +4,7 @@ Minuta de referência a adequar à proposta de cada empresa. A versão anterior 
 
 A proposta identifica contratante e contratada, escopo, módulos habilitados, implantação, suporte, valor e condições negociadas diretamente. Não há escolha pública de plano, upgrade, downgrade, cotas comerciais, checkout ou cobrança automática como requisito de acesso.
 
-O OWNER administra equipe e identidade da própria empresa. Módulos e situação operacional são administrados pela plataforma conforme o acordo comercial, sem acesso global aos dados de outros clientes. Contas INATIVAS não operam nem renovam sessões; dados e histórico não são apagados por essa alteração.
+O proprietário administra a equipe da própria empresa. A identidade é administrada exclusivamente pelos desenvolvedores da plataforma. Módulos e situação operacional são administrados pela plataforma conforme o acordo comercial, sem acesso global aos dados de outros clientes. Contas INATIVAS não operam nem renovam sessões; dados e histórico não são apagados por essa alteração.
 
 Cancelamento, prazos, pagamentos, exportação, retenção de dados e responsabilidades devem constar expressamente do contrato assinado. A aplicação não determina essas condições por um catálogo de planos. Solicitações seguem o canal de atendimento combinado com a empresa.
 

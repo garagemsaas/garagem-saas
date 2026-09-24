@@ -8,9 +8,9 @@ import { today } from './dados';
 import { rotulo } from './types';
 import type { Estoque } from './types';
 import EstoqueDetail from './EstoqueDetail';
-export default function EstoquePage({ userId, hybrid, openOrder, abrirAvaliacoes }: { userId: string; hybrid: boolean; openOrder: (id: string) => void; abrirAvaliacoes: () => void }) {
+export default function EstoquePage({ userId, abrirAvaliacoes }: { userId: string; abrirAvaliacoes: () => void }) {
   const [adding, setAdding] = useState(false); const [selected, setSelected] = useState(''); const [version, setVersion] = useState(0); const [filters, setFilters] = useState('');
-  if (selected) return <EstoqueDetail id={selected} userId={userId} hybrid={hybrid} openOrder={openOrder} back={() => { setSelected(''); setVersion(n => n + 1); }} />;
+  if (selected) return <EstoqueDetail id={selected} userId={userId} back={() => { setSelected(''); setVersion(n => n + 1); }} />;
   return <><div className="page-heading"><div><h1>Carros</h1><p>Compra, preparação e disponibilidade.</p></div><div className="dealer-actions"><button onClick={abrirAvaliacoes}>Avaliações</button><button className="primary" onClick={() => setAdding(true)}>Comprar carro</button></div></div>
     <form className="dealer-filters" onSubmit={e => { e.preventDefault(); const f = new FormData(e.currentTarget); setFilters(new URLSearchParams([...f.entries()].map(([k, v]) => [k, String(v)])).toString()); }}>
       <Field label="Buscar veículo"><input name="busca" type="search" /></Field><Field label="Situação"><select name="status"><option value="">Todas</option>{['EM_AVALIACAO', 'EM_PREPARACAO', 'DISPONIVEL', 'RESERVADO', 'VENDIDO'].map(s => <option key={s} value={s}>{rotulo(s)}</option>)}</select></Field>

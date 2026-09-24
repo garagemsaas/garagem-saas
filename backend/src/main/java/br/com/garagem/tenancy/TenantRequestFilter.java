@@ -49,6 +49,36 @@ public class TenantRequestFilter extends OncePerRequestFilter {
         MDC.put("usuario_id", "publico");
         res.setHeader("Cache-Control", "no-store");
       } else if (auth instanceof JwtAuthenticationToken jwt) {
+        if ("PLATAFORMA".equals(jwt.getToken().getClaimAsString("escopo"))) {
+          UUID platformUser;
+          Long version;
+          try {
+            platformUser = UUID.fromString(jwt.getToken().getSubject());
+            version = ((Number) jwt.getToken().getClaim("versao")).longValue();
+          } catch (RuntimeException e) {
+            reject(res, 401);
+            return;
+          }
+          Integer active =
+              jdbc.queryForObject(
+                  "select count(*) from plataforma_usuario where id=? and ativo and papel=? and versao_sessao=?",
+                  Integer.class,
+                  platformUser,
+                  jwt.getToken().getClaimAsString("papel"),
+                  version);
+          if (active == null || active != 1) {
+            reject(res, 401);
+            return;
+          }
+          if (!req.getRequestURI().startsWith("/api/v1/plataforma/")) {
+            reject(res, 404);
+            return;
+          }
+          res.setHeader("Cache-Control", "no-store");
+          MDC.put("usuario_id", platformUser.toString());
+          chain.doFilter(req, res);
+          return;
+        }
         UUID tenant, user;
         try {
           tenant = UUID.fromString(jwt.getToken().getClaimAsString("oficina_id"));
@@ -59,11 +89,14 @@ public class TenantRequestFilter extends OncePerRequestFilter {
         }
         var active =
             jdbc.queryForObject(
-                "select count(*) from usuario u join oficina o on o.id=u.oficina_id where u.oficina_id=? and u.id=? and u.ativo=true and u.papel=? and o.situacao='ATIVA'",
+                "select count(*) from usuario u join oficina o on o.id=u.oficina_id where u.oficina_id=? and u.id=? and u.ativo=true and u.papel=? and u.versao_sessao=? and o.situacao='ATIVA'",
                 Integer.class,
                 tenant,
                 user,
-                jwt.getToken().getClaimAsString("papel"));
+                jwt.getToken().getClaimAsString("papel"),
+                jwt.getToken().hasClaim("versao")
+                    ? ((Number) jwt.getToken().getClaim("versao")).longValue()
+                    : 0L);
         if (active == null || active != 1) {
           reject(res, 401);
           return;

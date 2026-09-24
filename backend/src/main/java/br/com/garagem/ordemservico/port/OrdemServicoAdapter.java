@@ -10,8 +10,6 @@ import br.com.garagem.ordemservico.repository.OrdemServicoRepository;
 import br.com.garagem.shared.error.ApiException;
 import br.com.garagem.shared.seguranca.UsuarioAutenticado;
 import br.com.garagem.tenancy.TenantContext;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import java.time.LocalDate;
 import java.util.Optional;
 import java.util.UUID;
@@ -24,12 +22,11 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional
 public class OrdemServicoAdapter implements OrdemServicoPort {
-  @PersistenceContext private EntityManager em;
+  private final OsService osService;
   private final OrdemServicoRepository ordens;
   private final OrcamentoVersaoRepository versoes;
   private final OrcamentoRepository orcamentos;
   private final AprovacaoOrcamentoRepository decisoes;
-  private final OsService osService;
 
   public OrdemServicoAdapter(
       OrdemServicoRepository ordens,
@@ -37,11 +34,11 @@ public class OrdemServicoAdapter implements OrdemServicoPort {
       OrcamentoRepository orcamentos,
       AprovacaoOrcamentoRepository decisoes,
       OsService osService) {
+    this.osService = osService;
     this.ordens = ordens;
     this.versoes = versoes;
     this.orcamentos = orcamentos;
     this.decisoes = decisoes;
-    this.osService = osService;
   }
 
   private static ResumoOs resumoDe(OrdemServico o) {
@@ -51,41 +48,6 @@ public class OrdemServicoAdapter implements OrdemServicoPort {
         o.concluidaEm,
         o.proximaRevisaoEm,
         o.revisao);
-  }
-
-  @Override
-  public UUID iniciarPreparacao(UUID veiculoId, UUID mecanicoId, long km, String relato) {
-    UUID id =
-        osService
-            .criarInterna(
-                new br.com.garagem.ordemservico.api.OsDtos.NovaOs(
-                    veiculoId, mecanicoId, km, relato, null))
-            .id();
-    // Quem chama esta porta grava o identificador numa chave estrangeira em seguida, e faz isso por
-    // JDBC. A OS existe no contexto de persistência, mas o insert só sairia no fim da transação —
-    // a restrição então olhava para uma tabela onde a linha ainda não estava e derrubava a
-    // preparação inteira. Devolver um id é prometer que ele já é encontrável no banco.
-    em.flush();
-    return id;
-  }
-
-  @Override
-  public Preparacao preparacao(UUID id, UUID veiculoId) {
-    var o = ordens.lock(id, TenantContext.current()).orElseThrow(ApiException::missing);
-    if (!"INTERNA".equals(o.tipo) || !o.veiculoId.equals(veiculoId)) throw ApiException.missing();
-    var versoesDaOs = osService.versoes(id);
-    var ultima =
-        versoesDaOs.stream()
-            .max(
-                java.util.Comparator.comparingInt(
-                    br.com.garagem.ordemservico.api.OsDtos.VersaoSaida::numero))
-            .orElse(null);
-    return new Preparacao(
-        id,
-        veiculoId,
-        ultima == null ? null : ultima.id(),
-        ultima == null ? java.math.BigDecimal.ZERO : ultima.total(),
-        o.status == StatusOs.PRONTO);
   }
 
   @Override

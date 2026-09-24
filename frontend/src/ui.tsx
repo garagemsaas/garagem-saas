@@ -110,6 +110,7 @@ export function Drawer({
       className={`drawer ${wide ? "wide" : ""}`}
       onCancel={(e) => {
         e.preventDefault();
+        e.stopPropagation();
         safeClose();
       }}
     >

@@ -19,11 +19,11 @@ interface WorkspaceProps {
   role: Role; name: string; workshop: string; logout: () => void;
   clients: Client[]; today: Date;
   openOrder: (id: string) => void; openClient: (client: Client) => void;
-  openVehicle: (vehicle: Vehicle) => void; openRecovery: () => void; openCompany: () => void;
+  openVehicle: (vehicle: Vehicle) => void; openRecovery: () => void;
 }
 
 export default function Workspace(props: WorkspaceProps) {
-  const { page, navigate, children, role, name, workshop, logout, clients, today, openOrder, openClient, openVehicle, openRecovery, openCompany } = props;
+  const { page, navigate, children, role, name, workshop, logout, clients, today, openOrder, openClient, openVehicle, openRecovery } = props;
   const [panel, setPanel] = useState<Panel>(null);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState({ orders: [] as Order[], clients: [] as Client[], vehicles: [] as Vehicle[], total: 0 });
@@ -83,7 +83,6 @@ export default function Workspace(props: WorkspaceProps) {
         funções de trabalho. Continua a um clique, dentro da conta. */}
     <div className="navigation-bottom"><nav aria-label="Gestão">
       {role === "OWNER" && navButton("team")}
-      {role === "OWNER" && <button onClick={() => { setPanel(null); openCompany(); }}><Icon name="settings" /><span>Configurações</span></button>}
     </nav><button className="sidebar-profile" onClick={() => setPanel("profile")}><span className="avatar">{initials}</span><span><strong>{name}</strong><small>{roles[role]}</small></span><Icon name="arrow" size={16} /></button></div>
   </>;
   return <div className="premium-shell">
@@ -120,7 +119,7 @@ export default function Workspace(props: WorkspaceProps) {
       <div className="profile-summary"><span className="avatar">{initials}</span><h3>{name}</h3><p>{roles[role]} · {workshop}</p></div>
       <p>Sua sessão está vinculada à sua empresa.</p>
       {role === "OWNER" && <button onClick={() => move("team")}><Icon name="team" />Usuários</button>}
-      <button onClick={() => setPanel("help")}><Icon name="info" />Primeiros passos</button>
+      <button onClick={() => setPanel("help")}><Icon name="info" />Como podemos ajudar?</button>
       <button className="session-logout" onClick={logout}><Icon name="logout" size={18} />Sair da oficina</button>
     </Drawer>}
     {panel === 'help' && <GettingStarted role={role} close={() => setPanel(null)} navigate={move} recovery={() => { setPanel(null); openRecovery(); }} />}
